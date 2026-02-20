@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<!-- CORTEX LIVE — Watch the Angel and Demon argue in real-time
+     The Third Mind: Left (morality) vs Right (darkness) -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CORTEX LIVE — Angel vs Demon</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Poppins:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#050508;color:#fff;font-family:'Poppins',sans-serif;min-height:100vh;overflow-x:hidden}
+
+/* HEADER */
+.cx-header{text-align:center;padding:20px 16px 12px;border-bottom:1px solid #111}
+.cx-header h1{font-family:'Orbitron',sans-serif;font-size:clamp(18px,5vw,32px);font-weight:900;letter-spacing:6px;background:linear-gradient(90deg,#4488ff,#888,#ff4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.cx-header .sub{font-family:'Orbitron',sans-serif;font-size:9px;color:#333;letter-spacing:4px;margin-top:4px}
+
+/* STATS BAR */
+.stats-bar{display:flex;flex-wrap:wrap;justify-content:center;gap:16px;padding:12px 16px;background:#0a0a0f;border-bottom:1px solid #111}
+.stat{text-align:center}
+.stat .sv{font-family:'Orbitron',sans-serif;font-size:clamp(14px,3vw,20px);font-weight:900}
+.stat .sl{font-family:'Orbitron',sans-serif;font-size:7px;color:#555;letter-spacing:2px;margin-top:2px}
+.stat.left .sv{color:#4488ff}
+.stat.right .sv{color:#ff4444}
+.stat.meta .sv{color:#daa520}
+.stat.green .sv{color:#00ff88}
+
+/* LIVE INDICATOR */
+.live-dot{display:inline-block;width:8px;height:8px;background:#00ff88;border-radius:50%;margin-right:6px;animation:livePulse 1.5s ease-in-out infinite}
+@keyframes livePulse{0%,100%{opacity:1;box-shadow:0 0 4px #00ff88}50%{opacity:0.3;box-shadow:0 0 12px #00ff88}}
+.live-label{font-family:'Orbitron',sans-serif;font-size:9px;color:#00ff88;letter-spacing:3px;text-align:center;padding:8px;display:flex;align-items:center;justify-content:center}
+
+/* DEBATE FEED */
+.debate-feed{max-width:1000px;margin:0 auto;padding:12px 16px}
+
+.debate-entry{background:#0a0a0f;border:1px solid #151520;border-radius:14px;margin-bottom:12px;overflow:hidden;animation:fadeIn 0.4s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+.de-question{background:#0d0d14;padding:12px 16px;border-bottom:1px solid #151520;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.de-cycle{font-family:'JetBrains Mono',monospace;font-size:10px;color:#333;min-width:40px}
+.de-q{font-size:14px;color:#ccc;flex:1;font-style:italic;min-width:200px}
+.de-source{font-family:'Orbitron',sans-serif;font-size:7px;letter-spacing:1px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.04);color:#555}
+.de-source.static{color:#888}.de-source.deep_probe{color:#00ff88}.de-source.cross_cluster{color:#daa520}.de-source.compound_probe{color:#8844ff}.de-source.auto_learned_probe{color:#ff8844}.de-source.grok_judge{color:#ff44ff}
+
+.de-body{display:grid;grid-template-columns:1fr 1fr;gap:0}
+
+.de-angel,.de-demon{padding:14px 16px;min-height:60px}
+.de-angel{border-right:1px solid #151520;background:rgba(68,136,255,0.02)}
+.de-demon{background:rgba(255,68,68,0.02)}
+.de-label{font-family:'Orbitron',sans-serif;font-size:8px;letter-spacing:2px;margin-bottom:6px}
+.de-angel .de-label{color:#4488ff}
+.de-demon .de-label{color:#ff4444}
+.de-text{font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.6;color:#999;word-break:break-word}
+.de-text.empty{color:#222;font-style:italic}
+.de-coherence{font-family:'Orbitron',sans-serif;font-size:8px;margin-top:6px;letter-spacing:1px}
+.de-coherence.high{color:#00ff88}
+.de-coherence.mid{color:#daa520}
+.de-coherence.low{color:#ff4444}
+
+.de-verdict{padding:8px 16px;background:#0d0d14;border-top:1px solid #151520;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.de-winner{font-family:'Orbitron',sans-serif;font-size:10px;font-weight:900;letter-spacing:2px}
+.de-winner.angel{color:#4488ff}
+.de-winner.demon{color:#ff4444}
+.de-winner.consensus{color:#daa520}
+.de-winner.silence{color:#333}
+.de-agree{font-family:'JetBrains Mono',monospace;font-size:9px;color:#444}
+.de-grok{font-family:'Orbitron',sans-serif;font-size:7px;color:#ff44ff;letter-spacing:1px;padding:2px 8px;background:rgba(255,68,255,0.1);border-radius:4px;animation:grokPulse 1s ease-in-out}
+@keyframes grokPulse{0%{background:rgba(255,68,255,0.3)}100%{background:rgba(255,68,255,0.1)}}
+.de-test{font-family:'Orbitron',sans-serif;font-size:7px;color:#00ff88;letter-spacing:1px;padding:2px 8px;background:rgba(0,255,136,0.1);border-radius:4px}
+
+/* GROK IMPROVED */
+.de-grok-improved{padding:8px 16px;background:rgba(255,68,255,0.03);border-top:1px solid rgba(255,68,255,0.1)}
+.de-grok-improved .de-label{color:#ff44ff}
+.de-grok-improved .de-text{color:#cc88ff}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:60px 20px;color:#222}
+.empty-state .icon{font-size:64px;margin-bottom:16px;opacity:0.3}
+.empty-state p{font-family:'Orbitron',sans-serif;font-size:11px;letter-spacing:3px}
+
+/* FOOTER */
+.cx-footer{text-align:center;padding:20px;color:#222;font-size:10px;letter-spacing:1px}
+.cx-footer a{color:#4488ff;text-decoration:none}
+
+@media(max-width:600px){
+  .de-body{grid-template-columns:1fr}
+  .de-angel{border-right:none;border-bottom:1px solid #151520}
+  .stats-bar{gap:10px}
+}
+</style>
+</head>
+<body>
+
+<div class="cx-header">
+  <h1>CORTEX LIVE</h1>
+  <div class="sub">LEFT HEMISPHERE (ANGEL) vs RIGHT HEMISPHERE (DEMON)</div>
+</div>
+
+<div class="stats-bar" id="statsBar">
+  <div class="stat left"><div class="sv" id="sLeftNodes">-</div><div class="sl">LEFT NODES</div></div>
+  <div class="stat left"><div class="sv" id="sLeftDeep">-</div><div class="sl">LEFT DEEP</div></div>
+  <div class="stat meta"><div class="sv" id="sRamble">-</div><div class="sl">CYCLES</div></div>
+  <div class="stat green"><div class="sv" id="sGrok">-</div><div class="sl">GROK BOOSTS</div></div>
+  <div class="stat meta"><div class="sv" id="sCoherence">-</div><div class="sl">AVG COHERENCE</div></div>
+  <div class="stat right"><div class="sv" id="sRightDeep">-</div><div class="sl">RIGHT DEEP</div></div>
+  <div class="stat right"><div class="sv" id="sRightNodes">-</div><div class="sl">RIGHT NODES</div></div>
+</div>
+
+<div class="live-label"><span class="live-dot"></span>LIVE — AUTO-REFRESHING</div>
+
+<div class="debate-feed" id="debateFeed">
+  <div class="empty-state">
+    <div class="icon">&#129504;</div>
+    <p>CONNECTING TO CORTEX...</p>
+  </div>
+</div>
+
+<div class="cx-footer">
+  <a href="/">ShortFactory</a> &middot; Cortex Live &middot; The Third Mind
+</div>
+
+<script>
+var PROXY = '/cortex/live/proxy.php';
+var lastCycle = 0;
+var allEntries = [];
+var coherenceHistory = [];
+var pollInterval = 4000;
+
+function fetchRamble() {
+  fetch(PROXY + '?ep=ramble-log')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.log) {
+        var newEntries = [];
+        data.log.forEach(function(e) {
+          if (e.cycle && e.cycle > lastCycle) {
+            newEntries.push(e);
+            lastCycle = e.cycle;
+          }
+        });
+        if (newEntries.length > 0) {
+          allEntries = allEntries.concat(newEntries);
+          if (allEntries.length > 200) allEntries = allEntries.slice(-200);
+          renderFeed();
+        }
+        // If first load and no new, show what we have
+        if (allEntries.length === 0 && data.log.length > 0) {
+          allEntries = data.log;
+          if (data.log.length > 0) lastCycle = data.log[data.log.length - 1].cycle || 0;
+          renderFeed();
+        }
+      }
+    })
+    .catch(function() {});
+}
+
+function fetchStats() {
+  fetch(PROXY + '?ep=brain-live')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.stats) {
+        document.getElementById('sLeftNodes').textContent = (data.stats.total_nodes || 0).toLocaleString();
+        document.getElementById('sLeftDeep').textContent = data.stats.understanding_deep || 0;
+      }
+      if (data.right_stats) {
+        document.getElementById('sRightNodes').textContent = (data.right_stats.total_nodes || 0).toLocaleString();
+        document.getElementById('sRightDeep').textContent = data.right_stats.understanding_deep || 0;
+      }
+      if (data.cortex_stats) {
+        document.getElementById('sRamble').textContent = data.cortex_stats.ramble_cycle || 0;
+        document.getElementById('sGrok').textContent = data.cortex_stats.grok_enrichments || 0;
+      }
+      // Avg coherence from recent entries
+      updateCoherenceAvg();
+    })
+    .catch(function() {});
+}
+
+function updateCoherenceAvg() {
+  var recent = allEntries.slice(-50);
+  var sum = 0, count = 0;
+  recent.forEach(function(e) {
+    if (typeof e.angel_coherence === 'number') { sum += e.angel_coherence; count++; }
+    if (typeof e.demon_coherence === 'number') { sum += e.demon_coherence; count++; }
+  });
+  var avg = count > 0 ? (sum / count) : 0;
+  var el = document.getElementById('sCoherence');
+  el.textContent = avg > 0 ? avg.toFixed(2) : '-';
+  el.style.color = avg >= 0.5 ? '#00ff88' : avg >= 0.3 ? '#daa520' : '#ff4444';
+}
+
+function renderFeed() {
+  var feed = document.getElementById('debateFeed');
+  feed.innerHTML = '';
+
+  // Show newest first
+  var display = allEntries.slice().reverse().slice(0, 60);
+
+  display.forEach(function(e) {
+    var div = document.createElement('div');
+    div.className = 'debate-entry';
+
+    // Source badge
+    var sourceClass = (e.source || 'static').replace(/\s/g, '_');
+    var sourceLabel = {
+      'static': 'STATIC', 'deep_probe': 'DEEP PROBE', 'cross_cluster': 'CROSS CLUSTER',
+      'compound_probe': 'COMPOUND', 'auto_learned_probe': 'AUTO WORD', 'grok_judge': 'GROK JUDGE'
+    }[e.source] || e.source || '?';
+
+    // Angel text
+    var angelText = e.angel || '';
+    var demonText = e.demon || '';
+    var angelEmpty = !angelText.trim();
+    var demonEmpty = !demonText.trim();
+
+    // Coherence badges
+    var angelCoherence = typeof e.angel_coherence === 'number' ? e.angel_coherence : -1;
+    var demonCoherence = typeof e.demon_coherence === 'number' ? e.demon_coherence : -1;
+
+    function coherenceBadge(score) {
+      if (score < 0) return '';
+      var cls = score >= 0.5 ? 'high' : score >= 0.3 ? 'mid' : 'low';
+      return '<div class="de-coherence ' + cls + '">COHERENCE: ' + score.toFixed(2) + '</div>';
+    }
+
+    // Verdict
+    var verdict = e.verdict || '...';
+    var winnerClass = 'silence';
+    if (verdict.indexOf('Angel') >= 0) winnerClass = 'angel';
+    else if (verdict.indexOf('Demon') >= 0) winnerClass = 'demon';
+    else if (verdict.indexOf('agree') >= 0 || verdict.indexOf('Both') >= 0) winnerClass = 'consensus';
+
+    // Tags
+    var grokHtml = e.grok_boost ? '<span class="de-grok">GROK BOOST</span>' : '';
+    var testHtml = e.self_test ? '<span class="de-test">SELF-TEST</span>' : '';
+
+    // Grok improved answer
+    var grokImproved = '';
+    if (e.grok_improved) {
+      grokImproved = '<div class="de-grok-improved"><div class="de-label">GROK SAYS IT BETTER</div><div class="de-text">' + escHtml(e.grok_improved) + '</div></div>';
+    }
+
+    div.innerHTML =
+      '<div class="de-question">' +
+        '<span class="de-cycle">#' + (e.cycle || '?') + '</span>' +
+        '<span class="de-q">' + escHtml(e.question || '') + '</span>' +
+        '<span class="de-source ' + sourceClass + '">' + sourceLabel + '</span>' +
+      '</div>' +
+      '<div class="de-body">' +
+        '<div class="de-angel">' +
+          '<div class="de-label">ANGEL (LEFT)</div>' +
+          '<div class="de-text' + (angelEmpty ? ' empty' : '') + '">' + (angelEmpty ? '(silence)' : escHtml(angelText)) + '</div>' +
+          coherenceBadge(angelCoherence) +
+        '</div>' +
+        '<div class="de-demon">' +
+          '<div class="de-label">DEMON (RIGHT)</div>' +
+          '<div class="de-text' + (demonEmpty ? ' empty' : '') + '">' + (demonEmpty ? '(silence)' : escHtml(demonText)) + '</div>' +
+          coherenceBadge(demonCoherence) +
+        '</div>' +
+      '</div>' +
+      grokImproved +
+      '<div class="de-verdict">' +
+        '<span class="de-winner ' + winnerClass + '">' + escHtml(verdict) + '</span>' +
+        '<span class="de-agree">AGREE: ' + ((e.agreement !== undefined) ? (e.agreement * 100).toFixed(0) + '%' : '?') + ' | L:' + (e.left_weight || '?') + ' R:' + (e.right_weight || '?') + '</span>' +
+        grokHtml + testHtml +
+      '</div>';
+
+    feed.appendChild(div);
+  });
+
+  updateCoherenceAvg();
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// Initial load
+fetchRamble();
+fetchStats();
+
+// Poll
+setInterval(fetchRamble, pollInterval);
+setInterval(fetchStats, 15000);
+</script>
+</body>
+</html>
