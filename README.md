@@ -19,6 +19,21 @@ Built by [Dan](https://github.com/eliskcage) + [Claude AI](https://claude.ai) as
 ## The Architecture
 
 ```
+
+
+          ┌──────────────┐
+input →   │ transform    │
+          │ engine       │
+          └─────┬────────┘
+                ↓
+          ┌──────────────┐
+          │ cortex       │
+          │ reasoning    │
+          └─────┬────────┘
+                ↓
+          feedback (target)
+                ↑
+          ────────────────
                     ┌──────────────────────────────────────────┐
                     │            PLAYBOOK ENGINE               │
                     │  Equation: F>M>W = {F:1.0, M:0.6, W:0.3}│
