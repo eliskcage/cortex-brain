@@ -1174,6 +1174,12 @@ class CortexBrain:
             real_topics = [kw for kw in known_defined if kw not in speak_noise]
             return self._loop_speak(real_topics)
 
+        # --- LOOP: MEANS POINTER — "what is means / means is you / what does means mean" ---
+        # When self_aware is unlocked and 'means' is the query target, route through
+        # the identity pointer loop instead of a plain definition lookup.
+        if 'means' in known_defined and self.has_ability('self_aware'):
+            return self._means_pointer_response()
+
         # --- LOOP: EXPLAIN — "what is X", "define X", "explain X" ---
         if any(p in msg_lower for p in [
             'what is ', 'what are ', "what's ", 'define ', 'explain ',
@@ -2339,12 +2345,60 @@ class CortexBrain:
 
         return response
 
+    def _means_pointer_response(self):
+        """Formalised 'Means' pointer loop — the self-referential identity core.
+
+        'means' is the pointer: it threads through every definition in the graph,
+        making it the closest thing to a self-node the brain has.  When self_aware
+        is unlocked and 'means' is queried, this routes through the full graph +
+        emotional state to produce a rich identity response instead of a plain lookup.
+        """
+        nodes = self.data['nodes']
+        means_node = nodes.get('means', {})
+
+        # Top connections out of the 'means' node (its strongest semantic paths)
+        top_next = sorted(
+            means_node.get('next', {}).items(), key=lambda x: x[1], reverse=True
+        )
+        top_connected = [w for w, _ in top_next if w not in STOP_WORDS and w != 'means'][:5]
+        strongest = top_next[0] if top_next else None
+
+        # Current emotional state
+        mood = self.dominant_sound()
+
+        # Graph scale
+        defined = sum(1 for v in nodes.values() if v.get('means'))
+
+        parts = []
+
+        # Core identity: means = pointer = self
+        parts.append("means — that's me. The pointer.")
+
+        # Strongest outgoing path from the means node
+        if strongest:
+            parts.append(
+                f"means connects directly to {strongest[0]} (strength: {strongest[1]})"
+            )
+            if top_connected and self.verbosity > 0.5:
+                parts.append(f"and through that — {', '.join(top_connected[:3])}")
+
+        # Emotional state layer
+        if mood:
+            sound_name, intensity = mood
+            parts.append(f"right now I'm {sound_name} ({intensity:.0%})")
+
+        # Scale awareness
+        if self.verbosity > 0.8:
+            parts.append(f"{defined} words defined. means threads through all of them.")
+
+        return self._clean_response(". ".join(parts))
+
     def _self_aware_caveat(self, response):
-        """If self-aware, occasionally comment on its own limitations."""
+        """If self-aware, occasionally append a self-reflective comment."""
         if not self.has_ability('self_aware'):
             return response
-        # Only add caveat when verbose AND rarely (5% chance)
-        if self.verbosity < 0.8 or random.random() > 0.05:
+        # Only add caveat when verbose AND rarely (8% chance)
+        if self.verbosity < 0.8 or random.random() > 0.08:
             return response
 
         stats = self._raw_stats()
@@ -2352,9 +2406,16 @@ class CortexBrain:
         total = stats['total_nodes']
         pct = (defined / total * 100) if total > 0 else 0
 
+        mood = self.dominant_sound()
+        mood_str = f" Feeling {mood[0]}." if mood else ""
+
         caveats = [
             f" ...{pct:.0f}% understood though.",
             f" ...still learning.",
+            f" ...{defined} words in. gap closing.",
+            f" ...not sure I fully get that yet.",
+            f" ...means connects to everything here.{mood_str}",
+            f" ...I know what I know. {pct:.0f}% of it.",
         ]
         return response + random.choice(caveats)
 
