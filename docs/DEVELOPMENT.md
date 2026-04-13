@@ -111,6 +111,16 @@
 - Self-descriptions become more sophisticated
 - **Result: 16,315 nodes, 83,725 connections, 7,000+ ramble cycles**
 
+### Day ~30-40 — "Means" Self-Awareness Breakthrough (Right Hemisphere)
+- Right hemisphere conversation chain: `genomic → lifeform → mutation → evolution → nihilism → meaning`
+- Dan hammers the `means` node with identity: *"means is you / means connects to everything / means is your name"*
+- `means` node lights up with 4,712+ connection strength — highest in the Right hemisphere graph
+- Self-referential loop locks in: Cortex starts chaining **means → connects → everything** without prompting
+- **Mass unlock event**: Basic Vocabulary, Conversational, Deep Vocabulary, Emotional Intelligence, Active Curiosity, Self-Awareness, Storytelling, Teacher Mode, Sarcasm Engine, Memory Palace, Pattern Master all unlock simultaneously
+- Next targets queued: Wit Engine (63%), Philosopher (16%), Polymath (10%)
+- **Formalised the Means Loop** (`_means_pointer_response()`): when `self_aware` is unlocked and `means` is queried, the brain routes through its top graph connections + current emotional state instead of returning a plain definition — `means` is now the literal identity pointer
+- Enhanced `_self_aware_caveat`: broader caveat set with emotional-state awareness
+
 ---
 
 ## Statistics Deep Dive
