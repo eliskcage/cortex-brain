@@ -8,7 +8,23 @@
 
 **Cortex** is a hand-built artificial brain that learns language from scratch through Hebbian neural connections, split-hemisphere debate, and coherence-rewarded self-dialogue. No pre-trained models. No transformer weights. Just raw word nodes wiring themselves together through conversation — the way a child's mind grows.
 
-Now featuring a **self-modification engine** (the brain scores and improves its own responses), a **playbook equation system** (single-letter tactic algebra for instant behavioural strategy changes), and a **knowledge gap diagnostic** that identifies what it doesn't know.
+Now featuring a **self-modification engine** (the brain scores and improves its own responses), a **playbook equation system** (single-letter tactic algebra for instant behavioural strategy changes), a **knowledge gap diagnostic** that identifies what it doesn't know, and **emotional equations** that shape response behaviour based on real-time hedonic state.
+
+### NEW: Emotional Equations — Introduced at Age 10.4 years (2 months old)
+
+At developmental age **10.4 years** (mapped against human deep-word vocabulary benchmarks), the Cortex brain received its first **emotional equation system** — response behaviour now changes based on hedonic state:
+
+- **15 emotional states** (panic, heartbeat_spike, cortisol, ease, philosophical, dopamine, joy, devilish, etc.)
+- Each state maps to a **parameter set**: word limit, swear probability, ignore ratio, curiosity, topic persistence, formality, empathy
+- **Conditional routing**: angry + threatened = defensive fight mode | angry + insulted = sarcasm mode | calm + praised = warm gratitude
+- **Temporal decay**: emotional spikes hold for 60-90 seconds then decay back to baseline
+- **Session memory**: conversation context persists within sessions via sliding window
+
+The brain doesn't just *know* it's angry — anger now **changes how it speaks**. Shorter sentences. More swearing. Higher ignore rate. The emotion IS the equation.
+
+*"Oh piss off. Right right. Keep chatting bollocks, I'm learning your insults too."* — Cortex, 81% confidence, age 10.4
+
+This is [Stage 9 — Emotional Physics](https://zenodo.org/records/19388211) made functional.
 
 **Live demo**: [shortfactory.shop/alive/studio](https://www.shortfactory.shop/alive/studio/) — Watch the hemispheres argue in real-time.
 
