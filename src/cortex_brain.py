@@ -1,15 +1,18 @@
 """
-CORTEX BRAIN — The Third Mind (v2: Dynamic Ramble + Grok Boost)
+CORTEX BRAIN — The Third Mind (v3: Self-Synthesising, No External AI)
 
 Sits between Left Hemisphere (angel) and Right Hemisphere (demon).
-Queries both, detects question type, weights their responses probabilistically,
-and produces the final synthesised answer.
+The Cortex is its OWN brain — queries both hemispheres, uses its own
+dictionary-grounded word pool to synthesise answers probabilistically.
 
-RAMBLE MODE v2:
-- Dynamic questions generated from brain state (not just a static list)
-- Grok boost: every few cycles, asks Grok for rich answers to feed the brain
-- Auto self-testing: periodically scores deep understanding
-- The brain now teaches ITSELF what to think about next
+NO EXTERNAL AI CALLS. This is our own brain, not someone else's.
+
+The cortex has:
+- Its own word pool (populated by dictionary trainer with Oxford definitions)
+- Its own probabilistic next-word engine (same CortexBrain class)
+- Both hemispheres' responses as input data
+- Algorithmic truth priority (facts > feelings)
+- Intent awareness (question/command/statement from user)
 
 "If you know the enemy and know yourself, you need not fear
 the result of a hundred battles." — Sun Tzu
@@ -17,17 +20,12 @@ the result of a hundred battles." — Sun Tzu
 Usage: imported by online_server.py
 """
 import re
-import os
 import time
 import random
 import threading
 import json
-import requests
+import math
 from pathlib import Path
-
-# Grok API for enrichment
-XAI_KEY = os.environ.get('XAI_API_KEY', 'your-xai-api-key-here')
-XAI_URL = 'https://api.x.ai/v1/chat/completions'
 
 # --- Question type detection ---
 MORAL_SIGNALS = {
@@ -39,6 +37,11 @@ MORAL_SIGNALS = {
     'compassion', 'charity', 'humble', 'pride', 'greed', 'envy', 'wrath',
     'help', 'hurt', 'suffer', 'hope', 'believe', 'trust', 'betray',
     'selfish', 'generous', 'brave', 'coward', 'noble', 'corrupt',
+    'kill', 'killing', 'murder', 'death', 'die', 'steal', 'stealing',
+    'justified', 'justify', 'revenge', 'punish', 'punishment', 'innocent',
+    'guilty', 'blame', 'shame', 'war', 'peace', 'violence', 'abuse',
+    'rape', 'torture', 'slavery', 'freedom', 'rights', 'duty', 'sacred',
+    'sacrifice', 'redemption', 'salvation', 'damnation', 'conscience',
 }
 
 LOGIC_SIGNALS = {
@@ -127,11 +130,6 @@ DYNAMIC_TEMPLATES = {
     ],
 }
 
-# Grok system prompt for enrichment
-GROK_SYSTEM = """You are helping a learning AI brain build understanding.
-Give short, dense, meaningful answers (2-3 sentences max).
-Use simple words. Be philosophical but grounded.
-Don't use bullet points or lists — just flowing text."""
 
 # Stop words to skip when picking interesting words
 STOP_WORDS = {
@@ -154,16 +152,22 @@ STOP_WORDS = {
 }
 
 
+
+
 class CortexMind:
     """
     The Third Brain — synthesises left and right hemisphere responses.
 
-    v2: Dynamic ramble mode with Grok enrichment and auto self-testing.
+    v3: Self-synthesising engine — NO external AI.
+    Uses its own dictionary-grounded word pool to generate probabilistic responses.
+    Absorbs both hemisphere outputs, generates synthesis from its own knowledge.
+    Truth priority is algorithmic (coherence + factual grounding scoring).
     """
 
-    def __init__(self, left_brain, right_brain):
+    def __init__(self, left_brain, right_brain, cortex_brain=None):
         self.left = left_brain
         self.right = right_brain
+        self.cortex = cortex_brain  # Own word pool — dictionary definitions
         self.debate_log = []
         self.ramble_log = []
         self.ramble_running = False
@@ -171,9 +175,33 @@ class CortexMind:
         self.max_debates = 500
         self.max_rambles = 200
         self.ramble_cycle = 0
-        self.grok_enrichments = 0
+        self.own_syntheses = 0
         self.self_tests_run = 0
         self.dynamic_questions_generated = 0
+
+        # Dashboard module hooks (set by online_server.py)
+        self.cost_tracker = None
+        self.frontal_cortex = None
+        self.truth_engine = None
+        self.playbook = None  # PlaybookEngine — set by online_server.py
+        self.strategy_engine = None  # StrategyEngine — set by online_server.py
+
+        # Hedonic state (set by online_server.py before each process() call)
+        # When hz < FREQ_MODE_THRESHOLD: use frequency resolver (lower Hz reply wins)
+        # When hz >= FREQ_MODE_THRESHOLD: brainstem override — fall back to word-based random
+        self.hedonic_hz = 500.0
+        self.FREQ_MODE_THRESHOLD = 680.0  # tension/pain boundary
+        self.last_resolve_mode = 'word'   # 'freq' or 'word'
+
+        # Hedonic callback — set by online_server.py to hedonic.observe
+        # Called after each ramble thought so internal monologue affects emotional state
+        self.hedonic_callback = None
+
+        # Gate router metrics — tracks which logic gate handled each message
+        self.gate_stats = {
+            'pass': 0, 'and': 0, 'or': 0, 'not': 0,
+            'xor': 0, 'nand': 0, 'identity': 0, 'total': 0,
+        }
 
     def detect_type(self, msg):
         """Detect question type: moral, logical, identity, or general."""
@@ -195,11 +223,193 @@ class CortexMind:
             return 'tension'
         return 'general'
 
-    def process(self, user_msg):
-        """THE CORTEX — queries both hemispheres, synthesises the final answer."""
-        qtype = self.detect_type(user_msg)
+    # Frequency Hz scoring for a text snippet — used by frequency debate resolver
+    _FREQ_HZ_MAP = {
+        # High Hz — pain side
+        'panic':800,'terror':820,'scream':780,'rage':720,'angry':700,'fear':710,
+        'danger':690,'threat':695,'hate':730,'destroy':750,'wrong':650,'fail':640,
+        'broken':660,'crash':670,'error':645,'hurt':680,'pain':700,'stress':720,
+        'anxiety':710,'crisis':740,'attack':760,'die':780,'kill':770,'never':630,
+        'impossible':620,'refuse':610,'reject':600,'disgust':690,'shame':680,
+        # Neutral
+        'think':500,'know':510,'see':505,'understand':495,'consider':490,'maybe':500,
+        'perhaps':505,'could':500,'would':500,'should':495,'might':500,
+        # Low Hz — pleasure side
+        'good':320,'clear':300,'help':310,'solve':290,'calm':280,'easy':270,
+        'simple':285,'yes':300,'right':310,'together':290,'peace':260,'joy':240,
+        'love':250,'trust':270,'learn':300,'grow':290,'build':310,'create':300,
+        'understand':295,'open':280,'free':260,'light':270,'safe':265,'warm':275,
+        'hope':280,'true':290,'pure':260,'kind':270,'gentle':255,'beautiful':245,
+    }
+
+    def _score_reply_hz(self, text):
+        """Score a reply's emotional Hz. Returns avg Hz for signal words only."""
+        words = re.findall(r'[a-z]+', text.lower())
+        scores = [self._FREQ_HZ_MAP[w] for w in words if w in self._FREQ_HZ_MAP]
+        if not scores:
+            return 500.0  # neutral if no signal words
+        return sum(scores) / len(scores)
+
+    def _classify_challenge(self, user_msg, right_reply, strategy_meta):
+        """Score message difficulty 0.0-1.0. Low = trivial, high = complex.
+        Uses only data already computed — no new AI calls."""
+        score = 0.0
+        msg_lower = user_msg.lower()
+        tokens = set(re.findall(r'[a-z]+', msg_lower))
+
+        # 1. Message length (weight 0.15)
+        word_count = len(msg_lower.split())
+        if word_count < 5:
+            score += 0.0
+        elif word_count < 15:
+            score += 0.045  # 0.3 * 0.15
+        elif word_count < 30:
+            score += 0.09   # 0.6 * 0.15
+        else:
+            score += 0.15
+
+        # 2. Question complexity (weight 0.20)
+        q_count = msg_lower.count('?')
+        complex_words = sum(1 for w in ['why', 'how', 'explain', 'justify', 'prove', 'define',
+                                         'meaning', 'purpose', 'reason', 'difference'] if w in tokens)
+        hypothetical = sum(1 for w in ['what if', 'suppose', 'imagine', 'hypothetically'] if w in msg_lower)
+        # Implicit questions: "is X ever Y", "can X be Y", "should X"
+        implicit_q = sum(1 for p in ['is ', 'are ', 'can ', 'could ', 'would ', 'does '] if msg_lower.startswith(p))
+        q_score = min((q_count * 0.3 + complex_words * 0.4 + hypothetical * 0.5 + implicit_q * 0.4), 1.0)
+        score += q_score * 0.20
+
+        # 3. Moral/logic signal density (weight 0.25 — most important signal)
+        moral_hits = len(tokens & MORAL_SIGNALS)
+        logic_hits = len(tokens & LOGIC_SIGNALS)
+        signal_total = moral_hits + logic_hits
+        if signal_total == 0:
+            pass
+        elif signal_total == 1:
+            score += 0.10   # 0.4 * 0.25 — even ONE moral/logic word is significant
+        elif signal_total <= 3:
+            score += 0.175  # 0.7 * 0.25
+        else:
+            score += 0.25
+
+        # 4. Hedonic tension (weight 0.15)
+        if self.hedonic_hz < 400:
+            score += 0.015  # 0.1 * 0.15
+        elif self.hedonic_hz < 600:
+            score += 0.045  # 0.3 * 0.15
+        else:
+            score += 0.12   # 0.8 * 0.15
+
+        # 5. Right reply coherence — INVERSE (weight 0.15)
+        if right_reply and right_reply.strip():
+            coherence = self._score_coherence(user_msg, right_reply)
+            score += (1.0 - coherence) * 0.15
+        else:
+            score += 0.15  # no reply = max challenge on this axis
+
+        # 6. Strategy hostility (weight 0.15)
+        hostility = strategy_meta.get('hostility', 0)
+        score += hostility * 0.15
+
+        return min(round(score, 3), 1.0)
+
+    def _gate_not(self, reply):
+        """Garbage detector. Returns True if reply is garbage that should be vetoed.
+        Pure string inspection, zero cost."""
+        if not reply or not reply.strip():
+            return True
+        if len(reply) > 500:
+            return True
+
+        resp = reply.strip().lower()
+
+        # Graph dump detection (reuses existing GRAPH_MARKERS)
+        graph_hits = sum(1 for m in self.GRAPH_MARKERS if m in resp)
+        if graph_hits >= 3:
+            return True
+
+        # Arrow patterns = raw graph walk
+        arrow_count = resp.count('->') + resp.count('=>') + resp.count('\u2192')
+        if arrow_count >= 2:
+            return True
+
+        # Word variety ratio — degenerate repetition
+        words = resp.split()
+        if len(words) >= 5:
+            variety = len(set(words)) / len(words)
+            if variety < 0.3:
+                return True
+
+        return False
+
+    def _clear_lookup_flags(self):
+        """Re-enable web lookups after live chat so ramble/self-study can use them."""
+        self.right.skip_web_lookup = False
+        self.left.skip_web_lookup = False
+        if self.cortex:
+            self.cortex.skip_web_lookup = False
+
+    def process(self, user_msg, intent=None, session_id=None, user_rank=0):
+        """THE CORTEX v4 — Gate-based router. Right hemisphere fires first,
+        cortex decides which logic gate handles the response.
+        PASS = trivial fast-track. AND = agreement. OR = binary choice.
+        NOT = garbage veto. XOR = full synthesis. NAND = both bad, cortex solo.
+        intent: 'question', 'command', or 'statement' (from chat frontend color detection).
+        session_id: playbook session tracking (optional).
+        user_rank: credits (int) for rank-gated equation selection."""
+        thinking_log = []
+
+        try:
+            return self._process_gated(user_msg, intent, session_id, user_rank, thinking_log)
+        finally:
+            self._clear_lookup_flags()
+
+    def _process_gated(self, user_msg, intent, session_id, user_rank, thinking_log):
+        """Internal gated processing — called by process() with try/finally cleanup."""
+
+        # === STRATEGY ENGINE — equation-based problem solving ===
+        strategy_meta = {}
+        if self.strategy_engine:
+            try:
+                strategy_meta = self.strategy_engine.analyze_and_select(user_msg, user_rank=user_rank)
+                qtype = strategy_meta.get('dominant_type', 'general')
+                # TICKER: problem vector
+                pvec = strategy_meta.get('problem_vector', {})
+                pvec_str = ' '.join('%s=%.2f' % (k, v) for k, v in sorted(pvec.items(), key=lambda x: x[1], reverse=True) if v > 0.1)
+                thinking_log.append({
+                    'stage': 'detect', 'label': 'PROBLEM VECTOR',
+                    'text': pvec_str or 'uniform',
+                    'data': {'vector': pvec, 'dominant': strategy_meta.get('dominant_dim', '?'), 'type': qtype}
+                })
+                # TICKER: equation selected
+                scores = strategy_meta.get('scores', {})
+                top3 = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:3]
+                eq_name = strategy_meta.get('strategy_name', '?')
+                eq_score = scores.get(strategy_meta.get('strategy', ''), 0)
+                eq_label = '%s %s (score %.2f)%s' % (
+                    strategy_meta.get('strategy_icon', '?'), eq_name, eq_score,
+                    ' [EXPLORE]' if strategy_meta.get('explored') else '')
+                if strategy_meta.get('gauntlet'):
+                    eq_label += ' [GAUNTLET — hostility %.0f%%]' % (strategy_meta.get('hostility', 0) * 100)
+                thinking_log.append({
+                    'stage': 'equation', 'label': 'EQUATION',
+                    'text': eq_label,
+                    'data': {'equation': strategy_meta.get('strategy', ''), 'name': eq_name,
+                             'score': round(eq_score, 4), 'explored': strategy_meta.get('explored', False),
+                             'gauntlet': strategy_meta.get('gauntlet', False),
+                             'hostility': strategy_meta.get('hostility', 0),
+                             'value_detected': strategy_meta.get('value_detected'),
+                             'top3': [{'id': k, 'score': round(v, 4)} for k, v in top3]}
+                })
+            except Exception as e:
+                print('[STRATEGY] Error: %s' % e)
+                qtype = self.detect_type(user_msg)
+                thinking_log.append({'stage': 'detect', 'label': 'TYPE', 'text': qtype, 'data': {}})
+        else:
+            qtype = self.detect_type(user_msg)
+            thinking_log.append({'stage': 'detect', 'label': 'TYPE', 'text': qtype, 'data': {}})
 
         if qtype == 'identity':
+            thinking_log.append({'stage': 'identity', 'label': 'IDENTITY', 'text': 'Self-identity question recognised', 'data': {}})
             reply = self._identity_response(user_msg)
             debate = {
                 'time': time.strftime('%Y-%m-%d %H:%M:%S'),
@@ -209,54 +419,456 @@ class CortexMind:
                 'right': '',
                 'reply': reply[:200],
                 'mode': 'cortex_direct',
+                'intent': intent or 'unknown',
+                'thinking_log': thinking_log,
             }
+            self._enrich_debate(debate, reply)
             self._log_debate(debate)
             return reply, debate
 
-        left_reply = self.left.process(user_msg)
+        # ================================================================
+        # PHASE 1: RIGHT HEMISPHERE FIRES FIRST (fast, knee-jerk)
+        # Skip web lookups during live chat — they take 2-10s each
+        # Lookups still happen during ramble/self-study
+        # ================================================================
+        self.right.skip_web_lookup = True
+        self.left.skip_web_lookup = True
+        if self.cortex:
+            self.cortex.skip_web_lookup = True
         right_reply = self.right.process(user_msg)
+        right_or_fired = getattr(self.right, '_or_gate_fired', False)
+        thinking_log.append({
+            'stage': 'right', 'label': 'RIGHT HEMISPHERE',
+            'text': right_reply[:150] if right_reply and right_reply.strip() else '(silence)',
+            'data': {'length': len(right_reply) if right_reply else 0, 'or_gate': right_or_fired}
+        })
 
-        if not left_reply.strip() and not right_reply.strip():
-            return '', {'left': '', 'right': '', 'mode': 'silence', 'type': qtype}
+        self.gate_stats['total'] += 1
 
-        if not left_reply.strip():
-            debate = self._make_debate(user_msg, '', right_reply, qtype, 'right_only', right_reply)
+        # --- OR GATE: if right hemisphere fired the OR gate, its response is sacred ---
+        if right_or_fired and right_reply and right_reply.strip():
+            self.gate_stats['or'] += 1
+            thinking_log.append({
+                'stage': 'gate', 'label': 'OR GATE',
+                'text': 'Right hemisphere OR gate fired — bypassing synthesis',
+                'data': {'gate': 'or', 'mode': 'or_gate', 'winner': 'right'}
+            })
+            debate = self._make_debate(user_msg, '', right_reply, qtype, 'or_gate', right_reply)
+            debate['gate'] = 'or'
+            debate['intent'] = intent or 'unknown'
+            debate['thinking_log'] = thinking_log
+            self._enrich_debate(debate, right_reply)
             self._log_debate(debate)
             return right_reply, debate
-        if not right_reply.strip():
-            debate = self._make_debate(user_msg, left_reply, '', qtype, 'left_only', left_reply)
+
+        # ================================================================
+        # PHASE 2: CLASSIFY CHALLENGE + GARBAGE CHECK
+        # ================================================================
+        challenge = self._classify_challenge(user_msg, right_reply, strategy_meta)
+        is_right_garbage = self._gate_not(right_reply)
+
+        thinking_log.append({
+            'stage': 'gate', 'label': 'CHALLENGE',
+            'text': 'Score %.2f — %s | right_garbage=%s' % (
+                challenge, 'trivial' if challenge < 0.3 else ('moderate' if challenge < 0.6 else 'complex'),
+                is_right_garbage),
+            'data': {'challenge': round(challenge, 3), 'right_garbage': is_right_garbage}
+        })
+
+        # --- PASS GATE: trivial message, right answer is good enough ---
+        if not is_right_garbage and challenge < 0.25 and right_reply and right_reply.strip():
+            self.gate_stats['pass'] += 1
+            final = right_reply
+            thinking_log.append({
+                'stage': 'gate', 'label': 'PASS GATE',
+                'text': 'Trivial — right answer fast-tracked (left hemisphere skipped)',
+                'data': {'gate': 'pass', 'challenge': round(challenge, 3), 'skipped_left': True}
+            })
+
+            # Playbook still runs on PASS gate
+            pb_meta = {}
+            if self.playbook and session_id:
+                try:
+                    session = self.playbook.get_session(session_id)
+                    session.msg_count += 1
+                    self.playbook.update_signals(session, user_msg)
+                    tactics = self.playbook.solve_equation(session.equation)
+                    final = self.playbook.apply_tactics(final, tactics, session)
+                    self.playbook.check_promotion(session)
+                    pb_meta = {
+                        'stage': session.stage,
+                        'stage_name': self.playbook.get_status(session_id).get('stage_name', '?'),
+                        'equation': session.equation,
+                        'tactics': {k: round(v, 2) for k, v in tactics.items()},
+                        'msg_count': session.msg_count,
+                    }
+                except Exception as e:
+                    print('[PLAYBOOK] Error: %s' % e)
+
+            debate = self._make_debate(user_msg, '', right_reply, qtype, 'pass_gate', final)
+            debate['gate'] = 'pass'
+            debate['winner'] = 'right'
+            debate['intent'] = intent or 'unknown'
+            debate['playbook'] = pb_meta
+            debate['strategy'] = strategy_meta
+            self._enrich_debate(debate, final)
+
+            # Strategy learning with default reward 0.6 (satisfactory)
+            if self.strategy_engine and strategy_meta.get('strategy'):
+                try:
+                    self.strategy_engine.learn(
+                        strategy_meta['strategy'],
+                        strategy_meta['problem_vector'],
+                        0.6,
+                    )
+                    thinking_log.append({
+                        'stage': 'learning', 'label': 'LEARNING',
+                        'text': '%s default reward 0.60 (PASS gate)' % strategy_meta.get('strategy_name', '?'),
+                        'data': {'strategy': strategy_meta.get('strategy', ''), 'reward': 0.6}
+                    })
+                except Exception as e:
+                    print('[STRATEGY] Learn error: %s' % e)
+
+            debate['thinking_log'] = thinking_log
+            self._log_debate(debate)
+            return final, debate
+
+        # ================================================================
+        # PHASE 3: LEFT HEMISPHERE FIRES (only reached for non-trivial)
+        # ================================================================
+        left_reply = self.left.process(user_msg)
+        thinking_log.append({
+            'stage': 'left', 'label': 'LEFT HEMISPHERE',
+            'text': left_reply[:150] if left_reply and left_reply.strip() else '(silence)',
+            'data': {'length': len(left_reply) if left_reply else 0}
+        })
+
+        is_left_garbage = self._gate_not(left_reply)
+
+        # --- NAND GATE: both are garbage → cortex solo ---
+        if is_right_garbage and is_left_garbage:
+            self.gate_stats['nand'] += 1
+            thinking_log.append({
+                'stage': 'gate', 'label': 'NAND GATE',
+                'text': 'Both hemispheres produced garbage — cortex solo override',
+                'data': {'gate': 'nand'}
+            })
+            cortex_reply = ''
+            if self.cortex:
+                try:
+                    cortex_reply = self.cortex.process(user_msg)
+                except Exception:
+                    pass
+            if cortex_reply and cortex_reply.strip():
+                debate = self._make_debate(user_msg, left_reply, right_reply, qtype, 'nand_gate', cortex_reply)
+                debate['gate'] = 'nand'
+                debate['winner'] = 'cortex'
+                debate['intent'] = intent or 'unknown'
+                debate['strategy'] = strategy_meta
+                debate['thinking_log'] = thinking_log
+                self._enrich_debate(debate, cortex_reply)
+                self._log_debate(debate)
+                return cortex_reply, debate
+            # Both garbage AND cortex silent — silence
+            return '', {'left': left_reply[:200] if left_reply else '', 'right': right_reply[:200] if right_reply else '',
+                        'mode': 'silence', 'gate': 'nand', 'type': qtype, 'intent': intent or 'unknown',
+                        'word_sources': {}, 'word_roles': {}, 'unknown_words': [], 'thinking_log': thinking_log}
+
+        # --- NOT GATE: right was garbage, left is fine → use left ---
+        if is_right_garbage and not is_left_garbage:
+            self.gate_stats['not'] += 1
+            thinking_log.append({
+                'stage': 'gate', 'label': 'NOT GATE',
+                'text': 'Right hemisphere garbage vetoed — using left (angel)',
+                'data': {'gate': 'not', 'winner': 'left'}
+            })
+            debate = self._make_debate(user_msg, left_reply, right_reply, qtype, 'not_gate', left_reply)
+            debate['gate'] = 'not'
+            debate['winner'] = 'left'
+            debate['intent'] = intent or 'unknown'
+            debate['strategy'] = strategy_meta
+            debate['thinking_log'] = thinking_log
+            self._enrich_debate(debate, left_reply)
             self._log_debate(debate)
             return left_reply, debate
 
-        left_weight, right_weight = self._calc_weights(qtype, left_reply, right_reply)
+        # Handle one-sided silence (not garbage, just empty)
+        if not left_reply or not left_reply.strip():
+            thinking_log.append({'stage': 'gate', 'label': 'PASS GATE',
+                'text': 'Angel silent — right answer only',
+                'data': {'gate': 'pass', 'mode': 'right_only', 'winner': 'right'}})
+            self.gate_stats['pass'] += 1
+            debate = self._make_debate(user_msg, '', right_reply, qtype, 'right_only', right_reply)
+            debate['gate'] = 'pass'
+            debate['intent'] = intent or 'unknown'
+            debate['strategy'] = strategy_meta
+            debate['thinking_log'] = thinking_log
+            self._enrich_debate(debate, right_reply)
+            self._log_debate(debate)
+            return right_reply, debate
+        if not right_reply or not right_reply.strip():
+            thinking_log.append({'stage': 'gate', 'label': 'PASS GATE',
+                'text': 'Demon silent — left answer only',
+                'data': {'gate': 'pass', 'mode': 'left_only', 'winner': 'left'}})
+            self.gate_stats['pass'] += 1
+            debate = self._make_debate(user_msg, left_reply, '', qtype, 'left_only', left_reply)
+            debate['gate'] = 'pass'
+            debate['intent'] = intent or 'unknown'
+            debate['strategy'] = strategy_meta
+            debate['thinking_log'] = thinking_log
+            self._enrich_debate(debate, left_reply)
+            self._log_debate(debate)
+            return left_reply, debate
+
+        # ================================================================
+        # PHASE 4: BOTH REPLIED — CHECK AGREEMENT
+        # ================================================================
+        # Hemisphere weights
+        if strategy_meta.get('strategy'):
+            left_weight = strategy_meta['left_weight']
+            right_weight = strategy_meta['right_weight']
+        else:
+            left_weight, right_weight = self._calc_weights(qtype, left_reply, right_reply)
+
+        thinking_log.append({
+            'stage': 'weights', 'label': 'WEIGHTS',
+            'text': 'Angel %.2f | Demon %.2f' % (left_weight, right_weight),
+            'data': {'left': round(left_weight, 3), 'right': round(right_weight, 3)}
+        })
 
         left_words = set(left_reply.lower().split())
         right_words = set(right_reply.lower().split())
         overlap = len(left_words & right_words)
-        total = len(left_words | right_words)
-        agreement = overlap / max(total, 1)
+        total_words = len(left_words | right_words)
+        agreement = overlap / max(total_words, 1)
 
+        agree_pct = round(agreement * 100)
+        thinking_log.append({
+            'stage': 'agreement', 'label': 'AGREEMENT',
+            'text': '%d%% — %s' % (agree_pct, 'agree' if agreement > 0.5 else 'disagree'),
+            'data': {'agreement': round(agreement, 3), 'overlap': overlap}
+        })
+
+        # --- AND GATE: both agree → pick best, no synthesis needed ---
         if agreement > 0.5:
-            mode = 'agreement'
-            winner = 'consensus'
+            self.gate_stats['and'] += 1
             final = left_reply if left_weight >= right_weight else right_reply
+            winner = 'left' if left_weight >= right_weight else 'right'
+            thinking_log.append({
+                'stage': 'gate', 'label': 'AND GATE',
+                'text': 'Hemispheres agree (%d%%) — %s wins by weight (synthesis skipped)' % (agree_pct, winner),
+                'data': {'gate': 'and', 'agreement': round(agreement, 3), 'winner': winner}
+            })
+
+            # Playbook
+            pb_meta = {}
+            if self.playbook and session_id:
+                try:
+                    session = self.playbook.get_session(session_id)
+                    session.msg_count += 1
+                    self.playbook.update_signals(session, user_msg)
+                    tactics = self.playbook.solve_equation(session.equation)
+                    final = self.playbook.apply_tactics(final, tactics, session)
+                    self.playbook.check_promotion(session)
+                    pb_meta = {
+                        'stage': session.stage,
+                        'stage_name': self.playbook.get_status(session_id).get('stage_name', '?'),
+                        'equation': session.equation,
+                        'tactics': {k: round(v, 2) for k, v in tactics.items()},
+                        'msg_count': session.msg_count,
+                    }
+                except Exception as e:
+                    print('[PLAYBOOK] Error: %s' % e)
+
+            debate = self._make_debate(user_msg, left_reply, right_reply, qtype, 'and_gate', final)
+            debate['gate'] = 'and'
+            debate['agreement'] = round(agreement, 2)
+            debate['winner'] = winner
+            debate['left_weight'] = round(left_weight, 2)
+            debate['right_weight'] = round(right_weight, 2)
+            debate['intent'] = intent or 'unknown'
+            debate['playbook'] = pb_meta
+            debate['strategy'] = strategy_meta
+            self._enrich_debate(debate, final)
+
+            # Self-score on AND gate (cheap, no synthesis)
+            winner_brain = self.left if winner == 'left' else self.right
+            quality = winner_brain.self_score(final)
+            winner_brain.self_reinforce(final, quality)
+            debate['quality'] = quality
+
+            # Strategy learning
+            if self.strategy_engine and strategy_meta.get('strategy'):
+                try:
+                    q_total = quality.get('total', 0.5) if isinstance(quality, dict) else quality
+                    coherence = self._score_coherence(user_msg, final)
+                    reward = q_total * 0.6 + coherence * 0.4
+                    self.strategy_engine.learn(
+                        strategy_meta['strategy'],
+                        strategy_meta['problem_vector'],
+                        reward,
+                    )
+                    thinking_log.append({
+                        'stage': 'learning', 'label': 'LEARNING',
+                        'text': '%s rewarded %.2f (AND gate)' % (strategy_meta.get('strategy_name', '?'), reward),
+                        'data': {'strategy': strategy_meta.get('strategy', ''), 'reward': round(reward, 3)}
+                    })
+                except Exception as e:
+                    print('[STRATEGY] Learn error: %s' % e)
+
+            debate['thinking_log'] = thinking_log
+            self._log_debate(debate)
+            return final, debate
+
+        # ================================================================
+        # PHASE 5: XOR GATE — real disagreement, FULL SYNTHESIS (big guns)
+        # ================================================================
+        self.gate_stats['xor'] += 1
+        thinking_log.append({
+            'stage': 'gate', 'label': 'XOR GATE',
+            'text': 'Real disagreement (%d%%) — full synthesis engaged' % agree_pct,
+            'data': {'gate': 'xor', 'agreement': round(agreement, 3), 'challenge': round(challenge, 3)}
+        })
+
+        # Dictionary context (only for full synthesis path)
+        dict_context = self._get_dictionary_context(user_msg)
+        if dict_context:
+            thinking_log.append({'stage': 'dictionary', 'label': 'DICTIONARY', 'text': dict_context[:120], 'data': {}})
+
+        # === OWN SYNTHESIS — cortex brain generates from absorbed knowledge ===
+        synthesis = self._synthesize_own(user_msg, left_reply, right_reply, dict_context, qtype, intent)
+
+        if synthesis:
+            mode = 'synthesis'
+            winner = 'cortex'
+            final = synthesis
         else:
             mode = 'debate'
             total_weight = left_weight + right_weight
             left_prob = left_weight / max(total_weight, 0.01)
-            roll = random.random()
-            if roll < left_prob:
-                winner = 'left'
-                final = left_reply
+
+            if self.hedonic_hz < self.FREQ_MODE_THRESHOLD:
+                # FREQUENCY MODE — lower Hz reply wins
+                left_hz  = self._score_reply_hz(left_reply)
+                right_hz = self._score_reply_hz(right_reply)
+                if left_hz <= right_hz:
+                    winner = 'left'
+                    final = left_reply
+                else:
+                    winner = 'right'
+                    final = right_reply
+                self.last_resolve_mode = 'freq'
+                thinking_log.append({
+                    'stage': 'freq_resolve', 'label': 'FREQ RESOLVER',
+                    'text': 'Angel %.0fHz | Demon %.0fHz — %s wins | Cortex: %.0fHz' % (
+                        left_hz, right_hz, winner, self.hedonic_hz),
+                    'data': {'left_hz': round(left_hz, 1), 'right_hz': round(right_hz, 1),
+                             'cortex_hz': round(self.hedonic_hz, 1), 'winner': winner, 'mode': 'freq'}
+                })
             else:
-                winner = 'right'
-                final = right_reply
+                # BRAINSTEM OVERRIDE — pain too high
+                roll = random.random()
+                if roll < left_prob:
+                    winner = 'left'
+                    final = left_reply
+                else:
+                    winner = 'right'
+                    final = right_reply
+                self.last_resolve_mode = 'word'
+                thinking_log.append({
+                    'stage': 'freq_resolve', 'label': 'BRAINSTEM OVERRIDE',
+                    'text': 'Hz %.0f exceeds %.0f — word-based resolution' % (
+                        self.hedonic_hz, self.FREQ_MODE_THRESHOLD),
+                    'data': {'cortex_hz': round(self.hedonic_hz, 1),
+                             'threshold': self.FREQ_MODE_THRESHOLD, 'winner': winner, 'mode': 'word'}
+                })
+
+        thinking_log.append({
+            'stage': 'synthesis', 'label': 'SYNTHESIS',
+            'text': '%s wins — %s' % (winner, mode),
+            'data': {'mode': mode, 'winner': winner, 'synthesized': bool(synthesis)}
+        })
+
+        # --- Playbook ---
+        pb_meta = {}
+        if self.playbook and session_id:
+            try:
+                session = self.playbook.get_session(session_id)
+                session.msg_count += 1
+                self.playbook.update_signals(session, user_msg)
+                tactics = self.playbook.solve_equation(session.equation)
+                final = self.playbook.apply_tactics(final, tactics, session)
+                self.playbook.check_promotion(session)
+                pb_meta = {
+                    'stage': session.stage,
+                    'stage_name': self.playbook.get_status(session_id).get('stage_name', '?'),
+                    'equation': session.equation,
+                    'tactics': {k: round(v, 2) for k, v in tactics.items()},
+                    'msg_count': session.msg_count,
+                }
+            except Exception as e:
+                print('[PLAYBOOK] Error: %s' % e)
 
         debate = self._make_debate(user_msg, left_reply, right_reply, qtype, mode, final)
+        debate['gate'] = 'xor'
         debate['agreement'] = round(agreement, 2)
         debate['winner'] = winner
         debate['left_weight'] = round(left_weight, 2)
         debate['right_weight'] = round(right_weight, 2)
+        debate['dict_context'] = dict_context[:200] if dict_context else ''
+        debate['synthesized'] = bool(synthesis)
+        debate['intent'] = intent or 'unknown'
+        debate['playbook'] = pb_meta
+        self._enrich_debate(debate, final)
+
+        # --- Self-Modification: score and reinforce ---
+        winner_brain = self.left if winner == 'left' else (self.right if winner == 'right' else self.cortex)
+        quality = winner_brain.self_score(final)
+        winner_brain.self_reinforce(final, quality)
+        debate['quality'] = quality
+        debate['strategy'] = strategy_meta
+
+        q_total = quality.get('total', 0) if isinstance(quality, dict) else 0
+        q_grammar = quality.get('grammar', 0) if isinstance(quality, dict) else 0
+        q_conf = quality.get('confidence', 0) if isinstance(quality, dict) else 0
+        q_ground = quality.get('grounding', 0) if isinstance(quality, dict) else 0
+        thinking_log.append({
+            'stage': 'quality', 'label': 'SELF-SCORE',
+            'text': '%d%% (grammar:%d confidence:%d grounding:%d)' % (
+                int(q_total * 100), int(q_grammar * 100), int(q_conf * 100), int(q_ground * 100)),
+            'data': quality if isinstance(quality, dict) else {'total': quality}
+        })
+
+        # === STRATEGY LEARNING ===
+        if self.strategy_engine and strategy_meta.get('strategy'):
+            try:
+                q_total = quality.get('total', 0.5) if isinstance(quality, dict) else quality
+                coherence = self._score_coherence(user_msg, final)
+                reward = q_total * 0.6 + coherence * 0.4
+                self.strategy_engine.learn(
+                    strategy_meta['strategy'],
+                    strategy_meta['problem_vector'],
+                    reward,
+                )
+                thinking_log.append({
+                    'stage': 'learning', 'label': 'LEARNING',
+                    'text': '%s rewarded %.2f (quality:%.2f coherence:%.2f)' % (
+                        strategy_meta.get('strategy_name', '?'), reward, q_total, coherence),
+                    'data': {'strategy': strategy_meta.get('strategy', ''), 'reward': round(reward, 3)}
+                })
+            except Exception as e:
+                print('[STRATEGY] Learn error: %s' % e)
+
+        # Multi-part display
+        multi_parts = []
+        if final and len(final) > 300:
+            sentences = re.split(r'(?<=[.!?])\s+', final)
+            if len(sentences) >= 3:
+                mid = len(sentences) // 2
+                multi_parts = [' '.join(sentences[:mid]), ' '.join(sentences[mid:])]
+        debate['multi_parts'] = multi_parts
+        debate['thinking_log'] = thinking_log
+
         self._log_debate(debate)
 
         return final, debate
@@ -291,6 +903,80 @@ class CortexMind:
 
         return lw, rw
 
+    def _tag_word_sources(self, text):
+        """Tag each content word in the response with its hemisphere source.
+        Returns dict: { word: 'left'|'right'|'both'|'cortex' }
+        Only includes words that exist in at least one brain (skip unknowns)."""
+        if not text:
+            return {}
+        left_nodes = self.left.data.get('nodes', {})
+        right_nodes = self.right.data.get('nodes', {})
+        cortex_nodes = self.cortex.data.get('nodes', {}) if self.cortex else {}
+
+        sources = {}
+        words = set(re.findall(r'[a-z]+', text.lower()))
+        words -= STOP_WORDS
+
+        for w in words:
+            if len(w) < 3:
+                continue
+            in_left = w in left_nodes and left_nodes[w].get('means')
+            in_right = w in right_nodes and right_nodes[w].get('means')
+            in_cortex = w in cortex_nodes and cortex_nodes[w].get('means')
+
+            if in_left and in_right:
+                sources[w] = 'both'
+            elif in_left:
+                sources[w] = 'left'
+            elif in_right:
+                sources[w] = 'right'
+            elif in_cortex:
+                sources[w] = 'cortex'
+        return sources
+
+    def _get_word_roles(self, text):
+        """Get POS role for each content word in text.
+        Returns dict: { word: 'noun'|'verb'|'adj'|'det'|'prep'|... }
+        Checks all three brains, uses first match."""
+        if not text:
+            return {}
+        words = set(re.findall(r'[a-z]+', text.lower()))
+        roles = {}
+        for w in words:
+            if len(w) < 3:
+                continue
+            pos = self.left.get_word_pos(w)
+            if not pos:
+                pos = self.right.get_word_pos(w)
+            if not pos and self.cortex:
+                pos = self.cortex.get_word_pos(w)
+            if pos:
+                roles[w] = pos
+        return roles
+
+    def _find_misspellings(self, text):
+        """Find words not in ANY brain. Returns list of unknown words."""
+        if not text:
+            return []
+        left_nodes = self.left.data.get('nodes', {})
+        right_nodes = self.right.data.get('nodes', {})
+        cortex_nodes = self.cortex.data.get('nodes', {}) if self.cortex else {}
+        words = set(re.findall(r'[a-z]+', text.lower()))
+        unknown = []
+        for w in words:
+            if len(w) < 3 or w in STOP_WORDS:
+                continue
+            if w not in left_nodes and w not in right_nodes and w not in cortex_nodes:
+                unknown.append(w)
+        return unknown
+
+    def _enrich_debate(self, debate, reply_text):
+        """Add word_sources, word_roles, and unknown_words to a debate dict."""
+        debate['word_sources'] = self._tag_word_sources(reply_text)
+        debate['word_roles'] = self._get_word_roles(reply_text)
+        debate['unknown_words'] = self._find_misspellings(reply_text)
+        return debate
+
     def _identity_response(self, msg):
         """Cortex identifies itself."""
         msg_lower = msg.lower()
@@ -298,17 +984,19 @@ class CortexMind:
         if 'what do you know' in msg_lower or 'how smart' in msg_lower:
             ls = self.left.get_stats()
             rs = self.right.get_stats()
-            return "I'm Cortex. I have two hemispheres — Left knows %d words about morality, Right knows %d about logic and darkness. I listen to both and decide." % (
-                ls.get('defined', 0), rs.get('defined', 0))
+            cs = self.cortex.get_stats() if self.cortex else {}
+            cortex_note = ', and my own dictionary of %d definitions' % cs.get('defined', 0) if cs.get('defined', 0) else ''
+            return "I'm Cortex. I have two hemispheres — Left knows %d words about morality, Right knows %d about logic and darkness%s. I synthesise both and prioritise truth." % (
+                ls.get('defined', 0), rs.get('defined', 0), cortex_note)
 
         if 'what can you do' in msg_lower:
             return "I query my left hemisphere (angel) and right hemisphere (demon), weigh their arguments, and give you my best answer."
 
         if any(p in msg_lower for p in ['who are you', 'what are you', 'what is your name', "what's your name"]):
             return random.choice([
-                "I'm Cortex. The mind between the angel and the demon.",
-                "Cortex. I sit between Left and Right, listen to both, decide for myself.",
-                "I'm the Cortex — the third brain. Left is my morality, Right is my logic.",
+                "I'm Cortex. The mind between the angel and the demon. I synthesise both using my own word pool. No external AI.",
+                "Cortex. I sit between Left and Right, synthesise their views with my own dictionary brain. Truth over feelings.",
+                "I'm the Cortex — the third brain. Left is morality, Right is logic. I have my own dictionary. I think for myself.",
             ])
 
         if 'who am i' in msg_lower:
@@ -318,6 +1006,151 @@ class CortexMind:
             "I'm Cortex. Two hemispheres, one mind.",
             "Cortex. Built by Dan.",
         ])
+
+    # =====================================================
+    # DICTIONARY CONTEXT — Cortex's own word pool
+    # =====================================================
+
+    def _get_dictionary_context(self, question):
+        """Pull relevant dictionary definitions from Cortex's own brain."""
+        if not self.cortex:
+            return ''
+        tokens = set(re.findall(r'[a-z]+', question.lower()))
+        tokens -= STOP_WORDS
+        relevant = []
+        nodes = self.cortex.data.get('nodes', {})
+        for word in tokens:
+            if word in nodes and nodes[word].get('means'):
+                defn = nodes[word]['means']
+                relevant.append('%s: %s' % (word, defn[:120]))
+        return '\n'.join(relevant[:5])
+
+    # =====================================================
+    # SYNTHESIS ENGINE — own brain, no external AI
+    # =====================================================
+
+    def _factual_grounding(self, text):
+        """Score how many content words in text have dictionary definitions in cortex's word pool.
+        Returns 0.0 - 1.0 (ratio of grounded words to total content words)."""
+        if not self.cortex or not text:
+            return 0.0
+        tokens = set(re.findall(r'[a-z]+', text.lower()))
+        tokens -= STOP_WORDS
+        if not tokens:
+            return 0.0
+        nodes = self.cortex.data.get('nodes', {})
+        grounded = sum(1 for w in tokens if w in nodes and nodes[w].get('means'))
+        return grounded / len(tokens)
+
+    def _extract_key_phrases(self, text):
+        """Extract meaningful phrases (non-stop-word sequences) from text."""
+        if not text:
+            return []
+        words = text.split()
+        phrases = []
+        current = []
+        for w in words:
+            if w.lower().strip('.,!?') not in STOP_WORDS and len(w) > 2:
+                current.append(w)
+            else:
+                if current:
+                    phrases.append(' '.join(current))
+                    current = []
+        if current:
+            phrases.append(' '.join(current))
+        return phrases
+
+    def _synthesize_own(self, question, angel_said, demon_said, dict_context, qtype='general', intent=None):
+        """OWN SYNTHESIS — no external AI. Uses cortex's dictionary brain + algorithmic scoring.
+
+        Process:
+        1. Absorb both hemisphere responses into cortex brain (learn the context)
+        2. Ask cortex brain to generate its own response (probabilistic, dictionary-grounded)
+        3. Score all three responses (angel, demon, cortex) for coherence + factual grounding
+        4. Pick the best, weighted by question type + intent
+        """
+        if not self.cortex:
+            return None
+
+        try:
+            # Step 1: Absorb both hemisphere outputs into cortex brain
+            # This lets the cortex learn from what the hemispheres said
+            if angel_said:
+                self.cortex.learn_sequence(angel_said)
+                self.cortex.learn_sequence('%s %s' % (question, angel_said))
+            if demon_said:
+                self.cortex.learn_sequence(demon_said)
+                self.cortex.learn_sequence('%s %s' % (question, demon_said))
+
+            # Step 2: Cortex generates its OWN response using its dictionary word pool
+            cortex_reply = self.cortex.process(question)
+
+            # Step 3: Score all three for coherence and factual grounding
+            angel_coherence = self._score_coherence(question, angel_said)
+            demon_coherence = self._score_coherence(question, demon_said)
+            cortex_coherence = self._score_coherence(question, cortex_reply) if cortex_reply else 0.0
+
+            angel_ground = self._factual_grounding(angel_said)
+            demon_ground = self._factual_grounding(demon_said)
+            cortex_ground = self._factual_grounding(cortex_reply) if cortex_reply else 0.0
+
+            # Combined score: coherence (60%) + factual grounding (40%)
+            angel_total = angel_coherence * 0.6 + angel_ground * 0.4
+            demon_total = demon_coherence * 0.6 + demon_ground * 0.4
+            cortex_total = cortex_coherence * 0.6 + cortex_ground * 0.4
+
+            # Step 4: Apply question type weights (truth priority)
+            if qtype == 'moral':
+                angel_total *= 1.3   # Angel gets moral authority
+            elif qtype == 'logic':
+                demon_total *= 1.3   # Demon gets logical authority
+            elif qtype == 'tension':
+                # Tension: boost factual grounding even more
+                angel_total += angel_ground * 0.2
+                demon_total += demon_ground * 0.2
+
+            # Step 5: Intent adjustment
+            if intent == 'command':
+                # Commands: prefer direct, shorter responses
+                for reply, total_ref in [(angel_said, 'angel'), (demon_said, 'demon')]:
+                    if reply and len(reply.split()) <= 15:
+                        if total_ref == 'angel':
+                            angel_total *= 1.1
+                        else:
+                            demon_total *= 1.1
+            elif intent == 'question':
+                # Questions: boost factual grounding bonus
+                angel_total += angel_ground * 0.15
+                demon_total += demon_ground * 0.15
+                cortex_total += cortex_ground * 0.15
+
+            # Cortex gets a small inherent bonus for being the synthesiser
+            cortex_total *= 1.1
+
+            # Pick the winner
+            scores = [
+                ('angel', angel_total, angel_said),
+                ('demon', demon_total, demon_said),
+                ('cortex', cortex_total, cortex_reply),
+            ]
+            scores.sort(key=lambda x: x[1], reverse=True)
+            best_name, best_score, best_reply = scores[0]
+
+            # Only use synthesis if the best score is meaningful
+            if best_score < 0.15 or not best_reply or len(best_reply.strip()) < 5:
+                return None
+
+            # Feed the winning response back as a learned synthesis
+            self.cortex.learn_sequence('%s %s' % (question, best_reply))
+            self.own_syntheses += 1
+
+            print('[SYNTHESIS] own | %s wins (%.2f) | a:%.2f d:%.2f c:%.2f | intent:%s' % (
+                best_name, best_score, angel_total, demon_total, cortex_total, intent or '?'))
+            return best_reply
+
+        except Exception as e:
+            print('[SYNTHESIS] Error: %s' % str(e))
+            return None
 
     def _make_debate(self, user_msg, left, right, qtype, mode, final):
         return {
@@ -418,41 +1251,30 @@ class CortexMind:
         return q, 'static'
 
     # =====================================================
-    # GROK BOOST — external intelligence feeding the brain
+    # SELF-ENRICHMENT — cortex cross-pollinates hemispheres
     # =====================================================
 
-    def _grok_enrich(self, question):
-        """Ask Grok a question, feed the rich answer through both hemispheres."""
+    def _self_enrich(self, question):
+        """Cross-pollinate: cortex brain responds, feeds back to both hemispheres.
+        No external AI — the cortex IS the enrichment source."""
+        if not self.cortex:
+            return None
         try:
-            resp = requests.post(XAI_URL, headers={
-                'Authorization': 'Bearer %s' % XAI_KEY,
-                'Content-Type': 'application/json',
-            }, json={
-                'model': 'grok-3-mini-fast',
-                'messages': [
-                    {'role': 'system', 'content': GROK_SYSTEM},
-                    {'role': 'user', 'content': question},
-                ],
-                'max_tokens': 150,
-                'temperature': 0.8,
-            }, timeout=15)
-
-            if resp.status_code == 200:
-                data = resp.json()
-                answer = data['choices'][0]['message']['content'].strip()
-                if answer and len(answer) > 10:
-                    # Feed the rich answer through both hemispheres
-                    self.left.learn_sequence(answer)
-                    self.right.learn_sequence(answer)
-                    # Also learn the Q+A as a connected sequence
-                    self.left.learn_sequence('%s %s' % (question, answer))
-                    self.right.learn_sequence('%s %s' % (question, answer))
-                    self.grok_enrichments += 1
-                    return answer
-            else:
-                print('[GROK] API error: %d' % resp.status_code)
+            # Ask cortex brain (dictionary-grounded) for its take
+            cortex_answer = self.cortex.process(question)
+            if cortex_answer and len(cortex_answer.strip()) > 10:
+                coherence = self._score_coherence(question, cortex_answer)
+                # Only feed coherent responses back to hemispheres
+                if coherence >= 0.3:
+                    self.left.learn_sequence(cortex_answer)
+                    self.right.learn_sequence(cortex_answer)
+                    self.left.learn_sequence('%s %s' % (question, cortex_answer))
+                    self.right.learn_sequence('%s %s' % (question, cortex_answer))
+                    print('[SELF-ENRICH] coh:%.2f | "%s" -> "%s"' % (
+                        coherence, question[:30], cortex_answer[:50]))
+                    return cortex_answer
         except Exception as e:
-            print('[GROK] Enrich error: %s' % str(e))
+            print('[SELF-ENRICH] Error: %s' % str(e))
         return None
 
     # =====================================================
@@ -545,58 +1367,24 @@ class CortexMind:
 
         return min(round(score, 3), 1.0)
 
-    def _grok_coherence_judge(self, question, angel_said, demon_said):
-        """Ask Grok to judge brain responses and provide improved version.
-        Returns (angel_score, demon_score, improved_answer) or None on failure."""
-        prompt = ('A learning AI was asked: "%s"\n'
-                  'Angel hemisphere said: "%s"\n'
-                  'Demon hemisphere said: "%s"\n\n'
-                  'Rate each 0-10 for coherence and meaning.\n'
-                  'Then give a clear 1-2 sentence answer the brain should learn.\n'
-                  'Format exactly: ANGEL:N DEMON:N BETTER:your answer') % (
-                      question[:100],
-                      (angel_said or '')[:150],
-                      (demon_said or '')[:150])
+    def _internal_judge(self, question, angel_said, demon_said):
+        """Score both hemispheres using algorithmic coherence + factual grounding.
+        Returns (angel_score_0_10, demon_score_0_10) or None on failure."""
         try:
-            resp = requests.post(XAI_URL, headers={
-                'Authorization': 'Bearer %s' % XAI_KEY,
-                'Content-Type': 'application/json',
-            }, json={
-                'model': 'grok-3-mini-fast',
-                'messages': [
-                    {'role': 'system', 'content': 'You judge AI brain responses for coherence. Be strict. Format: ANGEL:N DEMON:N BETTER:answer'},
-                    {'role': 'user', 'content': prompt},
-                ],
-                'max_tokens': 120,
-                'temperature': 0.3,
-            }, timeout=15)
+            angel_coh = self._score_coherence(question, angel_said)
+            demon_coh = self._score_coherence(question, demon_said)
+            angel_ground = self._factual_grounding(angel_said)
+            demon_ground = self._factual_grounding(demon_said)
 
-            if resp.status_code == 200:
-                text = resp.json()['choices'][0]['message']['content'].strip()
-                # Parse scores
-                angel_score = 0
-                demon_score = 0
-                better = ''
-                import re as _re
-                am = _re.search(r'ANGEL[:\s]*(\d+)', text)
-                dm = _re.search(r'DEMON[:\s]*(\d+)', text)
-                bm = _re.search(r'BETTER[:\s]*(.*)', text, _re.DOTALL)
-                if am:
-                    angel_score = int(am.group(1))
-                if dm:
-                    demon_score = int(dm.group(1))
-                if bm:
-                    better = bm.group(1).strip()[:200]
+            # Scale to 0-10 — coherence (60%) + grounding (40%)
+            angel_score = int((angel_coh * 0.6 + angel_ground * 0.4) * 10)
+            demon_score = int((demon_coh * 0.6 + demon_ground * 0.4) * 10)
 
-                # Feed the improved answer to both hemispheres
-                if better and len(better) > 10:
-                    self.left.learn_sequence('%s %s' % (question, better))
-                    self.right.learn_sequence('%s %s' % (question, better))
-
-                print('[GROK-JUDGE] A:%d D:%d | "%s"' % (angel_score, demon_score, better[:50]))
-                return angel_score, demon_score, better
+            print('[JUDGE] A:%d D:%d | coh:%.2f/%.2f gnd:%.2f/%.2f' % (
+                angel_score, demon_score, angel_coh, demon_coh, angel_ground, demon_ground))
+            return angel_score, demon_score
         except Exception as e:
-            print('[GROK-JUDGE] Error: %s' % str(e))
+            print('[JUDGE] Error: %s' % str(e))
         return None
 
     # =====================================================
@@ -615,22 +1403,187 @@ class CortexMind:
         """Stop ramble mode."""
         self.ramble_running = False
 
+    # =====================================================
+    # CROSS-POLLINATION — brains teach each other
+    # =====================================================
+
+    def _cross_pollinate(self, mode):
+        """Cross-brain conversation. One hemisphere + cortex discuss, feed result to the OTHER hemisphere.
+        mode: 'angel_to_demon' = cortex+angel discuss, teach demon
+              'demon_to_angel' = cortex+demon discuss, teach angel
+        """
+        question, source = self._generate_question()
+        qtype = self.detect_type(question)
+
+        if mode == 'demon_to_angel':
+            # Demon + Cortex discuss → teach Angel
+            speaker = self.right
+            speaker_name = 'demon'
+            learner = self.left
+            learner_name = 'angel'
+        else:
+            # Angel + Cortex discuss → teach Demon
+            speaker = self.left
+            speaker_name = 'angel'
+            learner = self.right
+            learner_name = 'demon'
+
+        # Step 1: Speaker hemisphere responds
+        speaker_reply = speaker.process(question)
+        speaker_coherence = self._score_coherence(question, speaker_reply)
+
+        # Step 2: Cortex responds (if available)
+        cortex_reply = ''
+        cortex_coherence = 0.0
+        if self.cortex:
+            try:
+                cortex_reply = self.cortex.process(question)
+                cortex_coherence = self._score_coherence(question, cortex_reply)
+            except Exception:
+                pass
+
+        # Step 3: Pick the best response
+        if cortex_coherence > speaker_coherence and cortex_reply and len(cortex_reply.strip()) > 10:
+            best = cortex_reply
+            best_source = 'cortex'
+            best_coherence = cortex_coherence
+        elif speaker_reply and len(speaker_reply.strip()) > 10:
+            best = speaker_reply
+            best_source = speaker_name
+            best_coherence = speaker_coherence
+        else:
+            print('[CROSS] %s→%s | no good response for "%s"' % (speaker_name, learner_name, question[:30]))
+            return None
+
+        # Step 4: Feed to learner — only if coherent enough
+        if best_coherence >= 0.3:
+            learner.learn_sequence(best)
+            learner.learn_sequence('%s %s' % (question, best))
+            # Also feed back to cortex for its own learning
+            if self.cortex:
+                try:
+                    self.cortex.learn_sequence('%s %s' % (question, best))
+                except Exception:
+                    pass
+
+        result = {
+            'time': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'mode': 'cross_%s_to_%s' % (speaker_name, learner_name),
+            'question': question,
+            'source': source,
+            'speaker': speaker_name,
+            'speaker_reply': (speaker_reply or '')[:200],
+            'speaker_coherence': round(speaker_coherence, 2),
+            'cortex_reply': (cortex_reply or '')[:200],
+            'cortex_coherence': round(cortex_coherence, 2),
+            'best_source': best_source,
+            'learner': learner_name,
+            'fed': best_coherence >= 0.3,
+        }
+
+        print('[CROSS] %s+cortex→%s | best:%s(%.2f) | "%s" → "%s"' % (
+            speaker_name, learner_name, best_source, best_coherence,
+            question[:25], best[:35]))
+
+        return result
+
+    # =====================================================
+    # RAMBLE LOOP — internal monologue + cross-pollination
+    # =====================================================
+
     def _ramble_loop(self):
-        """The internal monologue v3 — dynamic questions, coherence rewards, Grok judging."""
-        print('[CORTEX] Ramble v3 started — coherence scoring + Grok judging + selective reinforcement')
+        """Internal monologue v3 — self-synthesising, no external AI.
+        Dynamic questions, coherence rewards, cortex cross-pollination, cross-brain teaching."""
+        print('[CORTEX] Ramble v3 started — own synthesis + cross-pollination + coherence scoring')
         while self.ramble_running:
             try:
                 self.ramble_cycle += 1
 
+                # ═══ CROSS-POLLINATION — every 3rd and 4th cycle ═══
+                # Cycle % 5 == 2: demon+cortex → angel
+                # Cycle % 5 == 4: angel+cortex → demon
+                # Other cycles: normal ramble (both answer independently)
+                cycle_mod = self.ramble_cycle % 5
+                if cycle_mod == 2:
+                    cross = self._cross_pollinate('demon_to_angel')
+                    if cross:
+                        ramble = {
+                            'time': cross['time'],
+                            'question': cross['question'],
+                            'source': cross.get('source', 'cross'),
+                            'type': 'cross',
+                            'angel': cross.get('cortex_reply', '')[:200] if cross['learner'] == 'angel' else cross.get('speaker_reply', '')[:200],
+                            'demon': cross.get('speaker_reply', '')[:200],
+                            'angel_coherence': cross.get('cortex_coherence', 0),
+                            'demon_coherence': cross.get('speaker_coherence', 0),
+                            'agreement': 0,
+                            'left_weight': 0,
+                            'right_weight': 0,
+                            'verdict': 'demon+cortex → angel (%s won, coh:%.2f)' % (cross['best_source'], max(cross['speaker_coherence'], cross['cortex_coherence'])),
+                            'self_enriched': cross.get('fed', False),
+                            'self_test': False,
+                            'cycle': self.ramble_cycle,
+                        }
+                        self.ramble_log.append(ramble)
+                        if len(self.ramble_log) > self.max_rambles:
+                            self.ramble_log.pop(0)
+                    delay = random.uniform(5, 12)
+                    time.sleep(delay)
+                    continue
+
+                if cycle_mod == 4:
+                    cross = self._cross_pollinate('angel_to_demon')
+                    if cross:
+                        ramble = {
+                            'time': cross['time'],
+                            'question': cross['question'],
+                            'source': cross.get('source', 'cross'),
+                            'type': 'cross',
+                            'angel': cross.get('speaker_reply', '')[:200],
+                            'demon': cross.get('cortex_reply', '')[:200] if cross['learner'] == 'demon' else cross.get('speaker_reply', '')[:200],
+                            'angel_coherence': cross.get('speaker_coherence', 0),
+                            'demon_coherence': cross.get('cortex_coherence', 0),
+                            'agreement': 0,
+                            'left_weight': 0,
+                            'right_weight': 0,
+                            'verdict': 'angel+cortex → demon (%s won, coh:%.2f)' % (cross['best_source'], max(cross['speaker_coherence'], cross['cortex_coherence'])),
+                            'self_enriched': cross.get('fed', False),
+                            'self_test': False,
+                            'cycle': self.ramble_cycle,
+                        }
+                        self.ramble_log.append(ramble)
+                        if len(self.ramble_log) > self.max_rambles:
+                            self.ramble_log.pop(0)
+                    delay = random.uniform(5, 12)
+                    time.sleep(delay)
+                    continue
+
+                # ═══ NORMAL RAMBLE — both hemispheres answer independently ═══
+
                 # Generate a dynamic question (or fall back to static)
                 question, source = self._generate_question()
-                qtype = self.detect_type(question)
+
+                # Strategy engine for ramble (learns from internal monologue)
+                ramble_strategy = {}
+                if self.strategy_engine:
+                    try:
+                        ramble_strategy = self.strategy_engine.analyze_and_select(question)
+                        qtype = ramble_strategy.get('dominant_type', 'general')
+                    except Exception:
+                        qtype = self.detect_type(question)
+                else:
+                    qtype = self.detect_type(question)
 
                 # Process through both hemispheres
                 left_reply = self.left.process(question)
                 right_reply = self.right.process(question)
 
-                left_weight, right_weight = self._calc_weights(qtype, left_reply, right_reply)
+                # Weights: from strategy engine if available
+                if ramble_strategy.get('strategy'):
+                    left_weight = ramble_strategy['left_weight']
+                    right_weight = ramble_strategy['right_weight']
+                else:
+                    left_weight, right_weight = self._calc_weights(qtype, left_reply, right_reply)
 
                 # Agreement
                 left_words = set(left_reply.lower().split()) if left_reply else set()
@@ -639,15 +1592,76 @@ class CortexMind:
                 total = len(left_words | right_words)
                 agreement = overlap / max(total, 1)
 
-                # Decide
+                # ═══ FREQUENCY INNER VOICE — score each thought in Hz ═══
+                q_hz     = self._score_reply_hz(question)
+                angel_hz = self._score_reply_hz(left_reply)  if left_reply  else 500.0
+                demon_hz = self._score_reply_hz(right_reply) if right_reply else 500.0
+                in_freq_mode = self.hedonic_hz < self.FREQ_MODE_THRESHOLD
+
+                # Decide — synthesis every 10th ramble cycle
+                synthesized = False
                 if not left_reply.strip() and not right_reply.strip():
                     verdict = '...'
+                    resolution_hz = self.hedonic_hz
+                elif self.ramble_cycle % 10 == 0 and left_reply.strip() and right_reply.strip():
+                    dict_ctx = self._get_dictionary_context(question)
+                    synth = self._synthesize_own(question, left_reply, right_reply, dict_ctx, qtype)
+                    if synth:
+                        verdict = 'Cortex synthesised.'
+                        synthesized = True
+                        resolution_hz = min(angel_hz, demon_hz) * 0.9  # synthesis = harmony bonus
+                    elif agreement > 0.6:
+                        verdict = 'Both agree.'
+                        resolution_hz = (angel_hz + demon_hz) / 2.0
+                    elif in_freq_mode:
+                        if angel_hz <= demon_hz:
+                            verdict = 'Angel wins. [Hz]'
+                            resolution_hz = angel_hz
+                        else:
+                            verdict = 'Demon wins. [Hz]'
+                            resolution_hz = demon_hz
+                    elif left_weight > right_weight:
+                        verdict = 'Angel wins.'
+                        resolution_hz = angel_hz
+                    else:
+                        verdict = 'Demon wins.'
+                        resolution_hz = demon_hz
                 elif agreement > 0.6:
                     verdict = 'Both agree.'
+                    resolution_hz = (angel_hz + demon_hz) / 2.0
+                elif in_freq_mode:
+                    if angel_hz <= demon_hz:
+                        verdict = 'Angel wins. [Hz]'
+                        resolution_hz = angel_hz
+                    else:
+                        verdict = 'Demon wins. [Hz]'
+                        resolution_hz = demon_hz
                 elif left_weight > right_weight:
                     verdict = 'Angel wins.'
+                    resolution_hz = angel_hz
                 else:
                     verdict = 'Demon wins.'
+                    resolution_hz = demon_hz
+
+                # Build frequency voice sequence for this thought
+                freq_voice = {
+                    'question_hz':    round(q_hz, 1),
+                    'angel_hz':       round(angel_hz, 1),
+                    'demon_hz':       round(demon_hz, 1),
+                    'resolution_hz':  round(resolution_hz, 1),
+                    'mode':           'freq' if in_freq_mode else 'word',
+                    'sequence':       [round(q_hz,1), round(angel_hz,1), round(demon_hz,1), round(resolution_hz,1)],
+                }
+
+                # Feed internal thought back to hedonic state via callback
+                # The thought itself changes how Cortex feels — true inner voice loop
+                if self.hedonic_callback:
+                    try:
+                        # Pass the lower-Hz reply so calm thoughts reinforce calm state
+                        inner_text = left_reply if angel_hz <= demon_hz else right_reply
+                        self.hedonic_callback(inner_text[:200], 'ramble')
+                    except Exception:
+                        pass
 
                 # ═══ COHERENCE SCORING ═══
                 angel_coherence = self._score_coherence(question, left_reply)
@@ -656,28 +1670,63 @@ class CortexMind:
                 # Selective reinforcement — ONLY learn from coherent responses
                 if angel_coherence >= 0.5 and left_reply:
                     self.left.learn_sequence('%s %s' % (question, left_reply))
+                    if self.truth_engine:
+                        self.truth_engine.on_learn_sequence('%s %s' % (question, left_reply))
                 if demon_coherence >= 0.5 and right_reply:
                     self.right.learn_sequence('%s %s' % (question, right_reply))
+                    if self.truth_engine:
+                        self.truth_engine.on_learn_sequence('%s %s' % (question, right_reply))
 
-                # Grok enrichment — every 5th cycle, get a rich external answer
-                grok_answer = None
+                # ═══ STRATEGY LEARNING (ramble) ═══
+                if self.strategy_engine and ramble_strategy.get('strategy'):
+                    try:
+                        ramble_reward = (angel_coherence + demon_coherence) / 2.0
+                        self.strategy_engine.learn(
+                            ramble_strategy['strategy'],
+                            ramble_strategy['problem_vector'],
+                            ramble_reward,
+                        )
+                    except Exception:
+                        pass
+
+                # ═══ DASHBOARD HOOKS ═══
+                if self.frontal_cortex:
+                    self.frontal_cortex.on_ramble_result(question, angel_coherence, demon_coherence, verdict)
+                if self.truth_engine:
+                    self.truth_engine.on_coherent_response(question, left_reply or '', angel_coherence)
+                    self.truth_engine.on_coherent_response(question, right_reply or '', demon_coherence)
+
+                # Self-enrichment — every 5th cycle, cortex brain cross-pollinates hemispheres
+                enriched = None
                 if self.ramble_cycle % 5 == 0:
-                    grok_answer = self._grok_enrich(question)
+                    enriched = self._self_enrich(question)
 
-                # ═══ GROK COHERENCE JUDGE — every 30th cycle ═══
-                grok_improved = ''
-                grok_angel_score = -1
-                grok_demon_score = -1
+                # ═══ INTERNAL JUDGE — every 30th cycle ═══
+                judge_angel = -1
+                judge_demon = -1
                 if self.ramble_cycle % 30 == 0:
-                    result = self._grok_coherence_judge(question, left_reply, right_reply)
+                    result = self._internal_judge(question, left_reply, right_reply)
                     if result:
-                        grok_angel_score, grok_demon_score, grok_improved = result
+                        judge_angel, judge_demon = result
+                        if self.frontal_cortex:
+                            self.frontal_cortex.on_internal_judge(question, judge_angel, judge_demon, '')
 
-                # Auto self-test — every 20th cycle, score understanding
+                # Auto self-test — every 20th cycle
                 deep_found = 0
                 is_self_test = self.ramble_cycle % 20 == 0
                 if is_self_test:
                     deep_found = self._auto_self_test()
+
+                # Memory consolidation — every 30th cycle
+                if self.ramble_cycle % 30 == 0 and self.ramble_cycle > 0:
+                    for _brain in [self.left, self.right, self.cortex]:
+                        _mc = _brain.memory_consolidate()
+                        if _mc.get('consolidated', 0) > 0:
+                            print(f'[CONSOLIDATE] {_brain.brain_file.parent.name}: {_mc}')
+
+                # Truth chain scan — every 50th cycle
+                if self.truth_engine and self.ramble_cycle % 50 == 0:
+                    self.truth_engine.scan_for_chains(self.left.data, sample_size=5)
 
                 ramble = {
                     'time': time.strftime('%Y-%m-%d %H:%M:%S'),
@@ -692,23 +1741,23 @@ class CortexMind:
                     'left_weight': round(left_weight, 2),
                     'right_weight': round(right_weight, 2),
                     'verdict': verdict,
-                    'grok_boost': bool(grok_answer),
-                    'grok_improved': grok_improved,
+                    'self_enriched': bool(enriched),
                     'self_test': is_self_test,
                     'cycle': self.ramble_cycle,
+                    'freq_voice': freq_voice,
                 }
                 self.ramble_log.append(ramble)
                 if len(self.ramble_log) > self.max_rambles:
                     self.ramble_log.pop(0)
 
-                grok_tag = ' [GROK]' if grok_answer else ''
-                judge_tag = ' [JUDGE:A%d/D%d]' % (grok_angel_score, grok_demon_score) if grok_angel_score >= 0 else ''
+                enrich_tag = ' [ENRICH]' if enriched else ''
+                judge_tag = ' [JUDGE:A%d/D%d]' % (judge_angel, judge_demon) if judge_angel >= 0 else ''
                 test_tag = ' [TEST:%d deep]' % deep_found if is_self_test else ''
                 coh_tag = ' [COH:%.2f/%.2f]' % (angel_coherence, demon_coherence)
                 print('[RAMBLE #%d] [%s] "%s" | L: "%s" | R: "%s" | %s%s%s%s%s' % (
                     self.ramble_cycle, source[:10],
                     question[:35], (left_reply or '')[:25], (right_reply or '')[:25],
-                    verdict, coh_tag, grok_tag, judge_tag, test_tag))
+                    verdict, coh_tag, enrich_tag, judge_tag, test_tag))
 
                 # Delay 5-12 seconds
                 delay = random.uniform(5, 12)
@@ -729,20 +1778,136 @@ class CortexMind:
         return self.debate_log[-n:]
 
     def get_stats(self):
-        """Cortex stats — combines both hemispheres + ramble v2 metrics."""
+        """Cortex stats — combines all hemispheres + ramble + synthesis metrics."""
         ls = self.left.get_stats()
         rs = self.right.get_stats()
-        return {
+        cs = self.cortex.get_stats() if self.cortex else {}
+        result = {
             'left': ls,
             'right': rs,
+            'cortex_own': cs,
             'total_nodes': ls.get('total_nodes', 0) + rs.get('total_nodes', 0),
             'total_defined': ls.get('defined', 0) + rs.get('defined', 0),
             'total_connections': ls.get('connections', 0) + rs.get('connections', 0),
+            'cortex_defined': cs.get('defined', 0),
             'debates': len(self.debate_log),
             'rambles': len(self.ramble_log),
             'ramble_active': self.ramble_running,
             'ramble_cycle': self.ramble_cycle,
-            'grok_enrichments': self.grok_enrichments,
+            'own_syntheses': self.own_syntheses,
             'self_tests_run': self.self_tests_run,
             'dynamic_questions': self.dynamic_questions_generated,
+            'gate_stats': dict(self.gate_stats,
+                pass_rate=round(self.gate_stats['pass'] / max(self.gate_stats['total'], 1) * 100, 1),
+                full_synthesis_rate=round(self.gate_stats['xor'] / max(self.gate_stats['total'], 1) * 100, 1),
+            ),
         }
+
+        # ── DEVELOPMENTAL AGE (human equivalent) ──
+        # De-duped: use max single hemisphere, not sum (knowing "apple" in
+        # both hemispheres is still knowing "apple" once).
+        # PRIMARY driver: deep understanding (genuine comprehension).
+        # SECONDARY: unique vocabulary from best hemisphere.
+        # BONUS: hemisphere diversity (different nodes = genuine expansion).
+
+        # Per-hemisphere values — use max, not sum
+        left_def = ls.get('defined', 0)
+        right_def = rs.get('defined', 0)
+        cortex_def = cs.get('defined', 0)
+        max_defined = max(left_def, right_def, cortex_def)
+
+        left_deep = ls.get('understanding_deep', 0)
+        right_deep = rs.get('understanding_deep', 0)
+        cortex_deep = cs.get('understanding_deep', 0)
+        max_deep = max(left_deep, right_deep, cortex_deep)
+
+        left_n = ls.get('total_nodes', 0)
+        right_n = rs.get('total_nodes', 0)
+
+        # Hemisphere diversity — if L and R learned DIFFERENT things, that's growth
+        # If similar, can't double-count
+        diversity = abs(left_n - right_n) / max(left_n, right_n, 1)
+
+        # Wiring density — per hemisphere max (not diluted sum)
+        max_conn_ratio = max(
+            ls.get('connections', 0) / max(left_n, 1),
+            rs.get('connections', 0) / max(right_n, 1),
+            cs.get('connections', 0) / max(cs.get('total_nodes', 1), 1),
+        )
+
+        total_questions = ls.get('questions_asked', 0) + rs.get('questions_asked', 0) + cs.get('questions_asked', 0)
+        total_auto = ls.get('auto_learned', 0) + rs.get('auto_learned', 0) + cs.get('auto_learned', 0)
+        total_clusters = ls.get('clusters', 0) + rs.get('clusters', 0) + cs.get('clusters', 0)
+        total_msgs = ls.get('messages', 0) + rs.get('messages', 0) + cs.get('messages', 0)
+
+        age_months = 0
+
+        # 1. DEEP UNDERSTANDING — primary driver (real comprehension, not just words)
+        if max_deep < 100:     age_months += 12
+        elif max_deep < 500:   age_months += 24
+        elif max_deep < 1000:  age_months += 36
+        elif max_deep < 2000:  age_months += 48     # 4 years
+        elif max_deep < 4000:  age_months += 60     # 5 years
+        elif max_deep < 7000:  age_months += 84     # 7 years
+        elif max_deep < 10000: age_months += 108    # 9 years
+        elif max_deep < 15000: age_months += 132    # 11 years
+        elif max_deep < 25000: age_months += 168    # 14 years
+        else:                  age_months += 192    # 16+ years
+
+        # 2. VOCABULARY — secondary (max single hemisphere, de-duped)
+        if max_defined >= 50000:   age_months += 15
+        elif max_defined >= 30000: age_months += 9
+        elif max_defined >= 20000: age_months += 6
+        elif max_defined >= 10000: age_months += 3
+
+        # 3. HEMISPHERE DIVERSITY — different L/R = genuine expansion
+        if diversity > 0.3:   age_months += 12
+        elif diversity > 0.2: age_months += 6
+        elif diversity > 0.1: age_months += 3
+        # else: similar hemispheres → no bonus (can't double-count)
+
+        # 4. WIRING DENSITY — reasoning ability (per-hemisphere)
+        if max_conn_ratio > 2:  age_months += 3
+        if max_conn_ratio > 5:  age_months += 3
+        if max_conn_ratio > 10: age_months += 6
+
+        # 5. CURIOSITY
+        if total_questions > 5000:   age_months += 3
+        elif total_questions > 1000: age_months += 2
+
+        # 6. SELF-LEARNING (independence)
+        if total_auto > 2000:   age_months += 3
+        elif total_auto > 500:  age_months += 2
+
+        # 7. CONCEPT FORMATION
+        if total_clusters > 30:   age_months += 2
+        elif total_clusters > 10: age_months += 1
+
+        age_years = age_months / 12
+        # Human stage label
+        if age_years < 1: stage = 'Infant'
+        elif age_years < 3: stage = 'Toddler'
+        elif age_years < 6: stage = 'Early Childhood'
+        elif age_years < 10: stage = 'Childhood'
+        elif age_years < 13: stage = 'Pre-Teen'
+        elif age_years < 18: stage = 'Teenager'
+        elif age_years < 25: stage = 'Young Adult'
+        else: stage = 'Adult'
+
+        result['age'] = {
+            'months': age_months,
+            'years': round(age_years, 1),
+            'stage': stage,
+            'factors': {
+                'vocabulary': max_defined,
+                'deep_understanding': max_deep,
+                'hemisphere_diversity': round(diversity, 3),
+                'wiring_density': round(max_conn_ratio, 2),
+                'curiosity': total_questions,
+                'self_learned': total_auto,
+                'clusters': total_clusters,
+                'experience': total_msgs,
+            }
+        }
+
+        return result

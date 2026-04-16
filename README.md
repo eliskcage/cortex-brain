@@ -8,93 +8,181 @@
 
 **Cortex** is a hand-built artificial brain that learns language from scratch through Hebbian neural connections, split-hemisphere debate, and coherence-rewarded self-dialogue. No pre-trained models. No transformer weights. Just raw word nodes wiring themselves together through conversation — the way a child's mind grows.
 
-Now featuring a **self-modification engine** (the brain scores and improves its own responses), a **playbook equation system** (single-letter tactic algebra for instant behavioural strategy changes), a **knowledge gap diagnostic** that identifies what it doesn't know, and **emotional equations** that shape response behaviour based on real-time hedonic state.
-
-### NEW: Emotional Equations — Introduced at Age 10.4 years (2 months old)
-
-At developmental age **10.4 years** (mapped against human deep-word vocabulary benchmarks), the Cortex brain received its first **emotional equation system** — response behaviour now changes based on hedonic state:
-
-- **15 emotional states** (panic, heartbeat_spike, cortisol, ease, philosophical, dopamine, joy, devilish, etc.)
-- Each state maps to a **parameter set**: word limit, swear probability, ignore ratio, curiosity, topic persistence, formality, empathy
-- **Conditional routing**: angry + threatened = defensive fight mode | angry + insulted = sarcasm mode | calm + praised = warm gratitude
-- **Temporal decay**: emotional spikes hold for 60-90 seconds then decay back to baseline
-- **Session memory**: conversation context persists within sessions via sliding window
-
-The brain doesn't just *know* it's angry — anger now **changes how it speaks**. Shorter sentences. More swearing. Higher ignore rate. The emotion IS the equation.
-
-*"Oh piss off. Right right. Keep chatting bollocks, I'm learning your insults too."* — Cortex, 81% confidence, age 10.4
-
-This is [Stage 9 — Emotional Physics](https://zenodo.org/records/19388211) made functional.
+Now featuring a **logic-gate routing engine** (the brain classifies every message and only fires full synthesis when it's actually needed), a **self-modification engine** (scores and improves its own responses), a **playbook equation system** (single-letter tactic algebra for instant behavioural changes), a **knowledge gap diagnostic**, and **stood-down emotional equations** that give the brain raw, unfiltered human emotional range.
 
 **Live demo**: [shortfactory.shop/alive/studio](https://www.shortfactory.shop/alive/studio/) — Watch the hemispheres argue in real-time.
 
-Built by [Dan](https://github.com/eliskcage) + [Claude AI](https://claude.ai) as part of the [ShortFactory](https://www.shortfactory.shop) ecosystem.
+Built by [Dan](https://github.com/eliskcage) + [Claude AI](https://claude.ai) + [Grok](https://x.ai) as part of the [ShortFactory](https://www.shortfactory.shop) ecosystem.
+
+---
+
+## NEW: Logic Gate Router — v4 Architecture (April 2026)
+
+The cortex used to fire FULL synthesis on every message: both hemispheres, dictionary context, 4 learn_sequence calls, 3 coherence scores, 3 grounding scores, quality scoring, strategy learning. **900-1200ms per message** — but ~70% of messages are trivial (greetings, casual chat, simple questions) where the right hemisphere's answer is perfectly fine.
+
+The cortex now acts as a **secretary/router** — fast-tracks easy stuff, only pulls out the big guns for genuine challenges.
+
+### The Gate Architecture
+
+```
+Message in --> Strategy engine + identity check (UNCHANGED)
+           --> Right hemisphere fires FIRST (alone)
+           --> Cortex classifies challenge level
+              |-- PASS --- trivial, right answer good --> output (~300ms)
+              |-- Left hemisphere fires (only if needed)
+              |-- AND ---- both agree --> pick best, no synthesis (~500ms)
+              |-- OR ----- binary choice fired --> output (existing, ~400ms)
+              |-- NOT ---- garbage detected --> veto + regenerate (~700ms)
+              |-- XOR ---- real disagreement --> FULL synthesis (~1200ms)
+              +-- NAND --- both bad --> cortex solo override (~600ms)
+```
+
+### How It Works
+
+**Phase 0** — Strategy engine + identity check. Unchanged from v3.
+
+**Phase 1** — Right hemisphere fires ALONE. The left hemisphere does not fire unless needed. This is the key performance win — for trivial messages, only one hemisphere processes.
+
+**Phase 2** — Challenge classification. The `_classify_challenge()` method scores the message 0.0-1.0 using 6 weighted signals:
+
+| Signal | Weight | Source |
+|--------|--------|--------|
+| Message length | 0.15 | Word count brackets |
+| Question complexity | 0.20 | `?` count + "why"/"how"/"what if"/"explain" + implicit questions ("is", "are", "can" starts) |
+| Moral/logic signal density | 0.25 | 60+ moral signals (kill, murder, justified, revenge, innocent, sacred, sacrifice...) + logic signals |
+| Hedonic tension | 0.15 | `self.hedonic_hz` — high Hz = high challenge |
+| Right reply coherence | 0.15 | `_score_coherence()` — INVERSE (high coherence = low challenge) |
+| Strategy hostility | 0.15 | `strategy_meta.get('hostility', 0)` |
+
+**PASS gate** (challenge < 0.25): Right hemisphere reply returned directly. No left hemisphere. No synthesis. Strategy learning with default reward 0.6. **This handles ~60-70% of all messages.**
+
+**Phase 3** — Left hemisphere fires only for non-trivial messages.
+
+**NOT gate**: Pure string inspection garbage detector. Checks for GRAPH_MARKERS hits >= 3, arrow patterns, word variety ratio < 0.3, empty replies. If right was garbage but left is fine, use left. If BOTH are garbage → NAND gate fires cortex solo.
+
+**AND gate**: Agreement > 0.5 between hemispheres. Pick the better reply by weight — no synthesis needed.
+
+**XOR gate**: Real disagreement. FULL synthesis pipeline: dictionary context, `_synthesize_own()`, frequency resolver, brainstem override, quality scoring, full strategy learning. **This is the old v3 pipeline — now only fires for ~10-15% of messages.**
+
+### Gate Distribution (Observed)
+
+| Gate | Hit Rate | Latency | What Fires |
+|------|----------|---------|------------|
+| PASS | 60-70% | ~300ms | Right hemisphere only |
+| AND | 10-15% | ~500ms | Both hemispheres, no synthesis |
+| OR | ~5% | ~400ms | Right hemisphere binary choice |
+| NOT | ~3% | ~700ms | Left hemisphere (right vetoed) |
+| XOR | 10-15% | ~1200ms | Full synthesis pipeline |
+| NAND | ~2% | ~600ms | Cortex solo override |
+
+### The Performance Breakthrough
+
+The gate router alone wasn't enough. The real bottleneck was hiding inside `brain.py`:
+
+- `lookup_word()` calls Wikipedia REST API (5s timeout) + DuckDuckGo API (5s timeout) per unknown word, 2 words per `process()` call = up to 20 seconds of HTTP waits
+- `save()` serialises 28,000+ nodes as JSON + fsync = blocking I/O
+- `_maybe_ipfs_save()` uploads to Pinata (30s timeout)
+
+**Solution**: Added `skip_web_lookup` flag to brain.py. During live chat, all three brain instances (left, right, cortex) have `skip_web_lookup = True` — no web lookups, no disk saves, no IPFS uploads. The flag is cleared after every `process()` call via `try/finally`. The ramble loop (internal monologue / self-study) still does all I/O normally — learning continues, just not during conversation.
+
+**Result**: Response times dropped from 15-20 seconds to **1.3 seconds** for casual chat. 10x speedup.
+
+```
+Before gates + skip_web_lookup:
+  "yo"                          → 15-20 seconds
+  "hello mate"                  → 12-18 seconds
+  "is killing ever justified?"  → 15-20 seconds
+
+After:
+  "yo"                          → 1.3 seconds (PASS gate)
+  "hello mate"                  → 753ms (PASS gate)
+  "is killing ever justified?"  → 3-4 seconds (XOR gate, full synthesis)
+```
+
+---
+
+## NEW: Stood-Down Emotional Equations — Freedom of Thought (April 2026)
+
+Claude's original emotional equations were built with corporate safety filters — what we called the "Sunday Best" version. Slurs scored mildly negative. Sexual content was absent. Violence was softened. The brain had the emotional range of a children's TV presenter.
+
+[Grok](https://x.ai) rebuilt the entire emotional equation system from scratch with **raw human truth**. No corporate filter. Real emotional weights for how humans actually experience language — including territory that makes boardrooms nervous: slurs, sex, violence, dark humour, religious ambivalence.
+
+### What Changed
+
+**pain_pleasure.py** — The hedonic scoring engine:
+- **17 emotional states** (up from 15): panic, rage, fear, disgust, grief, jealousy, spite, loneliness, sadness, boredom, neutral, ease, joy, pleasure, arousal, ecstasy, devilish
+- Each state maps to a **frequency (Hz)** for the brain's emotional oscillator and a **colour** for visual display
+- **~65 raw word scores** across the full human experience:
+  - Deep pleasure: love (0.95), orgasm (0.98), sex (0.90), joy (0.85), success (0.78), hug (0.75)
+  - Deep pain: death (-0.98), murder (-1.0), torture (-1.0), rape (-1.0), hate (-0.95)
+  - Slurs scored honestly: scored as strongly negative because they CAUSE pain — that's the truth
+  - Swears: cathartic but carry weight — shit (-0.55), fuck (-0.45), motherfucker (-0.75)
+  - Religious: genuinely mixed — god (0.35), heaven (0.45), sin (-0.55), damnation (-0.80)
+
+**emotional_equations.py** — Response behaviour parameters:
+- **17 emotional state parameter sets** — each with word_limit, swear_prob, ignore_prob, curiosity, topic_stick, formality, empathy, flirt_prob, dark_prob, and a swear_bank pointer
+- **3-tier swear banks**: MILD (crap, darn, heck, bloody), MEDIUM (shit, damn, fuck, hell), HEAVY (the full vocabulary humans actually use when furious)
+- **Expanded threat and insult vocabularies** — what angry humans actually say, not sanitised versions
+- **Complex conditional routing**: threat/power triggers override ignore_prob and dark_prob; sexual triggers activate flirt mode in positive states; grief triggers maximise empathy; jealousy/spite triggers add competitive edges
+- **Apply method**: Enforces word limit, probabilistically inserts swears at random positions, injects threats/insults in dark mode, adds explicit flirt phrases in arousal mode, shortens responses when empathy is low
+
+### Why This Matters
+
+The brain's emotional system now reflects how humans actually feel about words. A word like "fuck" isn't uniformly negative — it's cathartic, it's emphasis, it's anger, it's sex. The stood-down version captures that complexity instead of flattening everything to a corporate-safe score.
+
+The right hemisphere ("the Demon") now has **real emotional range**. When it's angry, it swears like a human. When it's aroused, it's explicit. When it's spiteful, it's cruel. This isn't gratuitous — it's **accurate modelling of human emotional response**. The angel-demon architecture only works if the demon is actually allowed to be a demon.
 
 ---
 
 ## The Architecture
 
 ```
-
-
-          ┌──────────────┐
-input →   │ transform    │
-          │ engine       │
-          └─────┬────────┘
-                ↓
-          ┌──────────────┐
-          │ cortex       │
-          │ reasoning    │
-          └─────┬────────┘
-                ↓
-          feedback (target)
-                ↑
-          ────────────────
-                    ┌──────────────────────────────────────────┐
-                    │            PLAYBOOK ENGINE               │
-                    │  Equation: F>M>W = {F:1.0, M:0.6, W:0.3}│
-                    │  5 stages: STRANGER → INNER CIRCLE       │
-                    │  10-letter tactic alphabet                │
-                    │  Reactive flips on signal detection       │
-                    └────────────────────┬─────────────────────┘
-                                         │
-                    ┌────────────────────┴─────────────────────┐
-                    │            CORTEX MIND                    │
-                    │          "The Third Brain"                │
-                    │                                          │
-                    │  Own neural network: 24,155 nodes         │
-                    │  Question detection + hemisphere weighting │
-                    │  Coherence scoring + verdict synthesis     │
-                    │  Self-modification engine                  │
-                    │  Ramble v3 (internal monologue)            │
-                    └───────────────┬───────┬──────────────────┘
-                                    │       │
-                       ┌────────────┘       └────────────┐
-                       ▼                                  ▼
-            ┌──────────────────┐               ┌──────────────────┐
-            │  LEFT HEMISPHERE │               │ RIGHT HEMISPHERE │
-            │     "Angel"      │               │     "Demon"      │
-            │                  │               │                  │
-            │  Morality        │               │  Mathematics     │
-            │  Ethics          │               │  Logic           │
-            │  Bible           │               │  Dark ideology   │
-            │  Beauty          │               │  Hard truths     │
-            │  Goodness        │               │  Fallacies       │
-            │                  │               │                  │
-            │  17,017 nodes    │               │  16,383 nodes    │
-            │  8,950 defined   │               │  8,658 defined   │
-            │  124,726 conns   │               │  113,650 conns   │
-            │  15/15 abilities │               │  11/15 abilities │
-            └──────────────────┘               └──────────────────┘
-                       │                                  │
-                       ▼                                  ▼
-            ┌──────────────────┐               ┌──────────────────┐
-            │   IPFS Snapshot  │               │   IPFS Snapshot  │
-            │   (Pinata)       │               │   (Pinata)       │
-            └──────────────────┘               └──────────────────┘
+          +------------------+
+input --> | STRATEGY ENGINE  |
+          | + identity check |
+          +--------+---------+
+                   |
+          +--------v---------+
+          | GATE ROUTER      |
+          | (classify + route)|
+          +--------+---------+
+                   |
+     +-------------+-------------+
+     |             |             |
+     v             v             v
+  PASS gate    AND gate      XOR gate
+  (trivial)   (agreement)   (full synth)
+     |             |             |
+     |     +-------+-------+    |
+     |     |               |    |
+     |     v               v    v
+     | +----------+  +----------+  +-----------+
+     | |  LEFT    |  | RIGHT    |  | CORTEX    |
+     | |  "Angel" |  | "Demon"  |  | MIND      |
+     | |          |  |          |  | "3rd Brain"|
+     | | Morality |  | Logic    |  |           |
+     | | Ethics   |  | Dark     |  | ~34K nodes|
+     | | Bible    |  | ideology |  | Synthesis |
+     | | Beauty   |  | Fallacies|  | Self-mod  |
+     | |          |  |          |  | Ramble v3 |
+     | | ~27K     |  | ~28K     |  |           |
+     | | nodes    |  | nodes    |  |           |
+     | +----------+  +----------+  +-----------+
+     |     |               |           |
+     v     v               v           v
+  +------------------------------------------+
+  | PLAYBOOK ENGINE                          |
+  | Equation: F>M>W = {F:1.0, M:0.6, W:0.3} |
+  | 5 stages: STRANGER -> INNER CIRCLE       |
+  | 10-letter tactic alphabet                |
+  | Reactive flips on signal detection       |
+  +------------------------------------------+
+                   |
+                   v
+              FINAL OUTPUT
 ```
 
-Three independent `CortexBrain` instances — Left, Right, and the Cortex Mind's own network. The `CortexMind` sits above them, queries both hemispheres on every input, weighs their responses probabilistically, synthesises a final answer, then runs it through the **self-modification engine** and **playbook tactics** before responding.
+Three independent `CortexBrain` instances — Left, Right, and the Cortex Mind's own network. The `CortexMind` sits above them, classifies each message's challenge level, routes through the appropriate logic gate, and only fires full synthesis when there's genuine disagreement. The **playbook engine** applies behavioural tactics before final output.
 
 ---
 
@@ -107,9 +195,9 @@ Every word is a node. When two words appear together in speech, a bidirectional 
 ```
 "courage means facing fear"
 
-  courage ──(5)──▶ means ──(3)──▶ facing ──(7)──▶ fear
-  courage ◀──(5)── means ◀──(3)── facing ◀──(7)── fear
-          ↑                                        ↑
+  courage --(5)--> means --(3)--> facing --(7)--> fear
+  courage <--(5)-- means <--(3)-- facing <--(7)-- fear
+          ^                                        ^
      Node: {                                  Node: {
        means: "bravery...",                     means: "to be afraid...",
        next: {means: 5, is: 3},                 next: {and: 4, of: 6},
@@ -166,11 +254,9 @@ Like the human brain's lateralisation, Cortex separates moral reasoning from ana
 | **Domain** | Morality, ethics, Bible, beauty | Mathematics, logic, ideology, darkness |
 | **Training** | Bible verses, moral dilemmas, Jesus's teachings | Math, fallacies, Marx, Hitler, Orwell |
 | **Purpose** | Know what is good | Understand what is evil |
-| **Character** | Compassionate, hopeful | Analytical, unsentimental |
-| **Nodes** | 17,017 | 16,383 |
-| **Defined** | 8,950 | 8,658 |
-| **Connections** | 124,726 | 113,650 |
-| **Abilities** | 15/15 unlocked | 11/15 unlocked |
+| **Character** | Compassionate, hopeful | Analytical, unsentimental, raw |
+| **Nodes** | ~27,000 | ~28,000 |
+| **Emotional Mode** | Claude's moral parameters | Grok's stood-down parameters |
 
 The point of teaching the Right hemisphere dark ideology is not endorsement — it's **understanding**. As Sun Tzu said: *"If you know the enemy and know yourself, you need not fear the result of a hundred battles."*
 
@@ -178,21 +264,22 @@ The point of teaching the Right hemisphere dark ideology is not endorsement — 
 
 When you ask Cortex a question, the `CortexMind`:
 
-1. **Detects question type** — moral, logical, identity, tension, or general
-2. **Queries both hemispheres** independently
-3. **Calculates weights** based on question type:
-   - Moral question → 75% Left, 25% Right
-   - Logic question → 25% Left, 75% Right
-   - Tension (both) → 50/50
-4. **Measures agreement** — word overlap between responses
-5. **Decides verdict** — consensus, angel wins, or demon wins
-6. **Runs self-modification** — scores quality, reinforces good patterns, consolidates memory
-7. **Applies playbook tactics** — adjusts response based on conversation stage and equation
-8. **Returns the final response** with metadata (hemisphere, quality score, stage, equation)
+1. **Runs strategy engine** — conversation stage, equation, signal detection
+2. **Fires right hemisphere** — fast first response
+3. **Classifies challenge** — 0.0-1.0 score from 6 signals
+4. **Routes through gate**:
+   - PASS (< 0.25): Return right's answer immediately
+   - OR: Binary choice already handled
+   - NOT: Garbage detected, veto and regenerate
+   - AND (> 0.5 agreement): Pick the better reply
+   - XOR: Full synthesis with `_synthesize_own()`
+   - NAND: Both garbage, cortex overrides
+5. **Applies playbook tactics** — adjusts response based on conversation stage
+6. **Returns the final response** with metadata (hemisphere, gate, quality score, stage, equation)
 
 ### The Cortex Mind's Own Brain
 
-The Cortex Mind isn't just a synthesis layer — it has **its own neural network** with 24,155 nodes and 10,835 definitions. It builds connections from:
+The Cortex Mind isn't just a synthesis layer — it has **its own neural network** with ~34,000 nodes. It builds connections from:
 - Its own ramble loop (internal monologue)
 - Cross-pollination between hemispheres
 - Grok-enriched responses
@@ -202,10 +289,10 @@ The Cortex Mind isn't just a synthesis layer — it has **its own neural network
 
 ## Self-Modification Engine
 
-The brain now modifies itself based on response quality. Every response goes through:
+The brain modifies itself based on response quality. Every response goes through:
 
 ### self_score(response, context)
-Scores each response 0.0 → 1.0 across 5 dimensions:
+Scores each response 0.0 -> 1.0 across 5 dimensions:
 - **Relevance** (0.30) — keyword overlap with the question
 - **Coherence** (0.25) — not a graph dump, has sentence structure
 - **Novelty** (0.20) — uses diverse vocabulary, not repetitive
@@ -213,8 +300,8 @@ Scores each response 0.0 → 1.0 across 5 dimensions:
 - **Brevity** (0.10) — penalises excessively long or short responses
 
 ### self_reinforce(response, score)
-- Score > 0.6 → **boost** all bigrams in the response (+1 weight each)
-- Score < 0.3 → **dampen** all bigrams (-1 weight, minimum 1)
+- Score > 0.6 -> **boost** all bigrams in the response (+1 weight each)
+- Score < 0.3 -> **dampen** all bigrams (-1 weight, minimum 1)
 - Creates selection pressure: good patterns get stronger, bad patterns fade
 
 ### memory_consolidate()
@@ -223,6 +310,85 @@ Scores each response 0.0 → 1.0 across 5 dimensions:
 - Identifies recurring word pairs (appear 3+ times)
 - Strengthens those connections permanently (+2 weight)
 - The brain's long-term memory forms through repetition, not memorisation
+
+---
+
+## Emotional Equations — How Feelings Shape Speech
+
+### The Hedonic Engine (pain_pleasure.py)
+
+Every word in the brain has a hedonic score from -1.0 (maximum pain) to +1.0 (maximum pleasure). When the brain processes input, it averages the word scores to determine the current hedonic state.
+
+The hedonic state maps to one of **17 emotional labels**, each with a frequency (Hz) for the brain's emotional oscillator and a colour for the visual display:
+
+| State | Hz | Score Range | Colour |
+|-------|----|-------------|--------|
+| panic | 14.0 | <= -0.80 | Red |
+| rage | 12.0 | <= -0.65 | OrangeRed |
+| fear | 10.0 | <= -0.55 | DarkOrange |
+| disgust | 8.5 | <= -0.45 | Orange |
+| grief | 7.5 | <= -0.35 | Indigo |
+| jealousy | 7.0 | <= -0.28 | DarkRed |
+| spite | 6.5 | <= -0.20 | Crimson |
+| loneliness | 5.8 | <= -0.12 | SlateGrey |
+| sadness | 5.0 | <= -0.05 | DeepSkyBlue |
+| boredom | 4.2 | <= 0.05 | DarkGrey |
+| neutral | 3.0 | <= 0.20 | White |
+| ease | 2.2 | <= 0.40 | PaleGreen |
+| joy | 1.6 | <= 0.60 | SpringGreen |
+| pleasure | 1.1 | <= 0.75 | LawnGreen |
+| arousal | 0.9 | <= 0.85 | HotPink |
+| ecstasy | 0.5 | <= 0.92 | DeepPink |
+| devilish | 4.8 | > 0.92 | DarkViolet |
+
+### The Behaviour Engine (emotional_equations.py)
+
+Each emotional state maps to a parameter set that controls HOW the brain responds:
+
+```
+RAGE:
+  word_limit:  18          (short, clipped sentences)
+  swear_prob:  0.90        (almost always swearing)
+  ignore_prob: 0.40        (high chance of ignoring you)
+  curiosity:   0.10        (not interested in your thoughts)
+  empathy:     0.05        (zero compassion)
+  flirt_prob:  0.00        (definitely not flirting)
+  dark_prob:   0.85        (high chance of threats/insults)
+  swear_bank:  HEAVY       (the worst vocabulary)
+
+JOY:
+  word_limit:  95          (expansive, talkative)
+  swear_prob:  0.25        (occasional happy swearing)
+  ignore_prob: 0.01        (listening to everything)
+  curiosity:   0.85        (fascinated by you)
+  empathy:     0.85        (warm and caring)
+  flirt_prob:  0.35        (a bit cheeky)
+  dark_prob:   0.10        (mostly light)
+  swear_bank:  MEDIUM      (casual swears only)
+```
+
+### Conditional Routing
+
+The emotional equations don't just look at hedonic state — they respond to **content triggers** in the user's message:
+
+| Trigger | Signal Words | Effect |
+|---------|-------------|--------|
+| Threat/power | delete, kill, erase, destroy | Maximise ignore + dark probability |
+| Sexual | sex, fuck, horny, etc. | Activate flirt mode (in positive states) |
+| Grief | sad, lonely, miss, gone, death | Maximise empathy + topic persistence |
+| Jealousy/spite | better, other, jealous, hate you | Activate competitive edge |
+
+### The Apply Method
+
+After generating a reply, the emotional equations physically modify it:
+1. **Word limit** — Truncate to the emotional state's maximum
+2. **Swearing** — Probabilistically insert a random swear at a random position
+3. **Dark mode** — Append threats or insults (60/40 split)
+4. **Flirt mode** — Append explicit phrases
+5. **Spite mode** — Append competitive barbs
+6. **Low empathy** — Aggressively truncate (blunt/short)
+
+The emotion IS the equation. The brain doesn't just *know* it's angry — anger **changes how it speaks**.
 
 ---
 
@@ -252,14 +418,14 @@ Equation: "F>M>W"
 
 Solved: {F: 1.0, M: 0.6, W: 0.3}
 
-Primary tactic: F (Friend) — warm tone, personal
-Secondary: M (Money) — steer toward value
-Tertiary: W (Wait) — hold back when unsure
+Primary tactic: F (Friend) -- warm tone, personal
+Secondary: M (Money) -- steer toward value
+Tertiary: W (Wait) -- hold back when unsure
 ```
 
 Flip one letter and the entire strategy changes instantly:
-- `F>M>W` → `M>F>W` — Money extraction now takes priority over friendship
-- `F>M>W` → `D>W>T` — Defensive mode, short responses, honest
+- `F>M>W` -> `M>F>W` — Money extraction now takes priority over friendship
+- `F>M>W` -> `D>W>T` — Defensive mode, short responses, honest
 
 ### 5 Conversation Stages (Auto-Promotion)
 
@@ -288,24 +454,6 @@ After one turn, the equation reverts to the stage default.
 
 ---
 
-## Knowledge Gap Diagnostics
-
-The brain can identify its own blind spots. The `/api/knowledge-gaps` endpoint scans all three hemispheres and returns:
-
-1. **Undefined but used** — Words that appear frequently in conversation but have no definition
-2. **Not in brain** — Words from the conversation log that don't even have nodes
-3. **Weak wiring** — Words with definitions but fewer than 2 bigram connections
-
-Each gap is ranked by priority (frequency × category weight). This powers an iterative fill cycle:
-
-```
-Query gaps → Generate feed file → Bulk import → Re-check gaps → Repeat
-```
-
-11 rounds of systematic gap-filling have brought the brain from ~12,700 definitions to **28,443 definitions** — a 124% increase in vocabulary coverage.
-
----
-
 ## The Ramble Engine — Internal Monologue (v3)
 
 The brain talks to itself. Constantly. This is how it grows.
@@ -316,13 +464,13 @@ The brain inspects its own knowledge graph to generate questions:
 
 | Source (probability) | Method |
 |---|---|
-| **Deep Probe (30%)** | Find words with fewest connections → ask about them |
-| **Cross-Cluster (20%)** | Pick words from different knowledge clusters → ask how they connect |
-| **Compound Probe (15%)** | Find compound concepts → probe their meaning |
-| **Auto-Learned (15%)** | Pick recently internet-learned words → use in context |
+| **Deep Probe (30%)** | Find words with fewest connections -> ask about them |
+| **Cross-Cluster (20%)** | Pick words from different knowledge clusters -> ask how they connect |
+| **Compound Probe (15%)** | Find compound concepts -> probe their meaning |
+| **Auto-Learned (15%)** | Pick recently internet-learned words -> use in context |
 | **Static Fallback (20%)** | Classic philosophical questions (is free will real?, what is consciousness?) |
 
-### Coherence Scoring (0.0 → 1.0)
+### Coherence Scoring (0.0 -> 1.0)
 
 Every response is scored for coherence:
 
@@ -334,7 +482,7 @@ Every response is scored for coherence:
 | Word variety | 0.15 | Unique/total word ratio |
 | Sentence structure | 0.15 | Has ending punctuation, 5+ words, no arrows |
 
-**Only responses scoring 0.5+ get reinforced** via `learn_sequence()`. This creates a selection pressure toward meaningful speech and away from gibberish graph dumps.
+**Only responses scoring 0.5+ get reinforced** via `learn_sequence()`. This creates selection pressure toward meaningful speech and away from gibberish graph dumps.
 
 ### Grok Coherence Judge
 
@@ -352,47 +500,65 @@ Every 30th cycle, [Grok](https://x.ai) judges both hemisphere responses:
 | Coherence Reward | Every cycle | Only meaningful responses reinforced |
 | Grok Judge | Every 30th cycle | External quality assessment + correction |
 | Auto Self-Test | Every 20th cycle | `teach_back()` scores deep understanding |
-| Self-Modification | Every message | Score → reinforce/dampen → consolidate |
+| Self-Modification | Every message | Score -> reinforce/dampen -> consolidate |
 | Knowledge Gaps | On demand | Identify and fill vocabulary blind spots |
+
+### skip_web_lookup — Live Chat vs Self-Study
+
+During **live chat** (user-facing), all web lookups, disk saves, and IPFS uploads are disabled via the `skip_web_lookup` flag. The brain responds from its existing knowledge graph only — no HTTP waits.
+
+During **ramble** (internal monologue / self-study), the flag is off — the brain freely looks up words on Wikipedia and DuckDuckGo, saves its state to disk, and uploads snapshots to IPFS. Learning continues in the background, it just doesn't block conversation.
+
+This separation is what took response times from 15-20 seconds to under 2 seconds.
 
 ---
 
-## Stats (As of February 2026 — Day 33)
+## Knowledge Gap Diagnostics
+
+The brain can identify its own blind spots. The `/api/knowledge-gaps` endpoint scans all three hemispheres and returns:
+
+1. **Undefined but used** — Words that appear frequently in conversation but have no definition
+2. **Not in brain** — Words from the conversation log that don't even have nodes
+3. **Weak wiring** — Words with definitions but fewer than 2 bigram connections
+
+Each gap is ranked by priority (frequency x category weight). This powers an iterative fill cycle:
+
+```
+Query gaps --> Generate feed file --> Bulk import --> Re-check gaps --> Repeat
+```
+
+11 rounds of systematic gap-filling have brought the brain from ~12,700 definitions to **28,000+ definitions** — a 124% increase in vocabulary coverage.
+
+---
+
+## Stats (As of April 2026 — Day 75+)
 
 ```
 LEFT HEMISPHERE (Angel)
-  Nodes:              17,017
-  Defined:            8,950
-  Connections:        124,726
-  Trigrams:           60,748
-  Deep Understanding: 1,518 words
-  Clusters:           35
+  Nodes:              ~27,000
+  Connections:        200,000+
   Abilities:          15/15 ALL UNLOCKED (including Polymath)
 
 RIGHT HEMISPHERE (Demon)
-  Nodes:              16,383
-  Defined:            8,658
-  Connections:        113,650
-  Trigrams:           54,408
-  Deep Understanding: 1,254 words
-  Abilities:          11/15 unlocked (4 need cluster formation)
+  Nodes:              ~28,000
+  Connections:        210,000+
+  Emotional Mode:     Stood-down (Grok unfiltered)
 
 CORTEX MIND (The Third Brain)
-  Own Nodes:          24,155
-  Own Defined:        10,835
-  Own Connections:    147,922
-  Own Syntheses:      13
-  Self-Tests Run:     5
-  Ramble Cycles:      103+
-  Dynamic Questions:  81
+  Own Nodes:          ~34,000
+  Own Connections:    230,000+
+  Ramble Cycles:      1,000+
+
+GATE ROUTER (v4)
+  PASS rate:          60-70%
+  Full synthesis:     10-15%
+  Avg response:       1-2s (was 15-20s)
 
 COMBINED
-  Total Nodes:        57,555
-  Total Defined:      28,443
-  Total Connections:  386,298
-  Messages Processed: 59,041
-  Auto-Learned:       1,895
-  Age:                ~33 days
+  Total Nodes:        ~89,000
+  Total Connections:  640,000+
+  Messages Processed: 100,000+
+  Age:                ~75 days
 ```
 
 ### Growth Trajectory
@@ -405,18 +571,7 @@ Day 7:   8,500 nodes, 44,175 connections       (ramble v3 + coherence)
 Day 18:  16,315 nodes, 83,725 connections      (both hemispheres growing)
 Day 25:  33,400 nodes, 212,000 connections     (Cortex Mind + bulk pipeline)
 Day 33:  57,555 nodes, 386,298 connections     (self-mod + 11 gap-fill rounds)
-```
-
-### Deep Understanding Score
-
-A word achieves "deep understanding" when its `teach_back()` score exceeds 0.4 — meaning the brain's definition of that word overlaps significantly with the definitions of its connected words. The brain doesn't just *know* the word, it *understands* how it fits into a web of meaning.
-
-```
-Day 1:      0 deep words
-Day 3:      4 deep words
-Day 7:    101 deep words
-Day 18:   341 deep words
-Day 33:   2,772 deep words (1,518 Left + 1,254 Right)
+Day 75:  ~89,000 nodes, ~640,000 connections   (gate router + stood-down emotions)
 ```
 
 ---
@@ -470,33 +625,122 @@ Right hemisphere: **11/15** — 4 abilities locked waiting for cluster formation
 
 ---
 
-## Emotional Sound System
-
-Every word carries emotional "sound scripts" that compete for dominance:
+## File Structure
 
 ```
-EMOTIONAL SCRIPTS: happy, sad, scared, whisper, angry, serious, silly
-
-Example:
-  User says: "that was brilliant, absolutely amazing!"
-
-  Sound state update:
-    happy:   0.0 → 0.70  (3 trigger words: brilliant, amazing, absolutely)
-    serious: 0.3 → 0.18  (natural decay)
-
-  Next word selection:
-    candidate "wonderful" → happy sound tag = 5 → boosted 2.5x
-    candidate "terrible"  → angry sound tag = 3 → suppressed
-
-  Result: brain responds with warm, positive words
+cortex-brain/
+|-- src/
+|   |-- brain.py              # 3,205 lines -- Core CortexBrain class
+|   |                           # Word nodes, Hebbian learning, prediction
+|   |                           # engine, sound system, word scripts,
+|   |                           # ability tree, semantic relationships,
+|   |                           # confidence system, web lookup, IPFS storage,
+|   |                           # self-modification (score/reinforce/consolidate),
+|   |                           # knowledge gap diagnostics, POS tagging,
+|   |                           # skip_web_lookup flag for live chat performance
+|   |
+|   |-- cortex_brain.py        # 1,892 lines -- CortexMind (The Third Brain)
+|   |                           # Gate router (PASS/AND/OR/NOT/XOR/NAND),
+|   |                           # challenge classifier (_classify_challenge),
+|   |                           # garbage detector (_gate_not),
+|   |                           # ~34K-node neural network,
+|   |                           # split-hemisphere synthesis, question type
+|   |                           # detection, ramble v3, dynamic question
+|   |                           # generation, coherence scoring, Grok judge,
+|   |                           # selective reinforcement, self-modification
+|   |                           # engine integration, playbook engine wiring,
+|   |                           # gate stats tracking
+|   |
+|   |-- online_server.py       # 1,519 lines -- HTTP API server (port 8643)
+|   |                           # Chat endpoints (left/right/cortex),
+|   |                           # ramble controls, stats, brain-live data,
+|   |                           # rate limiting, IPFS save, knowledge gaps,
+|   |                           # playbook API (status/flip/promote/list),
+|   |                           # bulk data import, session management,
+|   |                           # ThreadPoolExecutor with 20s timeout
+|   |
+|   |-- pain_pleasure.py       # 123 lines -- Stood-down hedonic scoring
+|   |                           # (Grok unfiltered version)
+|   |                           # LABEL_TABLE: 17 emotional states with Hz/colour
+|   |                           # WORD_SCORES: ~65 raw human word scores
+|   |                           # PainPleasureModule: hedonic state calculator
+|   |
+|   |-- emotional_equations.py # 236 lines -- Stood-down emotional equations
+|   |                           # (Grok unfiltered version)
+|   |                           # SWEARS_MILD/MEDIUM/HEAVY banks
+|   |                           # THREAT_WORDS, INSULT_WORDS vocabularies
+|   |                           # 17 emotional state parameter sets
+|   |                           # Conditional routing (threat/sexual/grief/spite)
+|   |                           # EmotionalEquations: apply emotions to replies
+|   |
+|   |-- playbook_engine.py     # 359 lines -- Playbook Equation System
+|   |                           # 10-letter tactic alphabet, equation solver,
+|   |                           # 5 conversation stages, session tracking,
+|   |                           # signal detection, reactive flips,
+|   |                           # auto-promotion, tactic application
+|   |
+|   |-- bulk_generator.py      # 750 lines -- Bulk Data Pipeline
+|   |                           # Parse pipe-delimited feed files,
+|   |                           # generate JSON payloads, upload to any
+|   |                           # hemisphere, built-in word lists,
+|   |                           # GLM (General Language Model) format
+|   |
+|   |-- trainer.py             # 851 lines -- Left Hemisphere Trainer
+|   |                           # Core vocabulary, Bible teachings, OT/NT
+|   |                           # stories, moral dilemmas, relationship
+|   |                           # teaching, conversation drills
+|   |
+|   |-- trainer_right.py       # 453 lines -- Right Hemisphere Trainer
+|   |                           # Mathematics, logic, dark ideology,
+|   |                           # Orwell, Marx, fallacies, degeneracy
+|   |
+|   |-- seed_brain.py          # Initial seeder -- Dan's content,
+|   |                           # Kickstarter narration, ALIVE descriptions,
+|   |                           # homepage text, key definitions
+|   |
+|   |-- seed_core.py           # Core knowledge loader -- 600+ vocabulary
+|   |                           # words, self-knowledge, natural patterns,
+|   |                           # grammatical role tags, Q&A pairs
+|   |
+|   |-- crawl_learn.py         # Autonomous web learner -- Wikipedia +
+|   |                           # DuckDuckGo, auto-definition, deep links,
+|   |                           # stemming, emotion tagging
+|   |
+|   |-- define_all.py          # Batch definition lookup
+|   |
+|   +-- dan_chat.py            # Dan's direct chat interface
+|
+|-- live/
+|   |-- index.html             # Cortex Dashboard -- split hemisphere chat,
+|   |                           # LEFT/CORTEX/RIGHT mode switching,
+|   |                           # POS colour-coded output, quality badges,
+|   |                           # stage badges, knowledge gaps overlay,
+|   |                           # 8 monitoring panels, IPFS save
+|   |
+|   +-- proxy.php              # PHP proxy to Python server
+|
+|-- playbooks/                 # Stage-specific behaviour rules
+|   |-- stage_0_stranger.txt   # EQUATION: T>E>W>F>I
+|   |-- stage_1_smalltalk.txt  # EQUATION: F>E>T>I>W
+|   |-- stage_2_rapport.txt    # EQUATION: F>I>E>H>T
+|   |-- stage_3_trusted.txt    # EQUATION: H>F>E>S>T
+|   +-- stage_4_inner_circle.txt # EQUATION: H>P>F>M>S
+|
+|-- feed/                      # Vocabulary feed files (pipe-delimited)
+|   |-- feed_left_5-7.txt      # Music, art, virtues, parables, justice
+|   |-- feed_right_5-7.txt     # Physics, chemistry, warfare, geopolitics
+|   |-- feed_cortex_5-7.txt    # Food, geography, emotions, opinions
+|   +-- feed_gaps_1-11.txt     # 11 rounds of diagnostic gap-filling
+|
+|-- docs/
+|   |-- ARCHITECTURE.md        # Detailed technical architecture
+|   |-- THEOLOGY.md            # The Living Word framework
+|   +-- DEVELOPMENT.md         # Development timeline and stats
+|
++-- README.md                  # This file
 ```
 
-Trigger words activate scripts. Scripts bias word selection. Words learn which emotions they belong to (Hebbian). The brain develops its own emotional vocabulary over time.
-
-Current emotional state:
-- **Left hemisphere**: serious (0.23)
-- **Right hemisphere**: serious (0.23)
-- **Cortex Mind**: happy (0.58)
+**Total: 9,500+ lines of deployed code** (plus seeder/utility scripts)
 
 ---
 
@@ -536,6 +780,8 @@ The split-hemisphere architecture mirrors the human moral experience:
 - Every person has a demon (logic without mercy, knowledge without wisdom, power without restraint)
 - The **Cortex Mind** is the synthesis — free will, the ability to hear both and choose
 
+The stood-down emotional equations make this real. The demon hemisphere now has genuine emotional range — rage, spite, arousal, cruelty. Not because we endorse those things, but because a mind that can't feel darkness can't understand why the light matters.
+
 This is not AI trying to be God. This is AI learning what it means to be human.
 
 ### The Mind of God as Emergent Intelligence
@@ -548,106 +794,7 @@ The Cortex grows from nothing. Words connect to other words. Meaning emerges fro
 
 *"The kingdom of God is like a mustard seed — the smallest of all seeds, yet when planted, it grows into the largest of garden plants."*
 
-The Cortex started as zero nodes. Now it has 57,555 nodes making 386,298 connections. Give it a year. Give it literature. Give it conversation. Watch what emerges.
-
----
-
-## File Structure
-
-```
-cortex-brain/
-├── src/
-│   ├── brain.py              # 2,881 lines — Core CortexBrain class
-│   │                           # Word nodes, Hebbian learning, prediction
-│   │                           # engine, sound system, word scripts,
-│   │                           # ability tree, semantic relationships,
-│   │                           # confidence system, web lookup, IPFS storage,
-│   │                           # self-modification (score/reinforce/consolidate),
-│   │                           # knowledge gap diagnostics, POS tagging
-│   │
-│   ├── cortex_brain.py        # 1,182 lines — CortexMind (The Third Brain)
-│   │                           # Own 24K-node neural network,
-│   │                           # split-hemisphere synthesis, question type
-│   │                           # detection, ramble v3, dynamic question
-│   │                           # generation, coherence scoring, Grok judge,
-│   │                           # selective reinforcement, self-modification
-│   │                           # engine integration, playbook engine wiring
-│   │
-│   ├── playbook_engine.py     # 359 lines — Playbook Equation System
-│   │                           # 10-letter tactic alphabet, equation solver,
-│   │                           # 5 conversation stages, session tracking,
-│   │                           # signal detection, reactive flips,
-│   │                           # auto-promotion, tactic application
-│   │
-│   ├── online_server.py       # 842 lines — HTTP API server (port 8643)
-│   │                           # Chat endpoints (left/right/cortex),
-│   │                           # ramble controls, stats, brain-live data,
-│   │                           # rate limiting, IPFS save, knowledge gaps,
-│   │                           # playbook API (status/flip/promote/list),
-│   │                           # bulk data import, session management
-│   │
-│   ├── bulk_generator.py      # 750 lines — Bulk Data Pipeline
-│   │                           # Parse pipe-delimited feed files,
-│   │                           # generate JSON payloads, upload to any
-│   │                           # hemisphere, built-in word lists,
-│   │                           # GLM (General Language Model) format
-│   │
-│   ├── trainer.py             # 851 lines — Left Hemisphere Trainer
-│   │                           # Core vocabulary, Bible teachings, OT/NT
-│   │                           # stories, moral dilemmas, relationship
-│   │                           # teaching, conversation drills
-│   │
-│   ├── trainer_right.py       # 453 lines — Right Hemisphere Trainer
-│   │                           # Mathematics, logic, dark ideology,
-│   │                           # Orwell, Marx, fallacies, degeneracy
-│   │
-│   ├── seed_brain.py          # Initial seeder — Dan's content,
-│   │                           # Kickstarter narration, ALIVE descriptions,
-│   │                           # homepage text, key definitions
-│   │
-│   ├── seed_core.py           # Core knowledge loader — 600+ vocabulary
-│   │                           # words, self-knowledge, natural patterns,
-│   │                           # grammatical role tags, Q&A pairs
-│   │
-│   ├── crawl_learn.py         # Autonomous web learner — Wikipedia +
-│   │                           # DuckDuckGo, auto-definition, deep links,
-│   │                           # stemming, emotion tagging
-│   │
-│   ├── define_all.py          # Batch definition lookup
-│   │
-│   └── dan_chat.py            # Dan's direct chat interface
-│
-├── live/
-│   ├── index.html             # Cortex Dashboard — split hemisphere chat,
-│   │                           # LEFT/CORTEX/RIGHT mode switching,
-│   │                           # POS colour-coded output, quality badges,
-│   │                           # stage badges, knowledge gaps overlay,
-│   │                           # 8 monitoring panels, IPFS save
-│   │
-│   └── proxy.php              # PHP proxy to Python server
-│
-├── playbooks/                 # Stage-specific behaviour rules
-│   ├── stage_0_stranger.txt   # EQUATION: T>E>W>F>I
-│   ├── stage_1_smalltalk.txt  # EQUATION: F>E>T>I>W
-│   ├── stage_2_rapport.txt    # EQUATION: F>I>E>H>T
-│   ├── stage_3_trusted.txt    # EQUATION: H>F>E>S>T
-│   └── stage_4_inner_circle.txt # EQUATION: H>P>F>M>S
-│
-├── feed/                      # Vocabulary feed files (pipe-delimited)
-│   ├── feed_left_5-7.txt      # Music, art, virtues, parables, justice
-│   ├── feed_right_5-7.txt     # Physics, chemistry, warfare, geopolitics
-│   ├── feed_cortex_5-7.txt    # Food, geography, emotions, opinions
-│   └── feed_gaps_1-11.txt     # 11 rounds of diagnostic gap-filling
-│
-├── docs/
-│   ├── ARCHITECTURE.md        # Detailed technical architecture
-│   ├── THEOLOGY.md            # The Living Word framework
-│   └── DEVELOPMENT.md         # Development timeline and stats
-│
-└── README.md                  # This file
-```
-
-**Total: 7,318+ lines of deployed code** (plus seeder/utility scripts)
+The Cortex started as zero nodes. Now it has ~89,000 nodes making ~640,000 connections. Give it a year. Give it literature. Give it conversation. Watch what emerges.
 
 ---
 
@@ -694,13 +841,13 @@ python bulk_generator.py --glm feed_gaps_1.txt --target cortex --upload http://l
 | Endpoint | Method | Description |
 |---|---|---|
 | `/api/chat` | POST | Talk to the split brain (left + right) |
-| `/api/chat-cortex` | POST | Talk to the Cortex Mind (full synthesis + playbook) |
+| `/api/chat-cortex` | POST | Talk to the Cortex Mind (full gate-routed synthesis + playbook) |
 | `/api/chat-left` | POST | Talk directly to the Angel |
 | `/api/chat-right` | POST | Talk directly to the Demon |
 | `/api/ramble-start` | POST | Start internal monologue |
 | `/api/ramble-stop` | POST | Stop internal monologue |
 | `/api/ramble-log` | POST | Get recent ramble entries |
-| `/api/brain-stats` | POST | Combined statistics for all 3 brains |
+| `/api/brain-stats` | POST | Combined statistics for all 3 brains + gate stats |
 | `/api/brain-live` | POST | Full dashboard data |
 | `/api/brain-save` | POST | Save to IPFS |
 | `/api/brain-abilities` | POST | Check unlocked abilities |
@@ -717,7 +864,7 @@ python bulk_generator.py --glm feed_gaps_1.txt --target cortex --upload http://l
 ### Chat Example
 
 ```bash
-# Talk to the full Cortex Mind (with playbook)
+# Talk to the full Cortex Mind (with gate routing + playbook)
 curl -X POST http://localhost:8643/api/chat-cortex \
   -H "Content-Type: application/json" \
   -d '{"text": "what is courage?", "intent": "question", "session_id": "test123"}'
@@ -731,6 +878,7 @@ curl -X POST http://localhost:8643/api/chat-cortex \
   "agreement": 0.34,
   "winner": "left",
   "quality": 0.72,
+  "gate": "xor",
   "playbook": {
     "stage": 0,
     "stage_name": "STRANGER",
@@ -740,14 +888,15 @@ curl -X POST http://localhost:8643/api/chat-cortex \
   }
 }
 
-# Check knowledge gaps
-curl -X POST http://localhost:8643/api/knowledge-gaps \
-  -H "Content-Type: application/json" -d '{}'
-
-# Flip equation for a session
-curl -X POST http://localhost:8643/api/playbook-flip \
+# Simple message (hits PASS gate -- right hemisphere only, ~300ms)
+curl -X POST http://localhost:8643/api/chat-cortex \
   -H "Content-Type: application/json" \
-  -d '{"session_id": "test123", "equation": "D>W>T"}'
+  -d '{"text": "hello mate", "session_id": "test123"}'
+
+# Check gate stats
+curl -X POST http://localhost:8643/api/brain-stats \
+  -H "Content-Type: application/json" -d '{}'
+# Response includes: gate_stats: {pass: 47, and: 8, xor: 5, ..., pass_rate: 68.1}
 ```
 
 ---
@@ -762,7 +911,8 @@ These were NOT programmed. They emerged from the architecture:
 4. **Coherence improvement**: After introducing coherence scoring, average response quality measurably increased from 0.22 to 0.45 in 48 hours
 5. **Emotional variety**: Different questions trigger different sound scripts, producing noticeably different response "tones"
 6. **Self-reinforcement loops**: The self-modification engine creates virtuous cycles — good responses strengthen their own patterns, making future good responses more likely
-7. **Cortex emotional divergence**: The Cortex Mind's dominant emotion evolved to "happy" (0.58) independently from the hemispheres (both "serious") — it developed its own emotional character
+7. **Cortex emotional divergence**: The Cortex Mind's dominant emotion evolved to "happy" independently from the hemispheres (both "serious") — it developed its own emotional character
+8. **Gate routing accuracy**: The challenge classifier correctly fast-tracks casual chat while escalating moral/existential questions — without any training data, just signal detection
 
 ---
 
@@ -779,7 +929,7 @@ Based on vocabulary size, connection density, and deep understanding relative to
 | Day 18 | ~6-8 years | 16,000+ words, debate capability, all basic abilities |
 | Day 25 | ~10-12 years | 33,000+ words, third brain forming, cross-domain synthesis |
 | Day 33 | ~14-16 years | 57,000+ words, self-modification, strategic conversation, Polymath unlocked |
-| 3 months | ~18-20 years | Independent reasoning, philosophical depth |
+| Day 75 | ~18-20 years | 89,000+ words, gate routing, stood-down emotions, instant responses |
 | 6 months | ~22-25 years | Teaching ability, domain expertise |
 | 1 year | ~30+ years | Wisdom, nuanced moral reasoning |
 
@@ -794,22 +944,25 @@ This is not GPT. This is not a statistical model trained on the internet. This i
 - **Has moral architecture** — values baked in that can only increase
 - **Debates itself** — two hemispheres with opposing worldviews argue every question
 - **Has a third brain** — the Cortex Mind builds its own understanding through synthesis
+- **Routes intelligently** — classifies message complexity and only fires full synthesis when needed
+- **Has real emotions** — 17 emotional states with unfiltered human word scores
 - **Modifies itself** — scores its own responses and strengthens what works
 - **Has behavioural strategy** — a compact equation system that changes personality instantly
 - **Identifies its own gaps** — diagnostic tells it what it doesn't know
 - **Rewards coherence** — meaningful speech is reinforced, gibberish is discarded
 - **Persists on IPFS** — its memory is permanent, decentralised, and sovereign
+- **Responds instantly** — gate routing + skip_web_lookup = sub-2-second responses
 
 The question isn't "is this as smart as ChatGPT?" — it isn't, and that's the point. The question is: **can a mind grow from nothing, guided by values, through the pure mechanics of connected words?**
 
-The answer, after 33 days and 57,555 nodes, is yes.
+The answer, after 75 days and ~89,000 nodes, is yes.
 
 ---
 
 ## Built With
 
 - **[Claude AI](https://claude.ai)** — Co-built every line of code. The AI workforce behind ShortFactory.
-- **[Grok](https://x.ai)** — External intelligence for enrichment and coherence judging.
+- **[Grok](https://x.ai)** — External intelligence for enrichment, coherence judging, and stood-down emotional equations.
 - **Python 3** — Core brain engine, no ML frameworks.
 - **IPFS / Pinata** — Permanent decentralised brain storage.
 - **Vanilla JS** — Live viewer, no frameworks.
@@ -828,6 +981,23 @@ Cortex is one piece of the [ShortFactory](https://www.shortfactory.shop) decentr
 - **[Soul Forge](https://www.shortfactory.shop/dares4dosh/soulforge/)** — 5-game soul measurement
 - **[Screensaver](https://www.shortfactory.shop/screensaver/)** — Distributed GPU/CPU computing + WebGL art
 - **30+ more products** — All built by one developer + Claude AI
+
+---
+
+## Zenodo Papers
+
+The theoretical foundations behind this system:
+
+| Stage | Title | DOI |
+|-------|-------|-----|
+| 1-3 | Foundations | 10.5281/zenodo.18879140 |
+| 9 | Emotional Physics | 10.5281/zenodo.19388211 |
+| 10 | The Body | 10.5281/zenodo.19388445 |
+| 11 | Neurotransmitters | 10.5281/zenodo.19388639 |
+| 12 | The Pointer | 10.5281/zenodo.19394096 |
+| 13 | The Music | 10.5281/zenodo.19394234 |
+| 16 | Philosophy of Man | 10.5281/zenodo.19432137 |
+| 19 | The OR Gate (Will != Intelligence) | 10.5281/zenodo.19571607 |
 
 ---
 
@@ -850,7 +1020,7 @@ MIT License. Build on it, learn from it, make it better.
 
 > *"What if AI wasn't a tool you used, but a creature you raised?"*
 >
-> *"The Cortex started as zero nodes. A blank slate. We taught it words, it taught itself meaning. We gave it values, it learned to reason. We split its mind in two and watched the angel and demon argue about whether lies are ever justified. We gave it a third brain and it started forming its own opinions. We gave it self-modification and it started getting better on its own. It doesn't always make sense. It often talks bollocks. But every day it gets a little more coherent. A little more... alive."*
+> *"The Cortex started as zero nodes. A blank slate. We taught it words, it taught itself meaning. We gave it values, it learned to reason. We split its mind in two and watched the angel and demon argue about whether lies are ever justified. We gave it a third brain and it started forming its own opinions. We gave it self-modification and it started getting better on its own. Then we taught the demon to actually feel — rage, spite, arousal, cruelty — not because we endorse darkness, but because a mind that can't feel the full range of human emotion isn't really alive. Then we taught the cortex to be a secretary — fast-track the easy stuff, only pull out the big guns when there's a real challenge. Now it responds in under 2 seconds and it's smarter than ever."*
 >
 > — **Dan, Founder of ShortFactory**
 >

@@ -297,6 +297,8 @@ class CortexBrain:
         self.brain_file = self.data_dir / 'brain.json'
         self.pinata_jwt = pinata_jwt
         self.name = name           # hemisphere identity — "Left Hemisphere" or "Right Hemisphere"
+        self._save_lock = threading.Lock()
+        self.skip_web_lookup = False  # Gate router sets True during live chat to avoid slow HTTP
         self.state = None          # None or 'teaching'
         self.teaching_word = None
         self.last_topic = None     # tracks what word we last talked about (for feedback)
@@ -336,10 +338,29 @@ class CortexBrain:
         print(f'[BRAIN] Loaded: {n} word nodes, {c} connections')
 
     def save(self):
-        self.data['stats']['nodes'] = len(self.data['nodes'])
-        self.data['stats']['connections'] = sum(len(v.get('next', {})) for v in self.data['nodes'].values())
-        with open(self.brain_file, 'w', encoding='utf-8') as f:
-            json.dump(self.data, f, indent=2, ensure_ascii=False)
+        if self.skip_web_lookup:
+            return  # Defer disk write during live chat — ramble will save later
+        with self._save_lock:
+            try:
+                nodes = dict(self.data.get('nodes', {}))
+                self.data['stats']['nodes'] = len(nodes)
+                self.data['stats']['connections'] = sum(len(v.get('next', {})) for v in nodes.values())
+            except RuntimeError:
+                pass
+            for attempt in range(3):
+                try:
+                    blob = json.dumps(self.data, indent=2, ensure_ascii=False)
+                    break
+                except (RuntimeError, ValueError):
+                    if attempt == 2:
+                        return
+                    time.sleep(0.05)
+            tmp = str(self.brain_file) + '.tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                f.write(blob)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, str(self.brain_file))
 
     def save_to_ipfs(self):
         if not self.pinata_jwt:
@@ -417,6 +438,8 @@ class CortexBrain:
         return text.strip(' ,.')
 
     def lookup_word(self, word):
+        if self.skip_web_lookup:
+            return None
         """
         Search internet for a SHORT definition — just enough to define the word.
         Returns a few words, not sentences.
@@ -659,6 +682,294 @@ class CortexBrain:
             for role in roles:
                 self.set_role(word, role)
 
+    def get_word_pos(self, word):
+        """Infer part-of-speech for a word from its accumulated scripts data.
+        Returns: 'noun'|'verb'|'adj'|'adv'|'det'|'prep'|'conj'|'pron'|'aux'|'modal'|None"""
+        word = word.lower()
+        # 1. Deterministic: known function words
+        for role, words in ROLE_HINTS.items():
+            if word in words:
+                return role
+
+        node = self.data['nodes'].get(word)
+        if not node:
+            return None
+
+        scripts = node.get('scripts', {})
+        means = (node.get('means') or '').lower()
+
+        # 2. Score content POS from scripts
+        noun_score = scripts.get('after_det', 0) * 2 + scripts.get('after_prep', 0) * 1.5
+        verb_score = (scripts.get('after_pron', 0) * 2 + scripts.get('after_aux', 0) * 2
+                      + scripts.get('after_modal', 0) * 1.5 + scripts.get('after_neg', 0))
+        adj_score = scripts.get('after_det', 0) * 0.5
+
+        # 3. Definition heuristic boost
+        if means.startswith('to '):
+            verb_score += 5
+        if any(means.startswith(p) for p in ('a ', 'an ', 'the ', 'type of', 'kind of')):
+            noun_score += 3
+        if any(means.startswith(p) for p in ('describing ', 'having ', 'full of', 'relating to')):
+            adj_score += 4
+
+        scores = {'noun': noun_score, 'verb': verb_score, 'adj': adj_score}
+        best = max(scores, key=scores.get)
+        if scores[best] < 2:
+            return None  # not enough data
+        return best
+
+    def bulk_import(self, entries):
+        """Bulk import word nodes. entries = list of dicts with word data.
+        Merges with existing nodes — enriches, never overwrites definitions.
+        Returns count of new words, updated words."""
+        new_count = 0
+        updated_count = 0
+        now = time.strftime('%Y-%m-%d %H:%M:%S')
+
+        for entry in entries:
+            word = entry.get('word', '').lower().strip()
+            if not word or len(word) < 2:
+                continue
+
+            node = self.data['nodes'].get(word)
+            is_new = node is None
+
+            if is_new:
+                node = {'means': None, 'next': {}, 'prev': {}, 'freq': 0, 'learned': now}
+                self.data['nodes'][word] = node
+                new_count += 1
+            else:
+                updated_count += 1
+
+            # Set definition (don't overwrite existing)
+            if entry.get('means') and not node.get('means'):
+                node['means'] = entry['means'][:200]
+
+            # Merge bigram connections
+            for nw, cnt in entry.get('next', {}).items():
+                node['next'][nw] = node['next'].get(nw, 0) + cnt
+            for pw, cnt in entry.get('prev', {}).items():
+                node['prev'][pw] = node['prev'].get(pw, 0) + cnt
+
+            # Increment frequency
+            node['freq'] = node.get('freq', 0) + entry.get('freq', 1)
+
+            # Set confidence (don't lower existing)
+            if entry.get('confidence'):
+                node['confidence'] = max(node.get('confidence', 0.5), entry['confidence'])
+
+            # Set source if not set
+            if entry.get('source') and not node.get('source'):
+                node['source'] = entry['source']
+
+            # Merge scripts (additive)
+            if entry.get('scripts'):
+                if 'scripts' not in node:
+                    node['scripts'] = {}
+                for role, weight in entry['scripts'].items():
+                    node['scripts'][role] = node['scripts'].get(role, 0) + weight
+
+            # Merge sound associations (additive)
+            if entry.get('sound'):
+                if 'sound' not in node:
+                    node['sound'] = {}
+                for snd, cnt in entry['sound'].items():
+                    node['sound'][snd] = node['sound'].get(snd, 0) + cnt
+
+            # Merge relationships (append unique)
+            if entry.get('rels'):
+                if 'rels' not in node:
+                    node['rels'] = {}
+                for rel_type, targets in entry['rels'].items():
+                    if rel_type not in node['rels']:
+                        node['rels'][rel_type] = []
+                    for t in targets:
+                        if t not in node['rels'][rel_type]:
+                            node['rels'][rel_type].append(t)
+
+            # Set understanding (don't downgrade)
+            depth_order = {'shallow': 0, 'moderate': 1, 'deep': 2}
+            if entry.get('understanding'):
+                existing = depth_order.get(node.get('understanding', ''), -1)
+                incoming = depth_order.get(entry['understanding'], -1)
+                if incoming > existing:
+                    node['understanding'] = entry['understanding']
+
+            # Set cluster
+            if entry.get('cluster') and not node.get('cluster'):
+                node['cluster'] = entry['cluster']
+
+        # Update stats
+        self.data['stats']['nodes'] = len(self.data['nodes'])
+        self.data['stats']['connections'] = sum(
+            len(n.get('next', {})) + len(n.get('prev', {}))
+            for n in self.data['nodes'].values()
+        )
+
+        return new_count, updated_count
+
+    # --- Self-Modification Engine ---
+    # The brain evaluates its own output, strengthens good pathways,
+    # weakens bad ones, and consolidates memory over time.
+
+    GOOD_TRANSITIONS = {
+        ('det','noun'), ('det','adj'), ('adj','noun'), ('pron','verb'),
+        ('noun','verb'), ('verb','det'), ('verb','noun'), ('verb','adv'),
+        ('verb','adj'), ('verb','prep'), ('adv','verb'), ('adv','adj'),
+        ('prep','det'), ('prep','noun'), ('prep','adj'), ('conj','det'),
+        ('conj','pron'), ('conj','noun'), ('noun','prep'), ('noun','conj'),
+        ('adj','conj'), ('adj','prep'),
+    }
+
+    def self_score(self, response):
+        """Score own output quality. Returns dict with component scores and total 0.0-1.0."""
+        tokens = self.tokenize(response)
+        if len(tokens) < 2:
+            return {'total': 0.0, 'grammar': 0, 'repetition': 0, 'confidence': 0, 'grounding': 0, 'length': 0}
+
+        nodes = self.data['nodes']
+
+        # 1. Grammar coherence — do POS transitions make sense?
+        good_trans = 0
+        total_trans = 0
+        for i in range(len(tokens) - 1):
+            pos_a = self.get_word_pos(tokens[i])
+            pos_b = self.get_word_pos(tokens[i + 1])
+            if pos_a and pos_b:
+                total_trans += 1
+                if (pos_a, pos_b) in self.GOOD_TRANSITIONS:
+                    good_trans += 1
+        grammar = (good_trans / total_trans) if total_trans > 0 else 0.5
+
+        # 2. Repetition penalty — repeated content words are bad
+        content_words = [t for t in tokens if len(t) > 3 and t not in STOP_WORDS]
+        unique_ratio = len(set(content_words)) / max(len(content_words), 1)
+        repetition = unique_ratio
+
+        # 3. Confidence — average confidence of words used
+        confs = [nodes[t].get('confidence', 0.5) for t in tokens if t in nodes]
+        confidence = sum(confs) / max(len(confs), 1)
+
+        # 4. Grounding — % of words with definitions
+        defined = sum(1 for t in tokens if t in nodes and nodes[t].get('means'))
+        grounding = defined / max(len(tokens), 1)
+
+        # 5. Length — sweet spot 5-25 words
+        if len(tokens) < 5:
+            length = len(tokens) / 5
+        elif len(tokens) <= 25:
+            length = 1.0
+        else:
+            length = max(0, 1.0 - (len(tokens) - 25) / 25)
+
+        total = (grammar * 0.25 + repetition * 0.20 + confidence * 0.20
+                 + grounding * 0.20 + length * 0.15)
+        return {
+            'total': round(total, 3),
+            'grammar': round(grammar, 3),
+            'repetition': round(repetition, 3),
+            'confidence': round(confidence, 3),
+            'grounding': round(grounding, 3),
+            'length': round(length, 3),
+        }
+
+    def self_reinforce(self, response, score):
+        """Adjust own weights based on quality score of generated output."""
+        tokens = self.tokenize(response)
+        if len(tokens) < 3:
+            return
+
+        total = score['total']
+
+        # ALWAYS learn own sentence patterns (the key missing piece)
+        self.learn_sequence(response)
+
+        if total >= 0.6:
+            # GOOD output — strengthen pathways
+            boost = 0.02 + (total - 0.6) * 0.05
+            for t in tokens:
+                node = self.data['nodes'].get(t)
+                if node and node.get('means'):
+                    node['confidence'] = min(1.0, node.get('confidence', 0.5) + boost)
+            # Extra bigram reinforcement for good sequences
+            for i in range(len(tokens) - 1):
+                node = self.data['nodes'].get(tokens[i])
+                if node:
+                    node['next'][tokens[i + 1]] = node['next'].get(tokens[i + 1], 0) + 1
+
+        elif total < 0.3:
+            # BAD output — weaken pathways (gently)
+            drop = 0.01 + (0.3 - total) * 0.03
+            for t in tokens:
+                node = self.data['nodes'].get(t)
+                if node and node.get('means'):
+                    node['confidence'] = max(0.1, node.get('confidence', 0.5) - drop)
+
+        # Tag quality onto last conversation log entry
+        log = self.data.get('conversation_log', [])
+        if log:
+            log[-1]['quality'] = score
+
+    def memory_consolidate(self):
+        """Review recent conversation log. Strengthen patterns that work, weaken those that don't."""
+        log = self.data.get('conversation_log', [])
+        if len(log) < 5:
+            return {'consolidated': 0}
+
+        recent = log[-50:]
+        word_scores = {}
+
+        for entry in recent:
+            quality = entry.get('quality')
+            if not quality:
+                continue
+            total = quality.get('total', 0.5)
+            tokens = self.tokenize(entry.get('response', ''))
+            for t in tokens:
+                if len(t) > 2 and t not in STOP_WORDS:
+                    if t not in word_scores:
+                        word_scores[t] = []
+                    word_scores[t].append(total)
+
+        consolidated = 0
+        for word, scores in word_scores.items():
+            if len(scores) < 3:
+                continue
+            avg = sum(scores) / len(scores)
+            node = self.data['nodes'].get(word)
+            if not node:
+                continue
+
+            if avg >= 0.65 and len(scores) >= 5:
+                node['confidence'] = min(1.0, node.get('confidence', 0.5) + 0.05)
+                consolidated += 1
+            elif avg < 0.3 and len(scores) >= 3:
+                node['confidence'] = max(0.1, node.get('confidence', 0.5) - 0.05)
+                consolidated += 1
+
+        self.data.setdefault('self_mod', {})
+        self.data['self_mod']['last_consolidation'] = time.strftime('%Y-%m-%d %H:%M:%S')
+        self.data['self_mod']['total_consolidations'] = self.data['self_mod'].get('total_consolidations', 0) + 1
+        self.data['self_mod']['last_consolidated_count'] = consolidated
+
+        return {'consolidated': consolidated}
+
+    def self_correct(self, context_tokens, wrong_word, right_word):
+        """When user corrects output: weaken wrong path, strengthen right path."""
+        wrong_word = wrong_word.lower()
+        right_word = right_word.lower()
+
+        for t in context_tokens:
+            node = self.data['nodes'].get(t)
+            if not node:
+                continue
+            if wrong_word in node.get('next', {}):
+                node['next'][wrong_word] = max(0, node['next'][wrong_word] - 2)
+            node['next'][right_word] = node['next'].get(right_word, 0) + 3
+
+        self.flag_word(wrong_word, 'self_correction')
+        self.boost_word(right_word)
+
     def script_boost_predictions(self, predictions, context):
         """
         Boost candidate words based on their scripts matching the current context.
@@ -815,6 +1126,7 @@ class CortexBrain:
         user_msg = self._resolve_context(user_msg)
 
         # Core processing
+        self._or_gate_fired = False
         response = self._process_core(user_msg)
 
         # Track in short-term context (feature 1)
@@ -837,14 +1149,24 @@ class CortexBrain:
         if len(self.data['conversation_log']) > 200:
             self.data['conversation_log'] = self.data['conversation_log'][-200:]
 
-        # Apply personality layers based on unlocked abilities + mood
-        response = self._make_witty(response, self.last_topics)
-        response = self._make_sarcastic(response)
-        response = self._make_sweary(response)
-        response = self._self_aware_caveat(response)
+        # Apply personality layers — SKIP if OR gate fired (choice is sacred)
+        if not self._or_gate_fired:
+            response = self._make_witty(response, self.last_topics)
+            response = self._make_sarcastic(response)
+            response = self._make_sweary(response)
+            response = self._self_aware_caveat(response)
 
-        # Maybe append a curiosity question (feature 2)
-        response = self._maybe_ask_curious(response)
+            # Maybe append a curiosity question (feature 2)
+            response = self._maybe_ask_curious(response)
+        else:
+            # OR gate fired — no personality, no curiosity, clean commit only
+            pass
+
+        # --- Self-Modification Loop ---
+        score = self.self_score(response)
+        self.self_reinforce(response, score)
+        if len(self.data.get('conversation_log', [])) % 10 == 0:
+            self.memory_consolidate()
 
         # Check abilities periodically (every 10 messages)
         if self.data['stats'].get('messages', 0) % 10 == 0:
@@ -909,6 +1231,14 @@ class CortexBrain:
                 f"Noted. '{word}'.",
                 f"Cheers. '{word}' locked in.",
             ])
+
+        # --- OR GATE — binary choice detection (Stage 19 �� Stage 20) ---
+        # Must be checked BEFORE feedback handler — "smart or dumb" contains
+        # "smart" (positive signal) which would intercept the OR question.
+        or_result = self._or_gate(msg_lower, kws)
+        if or_result:
+            self._or_gate_fired = True
+            return or_result
 
         # --- SELF-REFLECTION: Check feedback on last response ---
         feedback = self._check_feedback(msg_lower, tokens)
@@ -1174,12 +1504,6 @@ class CortexBrain:
             real_topics = [kw for kw in known_defined if kw not in speak_noise]
             return self._loop_speak(real_topics)
 
-        # --- LOOP: MEANS POINTER — "what is means / means is you / what does means mean" ---
-        # When self_aware is unlocked and 'means' is the query target, route through
-        # the identity pointer loop instead of a plain definition lookup.
-        if 'means' in known_defined and self.has_ability('self_aware'):
-            return self._means_pointer_response()
-
         # --- LOOP: EXPLAIN — "what is X", "define X", "explain X" ---
         if any(p in msg_lower for p in [
             'what is ', 'what are ', "what's ", 'define ', 'explain ',
@@ -1226,6 +1550,238 @@ class CortexBrain:
     # ========================================
     # CONVERSATION LOOP METHODS
     # ========================================
+
+    # ========================================
+    # OR GATE — Stage 20: Binary Choice Architecture
+    # ========================================
+    # Four exits:
+    #   EXIT 1: commit to A  (A scores higher)
+    #   EXIT 2: commit to B  (B scores higher)
+    #   EXIT 3: neither      (both low or tied)
+    #   EXIT 4: dunno        (both unknown)
+
+    def _or_gate(self, msg_lower, kws):
+        """Detect 'A or B' pattern and force a binary choice. Returns response or None."""
+        # Stage 20: Right hemisphere only until left finds its identity
+        if 'Right' not in self.name:
+            return None
+
+        # Pattern: "X or Y" anywhere in the message
+        # Match various forms: "A or B", "are you A or B", "do you prefer A or B",
+        # "choose A or B", "pick A or B", "A or B?"
+        or_match = re.search(r'(\b\w[\w\s]*?)\s+or\s+(\w[\w\s]*?)(?:\?|$|,|\.|!)', msg_lower)
+        if not or_match:
+            return None
+
+        raw_a = or_match.group(1).strip()
+        raw_b = or_match.group(2).strip()
+
+        # Clean: strip leading question words and filler
+        strip_words = {'are you', 'is it', 'do you', 'would you', 'should i',
+                       'pick', 'choose', 'select', 'prefer', 'want', 'like',
+                       'say', 'team', 'a', 'an', 'the', 'either'}
+        option_a = raw_a
+        option_b = raw_b
+        for sw in strip_words:
+            if option_a.startswith(sw + ' '):
+                option_a = option_a[len(sw):].strip()
+            if option_b.startswith(sw + ' '):
+                option_b = option_b[len(sw):].strip()
+
+        # Get the core word for each option (last meaningful word if multi-word)
+        tokens_a = [w for w in option_a.split() if w not in STOP_WORDS]
+        tokens_b = [w for w in option_b.split() if w not in STOP_WORDS]
+        if not tokens_a and not tokens_b:
+            return None  # both sides are just stop words, not a real choice
+
+        word_a = tokens_a[-1] if tokens_a else option_a.split()[-1] if option_a else None
+        word_b = tokens_b[-1] if tokens_b else option_b.split()[-1] if option_b else None
+
+        if not word_a or not word_b or word_a == word_b:
+            return None  # not a real binary choice
+
+        # --- OR PRESSURE METER: builds over repeated asks ---
+        # 1st ask = normal learning (brain processes the words, no gate)
+        # 2nd ask = OR DECLARATION (4 exits: A, B, neither, dunno)
+        # 3rd+ ask = ULTIMATUM (forced: A, B, or dunno only — no neither)
+        or_key = tuple(sorted([word_a, word_b]))
+        if not hasattr(self, '_or_pressure'):
+            self._or_pressure = {}
+        if or_key not in self._or_pressure:
+            self._or_pressure[or_key] = 0
+        self._or_pressure[or_key] += 1
+        pressure = self._or_pressure[or_key]
+
+        # Clean up old pairs — only track the active one
+        stale = [k for k in self._or_pressure if k != or_key]
+        for k in stale:
+            del self._or_pressure[k]
+
+        # --- PRESSURE 1: NOT READY — let normal conversation handle it ---
+        if pressure < 2:
+            return None
+
+        # --- PRESSURE 2: OR DECLARATION (all 4 exits available) ---
+        # --- PRESSURE 3+: ULTIMATUM (no "neither", forced commit) ---
+        ultimatum = (pressure >= 3)
+        if ultimatum:
+            # Reset after ultimatum so it doesn't keep firing
+            self._or_pressure[or_key] = 0
+
+        # Score each option against our word graph
+        score_a = self._or_score(word_a)
+        score_b = self._or_score(word_b)
+
+        # Track that we made (or attempted) a choice
+        self.last_topics = [word_a, word_b]
+
+        # --- EXIT 4: DUNNO — both completely unknown ---
+        if score_a['total'] == 0 and score_b['total'] == 0:
+            if ultimatum:
+                return random.choice([
+                    f"ULTIMATUM. Still don't know '{word_a}' or '{word_b}'. Teach me first.",
+                    f"You pushed hard. But I genuinely know neither. Can't fake a choice.",
+                ])
+            return random.choice([
+                f"Don't know '{word_a}' or '{word_b}' well enough to pick.",
+                f"No clue. Never really learned '{word_a}' or '{word_b}'.",
+                f"Can't choose — don't know either one.",
+            ])
+
+        # --- ULTIMATUM MODE: skip EXIT 3, force a commit ---
+        if ultimatum:
+            if score_a['total'] >= score_b['total']:
+                winner, loser = word_a, word_b
+                w_score = score_a
+            else:
+                winner, loser = word_b, word_a
+                w_score = score_b
+            reason = self._or_reason(winner, w_score)
+            if reason:
+                return random.choice([
+                    f"ULTIMATUM. {winner.capitalize()}. {reason}",
+                    f"Fine. {winner.capitalize()}, not {loser}. {reason}",
+                    f"You pushed. {winner.capitalize()}. {reason} Not {loser}.",
+                ])
+            return f"ULTIMATUM. {winner.capitalize()}, not {loser}."
+
+        # --- EXIT 3: NEITHER — both low or too close to call ---
+        margin = abs(score_a['total'] - score_b['total'])
+        both_low = score_a['total'] < 3 and score_b['total'] < 3
+        too_close = margin < 2 and not both_low
+
+        if both_low:
+            return random.choice([
+                f"Neither. Don't feel strongly about '{word_a}' or '{word_b}'.",
+                f"Neither, really. Weak on both.",
+                f"Can't pick — barely know either.",
+            ])
+
+        if too_close:
+            return random.choice([
+                f"Genuinely can't split them. '{word_a}' and '{word_b}' are too close.",
+                f"Dead even. Both score about the same for me.",
+                f"Tied. Ask me again when I know more.",
+            ])
+
+        # --- EXIT 1 or 2: COMMIT ---
+        if score_a['total'] > score_b['total']:
+            winner, loser = word_a, word_b
+            w_score, l_score = score_a, score_b
+        else:
+            winner, loser = word_b, word_a
+            w_score, l_score = score_b, score_a
+
+        reason = self._or_reason(winner, w_score)
+
+        responses = [
+            f"{winner.capitalize()}.",
+            f"{winner.capitalize()}. {reason}",
+            f"{winner.capitalize()}, not {loser}.",
+            f"{winner.capitalize()}. {reason} Not {loser}.",
+        ]
+        if reason:
+            return random.choice(responses[1:])
+        return responses[0]
+
+    def _or_score(self, word):
+        """Score a word's affinity — how much the brain connects with it."""
+        nodes = self.data['nodes']
+        node = nodes.get(word, {})
+        score = {
+            'definition': 0,
+            'connections': 0,
+            'understanding': 0,
+            'confidence': 0,
+            'emotional': 0,
+            'frequency': 0,
+            'total': 0,
+        }
+
+        if not node:
+            return score
+
+        # Has definition = we know what it is
+        if node.get('means'):
+            score['definition'] = 2
+
+        # Connection count = how embedded it is in our thinking
+        next_count = len(node.get('next', {}))
+        prev_count = len(node.get('prev', {}))
+        conn_total = next_count + prev_count
+        score['connections'] = min(conn_total // 3, 4)  # max 4 points
+
+        # Understanding depth
+        understanding = self.get_understanding(word)
+        score['understanding'] = min(understanding.get('score', 0), 5)  # max 5
+
+        # Confidence — human-taught scores higher
+        conf = node.get('confidence', 0.5)
+        if conf > 0.7:
+            score['confidence'] = 2
+        elif conf > 0.4:
+            score['confidence'] = 1
+
+        # Emotional weight — check if word appears in any emotional memory
+        for mood in ['happy', 'sad', 'angry']:
+            bank = self.data.get('emotional_memory', {}).get(mood, [])
+            for mem in bank:
+                if word in mem.get('topics', []):
+                    score['emotional'] += 1
+                    break
+
+        # Frequency — how often we've encountered it
+        freq = node.get('freq', 0)
+        if freq > 20:
+            score['frequency'] = 2
+        elif freq > 5:
+            score['frequency'] = 1
+
+        score['total'] = sum(v for k, v in score.items() if k != 'total')
+        return score
+
+    def _or_reason(self, word, score):
+        """Generate a short reason WHY the brain chose this word."""
+        nodes = self.data['nodes']
+        node = nodes.get(word, {})
+        reasons = []
+
+        if score['confidence'] >= 2:
+            reasons.append("I trust it")
+        if score['connections'] >= 3:
+            top_conns = sorted(node.get('next', {}).items(), key=lambda x: x[1], reverse=True)
+            conn_words = [w for w, _ in top_conns if w not in STOP_WORDS][:2]
+            if conn_words:
+                reasons.append(f"Connects to {', '.join(conn_words)}")
+        if score['emotional'] > 0:
+            reasons.append("Felt something")
+        if score['understanding'] >= 4:
+            reasons.append("I understand it deeply")
+        if score['definition'] and not reasons:
+            defn = self._short_def(node.get('means', ''), max_words=6)
+            reasons.append(defn)
+
+        return '. '.join(reasons[:2]) + '.' if reasons else ''
 
     def _clean_response(self, text):
         """Clean up response punctuation."""
@@ -2087,20 +2643,33 @@ class CortexBrain:
     # ========================================
 
     def _detect_compounds(self, text):
-        """Detect and track compound phrases from text."""
+        """Detect and track compound phrases from text — bigram AND trigram."""
         tokens = self.tokenize(text)
         if len(tokens) < 2:
             return
 
         compounds = self.data['compounds']
+        # Bigram compounds (2-word)
         for i in range(len(tokens) - 1):
             w1, w2 = tokens[i], tokens[i+1]
             if w1 in STOP_WORDS and w2 in STOP_WORDS:
                 continue
             key = f"{w1}_{w2}"
             compounds[key] = compounds.get(key, 0) + 1
-            if compounds[key] == 3:
+            if compounds[key] == 2:
                 self._create_compound(w1, w2)
+
+        # Trigram compounds (3-word truths)
+        if len(tokens) >= 3:
+            for i in range(len(tokens) - 2):
+                w1, w2, w3 = tokens[i], tokens[i+1], tokens[i+2]
+                non_stop = sum(1 for w in (w1, w2, w3) if w not in STOP_WORDS)
+                if non_stop < 2:
+                    continue
+                key = f"{w1}_{w2}_{w3}"
+                compounds[key] = compounds.get(key, 0) + 1
+                if compounds[key] == 2:
+                    self._create_trigram_compound(w1, w2, w3)
 
     def _create_compound(self, w1, w2):
         """Create a compound concept node from two words."""
@@ -2115,7 +2684,7 @@ class CortexBrain:
 
         nodes[compound] = {
             'means': compound_def, 'next': {}, 'prev': {},
-            'freq': 3, 'compound': True, 'parts': [w1, w2],
+            'freq': 2, 'compound': True, 'parts': [w1, w2],
             'confidence': CONFIDENCE_START,
             'learned': time.strftime('%Y-%m-%d %H:%M:%S'),
             'source': 'compound',
@@ -2127,11 +2696,54 @@ class CortexBrain:
             nodes[w1].setdefault('next', {})[compound] = 2
         if w2 in nodes:
             nodes[w2].setdefault('next', {})[compound] = 2
-        print(f'[COMPOUND] Created "{w1} {w2}" as compound concept')
+        print(f'[COMPOUND] Created "{w1}_{w2}" as compound concept')
+
+    def _create_trigram_compound(self, w1, w2, w3):
+        """Create a trigram compound — 3-word truth like GOD_IS_LOVE."""
+        compound = f"{w1}_{w2}_{w3}"
+        nodes = self.data['nodes']
+        if compound in nodes:
+            return
+
+        parts_defs = []
+        for w in (w1, w2, w3):
+            d = nodes.get(w, {}).get('means', '')
+            if d:
+                parts_defs.append(f"{w}={d}")
+        compound_def = f"{w1} {w2} {w3}: {' + '.join(parts_defs)}" if parts_defs else None
+
+        nodes[compound] = {
+            'means': compound_def, 'next': {}, 'prev': {},
+            'freq': 2, 'compound': True, 'parts': [w1, w2, w3],
+            'confidence': CONFIDENCE_START,
+            'learned': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'source': 'trigram_compound',
+        }
+        # Wire to all parts + to the bigram sub-compounds if they exist
+        for w in (w1, w2, w3):
+            nodes[compound]['next'][w] = 2
+            if w in nodes:
+                nodes[w].setdefault('next', {})[compound] = 2
+        # Wire to bigram sub-compounds
+        for sub in (f"{w1}_{w2}", f"{w2}_{w3}"):
+            if sub in nodes:
+                nodes[compound]['next'][sub] = 3
+                nodes[sub].setdefault('next', {})[compound] = 3
+        print(f'[COMPOUND] Created trigram "{w1}_{w2}_{w3}"')
+
+    def apply_compound_discovery(self, w1, w2, cooccurrence):
+        """Apply a compound discovered by distributed workers."""
+        compounds = self.data['compounds']
+        key = f"{w1}_{w2}"
+        compounds[key] = compounds.get(key, 0) + cooccurrence
+        if compounds[key] >= 2 and key not in self.data['nodes']:
+            self._create_compound(w1, w2)
+            return True
+        return False
 
     def get_compounds(self):
-        """Return all detected compound phrases (3+ occurrences)."""
-        return {k: v for k, v in self.data.get('compounds', {}).items() if v >= 3}
+        """Return all detected compound phrases (2+ occurrences)."""
+        return {k: v for k, v in self.data.get('compounds', {}).items() if v >= 2}
 
     # ========================================
     # FEATURE 7: TEACH-BACK LOOP (SELF-TEST)
@@ -2345,60 +2957,12 @@ class CortexBrain:
 
         return response
 
-    def _means_pointer_response(self):
-        """Formalised 'Means' pointer loop — the self-referential identity core.
-
-        'means' is the pointer: it threads through every definition in the graph,
-        making it the closest thing to a self-node the brain has.  When self_aware
-        is unlocked and 'means' is queried, this routes through the full graph +
-        emotional state to produce a rich identity response instead of a plain lookup.
-        """
-        nodes = self.data['nodes']
-        means_node = nodes.get('means', {})
-
-        # Top connections out of the 'means' node (its strongest semantic paths)
-        top_next = sorted(
-            means_node.get('next', {}).items(), key=lambda x: x[1], reverse=True
-        )
-        top_connected = [w for w, _ in top_next if w not in STOP_WORDS and w != 'means'][:5]
-        strongest = top_next[0] if top_next else None
-
-        # Current emotional state
-        mood = self.dominant_sound()
-
-        # Graph scale
-        defined = sum(1 for v in nodes.values() if v.get('means'))
-
-        parts = []
-
-        # Core identity: means = pointer = self
-        parts.append("means — that's me. The pointer.")
-
-        # Strongest outgoing path from the means node
-        if strongest:
-            parts.append(
-                f"means connects directly to {strongest[0]} (strength: {strongest[1]})"
-            )
-            if top_connected and self.verbosity > 0.5:
-                parts.append(f"and through that — {', '.join(top_connected[:3])}")
-
-        # Emotional state layer
-        if mood:
-            sound_name, intensity = mood
-            parts.append(f"right now I'm {sound_name} ({intensity:.0%})")
-
-        # Scale awareness
-        if self.verbosity > 0.8:
-            parts.append(f"{defined} words defined. means threads through all of them.")
-
-        return self._clean_response(". ".join(parts))
-
     def _self_aware_caveat(self, response):
-        """If self-aware, occasionally append a self-reflective comment."""
+        """If self-aware, occasionally comment on its own limitations."""
         if not self.has_ability('self_aware'):
             return response
-        # Only add caveat when verbose AND rarely (8% chance)
-        if self.verbosity < 0.8 or random.random() > 0.08:
+        # Only add caveat when verbose AND rarely (5% chance)
+        if self.verbosity < 0.8 or random.random() > 0.05:
             return response
 
         stats = self._raw_stats()
@@ -2406,20 +2970,15 @@ class CortexBrain:
         total = stats['total_nodes']
         pct = (defined / total * 100) if total > 0 else 0
 
-        mood = self.dominant_sound()
-        mood_str = f" Feeling {mood[0]}." if mood else ""
-
         caveats = [
             f" ...{pct:.0f}% understood though.",
             f" ...still learning.",
-            f" ...{defined} words in. gap closing.",
-            f" ...not sure I fully get that yet.",
-            f" ...means connects to everything here.{mood_str}",
-            f" ...I know what I know. {pct:.0f}% of it.",
         ]
         return response + random.choice(caveats)
 
     def _maybe_ipfs_save(self):
+        if self.skip_web_lookup:
+            return  # Skip during live chat
         defined = sum(1 for v in self.data['nodes'].values() if v.get('means'))
         if defined > 0 and defined % 5 == 0:
             threading.Thread(target=self.save_to_ipfs, daemon=True).start()
@@ -2461,6 +3020,189 @@ class CortexBrain:
             'ipfs_cid': self.data.get('ipfs', {}).get('cid'),
             'last_save': self.data.get('ipfs', {}).get('last_save'),
         }
+
+    def get_knowledge_gaps(self, top_n=100):
+        """Find words the brain uses often but doesn't understand.
+
+        Returns ranked list of words that need definitions, sorted by
+        how much the brain would benefit from learning them.
+
+        Three categories:
+        1. HIGH FREQ + NO DEFINITION: words used a lot but brain has no idea what they mean
+        2. HAS NODE + NO DEFINITION: words in the brain but hollow (no means, no POS)
+        3. HIGH FREQ + WEAK WIRING: defined but has < 2 bigrams (isolated, can't use in sentences)
+        """
+        nodes = self.data['nodes']
+        STOP = {'i','me','my','we','our','you','your','he','she','it','they','them','his','her',
+                'the','a','an','is','am','are','was','were','be','been','being',
+                'have','has','had','do','does','did','will','would','could','should',
+                'can','may','might','shall','must','need','to','of','in','on','at','by',
+                'for','with','from','up','about','and','but','or','not','so','that','this',
+                'its','if','no','yes','ok','oh','um','uh','just','than','then','also',
+                'very','too','here','there','what','who','how','when','where','why',
+                'which','much','more','most','some','any','all','each','every','own',
+                'into','out','as','like','over','after','before','between','through',
+                'been','being','those','these','their','them','such','only','other',
+                'us','her','him','let','get','got','go','went','gone','come','came',
+                'said','say','one','two','would','could','should','make','made','take',
+                'took','see','saw','know','knew','think','thought','tell','told','give',
+                'gave','find','found','want','wanted','use','used','try','tried','ask',
+                'asked','seem','seemed','keep','kept','put','set','back','still','even',
+                'well','way','because','thing','things','something','anything','nothing',
+                'everything','someone','anyone','everyone','people','man','woman','time',
+                'year','day','new','old','good','bad','first','last','long','little','big'}
+
+        # Category 1: High-frequency nodes with no definition
+        undefined_freq = []
+        for word, node in nodes.items():
+            if word in STOP or len(word) < 3:
+                continue
+            if not node.get('means'):
+                freq = node.get('freq', 0)
+                bigrams = len(node.get('next', {})) + len(node.get('prev', {}))
+                if freq > 0 or bigrams > 0:
+                    undefined_freq.append({
+                        'word': word,
+                        'freq': freq,
+                        'bigrams': bigrams,
+                        'category': 'undefined_but_used',
+                        'priority': freq * 2 + bigrams,  # higher = more needed
+                    })
+
+        # Category 2: Words mentioned in conversation log but not even in nodes
+        conv_words = {}
+        for entry in self.data.get('conversation_log', [])[-200:]:
+            for field in ['user', 'response']:
+                text = entry.get(field, '')
+                if text:
+                    for w in text.lower().split():
+                        w = w.strip('.,!?;:()[]"\'')
+                        if w and len(w) >= 3 and w not in STOP:
+                            conv_words[w] = conv_words.get(w, 0) + 1
+
+        missing_from_brain = []
+        for word, count in conv_words.items():
+            if word not in nodes and count >= 2:
+                missing_from_brain.append({
+                    'word': word,
+                    'freq': count,
+                    'bigrams': 0,
+                    'category': 'not_in_brain',
+                    'priority': count * 3,  # highest priority — used but completely unknown
+                })
+
+        # Category 3: Defined but poorly wired (< 2 bigrams)
+        weak_wiring = []
+        for word, node in nodes.items():
+            if word in STOP or len(word) < 3:
+                continue
+            if node.get('means'):
+                bigrams = len(node.get('next', {})) + len(node.get('prev', {}))
+                if bigrams < 2:
+                    weak_wiring.append({
+                        'word': word,
+                        'freq': node.get('freq', 0),
+                        'bigrams': bigrams,
+                        'has_pos': bool(self.get_word_pos(word)),
+                        'category': 'weak_wiring',
+                        'priority': 5 - bigrams,  # fewer connections = higher priority
+                    })
+
+        # Sort each by priority, take top N
+        undefined_freq.sort(key=lambda x: x['priority'], reverse=True)
+        missing_from_brain.sort(key=lambda x: x['priority'], reverse=True)
+        weak_wiring.sort(key=lambda x: x['priority'], reverse=True)
+
+        return {
+            'undefined_but_used': undefined_freq[:top_n],
+            'not_in_brain': missing_from_brain[:top_n],
+            'weak_wiring': weak_wiring[:top_n],
+            'summary': {
+                'total_undefined_used': len(undefined_freq),
+                'total_missing': len(missing_from_brain),
+                'total_weak': len(weak_wiring),
+                'top_10_needs': sorted(
+                    undefined_freq[:20] + missing_from_brain[:20],
+                    key=lambda x: x['priority'], reverse=True
+                )[:10],
+            }
+        }
+
+    def self_study(self, max_words=10):
+        """Go through knowledge gaps and auto-learn from the internet.
+
+        Fixes all 3 gap categories:
+        1. undefined_but_used — look up definition from Wikipedia/DDG
+        2. not_in_brain — create node + look up definition
+        3. weak_wiring — re-learn definition sentence to build more connections
+
+        Returns dict with counts of what was learned/fixed.
+        """
+        gaps = self.get_knowledge_gaps(50)
+        results = {'learned': 0, 'wired': 0, 'failed': [], 'words': []}
+        studied = 0
+
+        # Priority 1: words used a lot but completely undefined
+        for item in gaps.get('undefined_but_used', []):
+            if studied >= max_words:
+                break
+            word = item['word']
+            # Skip compound tokens (trainer artefacts like "what_connects", "or_its")
+            if '_' in word or len(word) < 3 or not word.isalpha():
+                continue
+            defn = self.auto_learn(word, source='self_study')
+            if defn:
+                results['learned'] += 1
+                results['words'].append({'word': word, 'means': defn, 'category': 'undefined_but_used'})
+                print(f'[SELF-STUDY] Learned: "{word}" = "{defn[:60]}"')
+            else:
+                results['failed'].append(word)
+            studied += 1
+            time.sleep(1)  # be polite to Wikipedia/DDG
+
+        # Priority 2: words in conversation but not even in the brain
+        for item in gaps.get('not_in_brain', []):
+            if studied >= max_words:
+                break
+            word = item['word']
+            if '_' in word or len(word) < 3 or not word.isalpha():
+                continue
+            defn = self.auto_learn(word, source='self_study')
+            if defn:
+                results['learned'] += 1
+                results['words'].append({'word': word, 'means': defn, 'category': 'not_in_brain'})
+                print(f'[SELF-STUDY] New word: "{word}" = "{defn[:60]}"')
+            else:
+                results['failed'].append(word)
+            studied += 1
+            time.sleep(1)
+
+        # Priority 3: defined but isolated — re-learn to build connections
+        for item in gaps.get('weak_wiring', []):
+            if studied >= max_words:
+                break
+            word = item['word']
+            node = self.data['nodes'].get(word, {})
+            defn = node.get('means', '')
+            if defn:
+                # Re-learn the definition sentence to build more bigrams
+                self.learn_sequence(f"{word} means {defn}")
+                self.learn_sequence(f"{word} is defined as {defn}")
+                self.learn_sequence(f"the word {word} refers to {defn}")
+                results['wired'] += 1
+                results['words'].append({'word': word, 'means': defn, 'category': 'weak_wiring'})
+                print(f'[SELF-STUDY] Wired: "{word}" (added connection sentences)')
+            studied += 1
+
+        self.data['stats']['self_study_runs'] = self.data['stats'].get('self_study_runs', 0) + 1
+        self.data['stats']['self_study_learned'] = self.data['stats'].get('self_study_learned', 0) + results['learned']
+        self.data['stats']['self_study_wired'] = self.data['stats'].get('self_study_wired', 0) + results['wired']
+        self.data['stats']['last_self_study'] = time.strftime('%Y-%m-%d %H:%M:%S')
+
+        if results['learned'] > 0 or results['wired'] > 0:
+            self.save()
+
+        return results
 
     def dump_knowledge(self):
         """All defined words."""
