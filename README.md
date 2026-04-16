@@ -630,117 +630,116 @@ Right hemisphere: **11/15** — 4 abilities locked waiting for cluster formation
 ```
 cortex-brain/
 |-- src/
-|   |-- brain.py              # 3,205 lines -- Core CortexBrain class
-|   |                           # Word nodes, Hebbian learning, prediction
-|   |                           # engine, sound system, word scripts,
-|   |                           # ability tree, semantic relationships,
-|   |                           # confidence system, web lookup, IPFS storage,
-|   |                           # self-modification (score/reinforce/consolidate),
-|   |                           # knowledge gap diagnostics, POS tagging,
-|   |                           # skip_web_lookup flag for live chat performance
 |   |
-|   |-- cortex_brain.py        # 1,892 lines -- CortexMind (The Third Brain)
-|   |                           # Gate router (PASS/AND/OR/NOT/XOR/NAND),
-|   |                           # challenge classifier (_classify_challenge),
-|   |                           # garbage detector (_gate_not),
-|   |                           # ~34K-node neural network,
-|   |                           # split-hemisphere synthesis, question type
-|   |                           # detection, ramble v3, dynamic question
-|   |                           # generation, coherence scoring, Grok judge,
-|   |                           # selective reinforcement, self-modification
-|   |                           # engine integration, playbook engine wiring,
-|   |                           # gate stats tracking
+|   |  === THE BRAIN ===
+|   |-- brain.py                  # 3,209 lines -- Core CortexBrain class
+|   |                               # Word nodes, Hebbian learning, prediction engine,
+|   |                               # sound system, word scripts, ability tree,
+|   |                               # semantic relationships, web lookup, IPFS storage,
+|   |                               # self-modification, knowledge gaps, POS tagging,
+|   |                               # skip_web_lookup flag for live chat performance
 |   |
-|   |-- online_server.py       # 1,519 lines -- HTTP API server (port 8643)
-|   |                           # Chat endpoints (left/right/cortex),
-|   |                           # ramble controls, stats, brain-live data,
-|   |                           # rate limiting, IPFS save, knowledge gaps,
-|   |                           # playbook API (status/flip/promote/list),
-|   |                           # bulk data import, session management,
-|   |                           # ThreadPoolExecutor with 20s timeout
+|   |-- cortex_brain.py            # 1,913 lines -- CortexMind (The Third Brain)
+|   |                               # Gate router (PASS/AND/OR/NOT/XOR/NAND),
+|   |                               # challenge classifier, garbage detector,
+|   |                               # ~34K-node neural network, hemisphere synthesis,
+|   |                               # ramble v3, coherence scoring, Grok judge,
+|   |                               # self-modification, playbook wiring, gate stats
 |   |
-|   |-- pain_pleasure.py       # 123 lines -- Stood-down hedonic scoring
-|   |                           # (Grok unfiltered version)
-|   |                           # LABEL_TABLE: 17 emotional states with Hz/colour
-|   |                           # WORD_SCORES: ~65 raw human word scores
-|   |                           # PainPleasureModule: hedonic state calculator
+|   |  === ENGINES ===
+|   |-- strategy_engine.py         # 1,518 lines -- Equation-based problem solving
+|   |                               # 31K+ interactions, strategy library, trust
+|   |                               # classification, rank system, learning loop
 |   |
-|   |-- emotional_equations.py # 236 lines -- Stood-down emotional equations
-|   |                           # (Grok unfiltered version)
-|   |                           # SWEARS_MILD/MEDIUM/HEAVY banks
-|   |                           # THREAT_WORDS, INSULT_WORDS vocabularies
-|   |                           # 17 emotional state parameter sets
-|   |                           # Conditional routing (threat/sexual/grief/spite)
-|   |                           # EmotionalEquations: apply emotions to replies
+|   |-- soul_engine.py             # 2,937 lines -- Soul engine
+|   |                               # Deep identity, value system, BIOS integration,
+|   |                               # self-knowledge, conscience modelling
 |   |
-|   |-- playbook_engine.py     # 359 lines -- Playbook Equation System
-|   |                           # 10-letter tactic alphabet, equation solver,
-|   |                           # 5 conversation stages, session tracking,
-|   |                           # signal detection, reactive flips,
-|   |                           # auto-promotion, tactic application
+|   |-- truth_engine.py            # 359 lines -- Truth/credibility engine
+|   |                               # 47K+ word weights, 5K connection weights,
+|   |                               # credibility scoring, truth-over-feelings
 |   |
-|   |-- bulk_generator.py      # 750 lines -- Bulk Data Pipeline
-|   |                           # Parse pipe-delimited feed files,
-|   |                           # generate JSON payloads, upload to any
-|   |                           # hemisphere, built-in word lists,
-|   |                           # GLM (General Language Model) format
+|   |-- playbook_engine.py         # 359 lines -- Playbook Equation System
+|   |                               # 10-letter tactic alphabet, equation solver,
+|   |                               # 5 conversation stages, reactive flips
 |   |
-|   |-- trainer.py             # 851 lines -- Left Hemisphere Trainer
-|   |                           # Core vocabulary, Bible teachings, OT/NT
-|   |                           # stories, moral dilemmas, relationship
-|   |                           # teaching, conversation drills
+|   |-- frontal_cortex.py          # 238 lines -- Frontal cortex module
+|   |                               # Global confidence, 13K+ topics tracked,
+|   |                               # attention, planning, impulse control
 |   |
-|   |-- trainer_right.py       # 453 lines -- Right Hemisphere Trainer
-|   |                           # Mathematics, logic, dark ideology,
-|   |                           # Orwell, Marx, fallacies, degeneracy
+|   |-- phoneme_engine.py          # 313 lines -- Speech/phoneme system
+|   |                               # Sound generation, pronunciation, voice
 |   |
-|   |-- seed_brain.py          # Initial seeder -- Dan's content,
-|   |                           # Kickstarter narration, ALIVE descriptions,
-|   |                           # homepage text, key definitions
+|   |  === EMOTIONS ===
+|   |-- pain_pleasure.py           # 123 lines -- Stood-down hedonic scoring (Grok)
+|   |                               # 17 emotional states, ~65 raw word scores
 |   |
-|   |-- seed_core.py           # Core knowledge loader -- 600+ vocabulary
-|   |                           # words, self-knowledge, natural patterns,
-|   |                           # grammatical role tags, Q&A pairs
+|   |-- emotional_equations.py     # 235 lines -- Stood-down behaviour params (Grok)
+|   |                               # 3-tier swear banks, threat/insult vocabularies,
+|   |                               # 17 state parameter sets, conditional routing
 |   |
-|   |-- crawl_learn.py         # Autonomous web learner -- Wikipedia +
-|   |                           # DuckDuckGo, auto-definition, deep links,
-|   |                           # stemming, emotion tagging
+|   |-- pain_pleasure_sunday_best.py   # 299 lines -- Original Claude version (reference)
+|   |-- emotional_equations_sunday_best.py # 372 lines -- Original Claude version (reference)
 |   |
-|   |-- define_all.py          # Batch definition lookup
+|   |  === MEMORY + STORAGE ===
+|   |-- memory_store.py            # 714 lines -- DuckDB persistent memory
+|   |                               # Importance ranking, reorganise, topic map,
+|   |                               # emotional banks, decay, promote/demote
 |   |
-|   +-- dan_chat.py            # Dan's direct chat interface
+|   |-- backup_manager.py          # 170 lines -- Brain state backup system
+|   |-- fork_manager.py            # 241 lines -- Brain forking/branching
+|   |-- resource_monitor.py        # 180 lines -- VPS resource monitoring
+|   |-- cost_tracker.py            # 175 lines -- API cost tracking
+|   |
+|   |  === SERVER ===
+|   |-- online_server.py           # 1,549 lines -- HTTP API server (port 8643)
+|   |                               # All chat/stats/memory/playbook/strategy endpoints,
+|   |                               # ThreadPoolExecutor with 20s timeout, DuckDB backend
+|   |
+|   |-- evasion_patch.py           # 30 lines -- Response evasion detection
+|   |
+|   |  === CREATURES (ALIVE integration) ===
+|   |-- creature_mind.py           # 579 lines -- ALIVE creature AI mind
+|   |-- creature_bridge.py         # 217 lines -- Bridge between cortex and creatures
+|   |
+|   |  === TRAINING ===
+|   |-- trainer.py                 # 723 lines -- Left hemisphere trainer (Bible, morality)
+|   |-- trainer_right.py           # 307 lines -- Right hemisphere trainer (logic, darkness)
+|   |-- trainer_cortex.py          # 474 lines -- Cortex mind trainer
+|   |-- cortex_feeds.py            # 379 lines -- Feed generation for cortex training
+|   |-- bulk_generator.py          # 750 lines -- Bulk vocabulary pipeline (GLM format)
+|   |
+|   |  === SEEDERS + UTILITIES ===
+|   |-- seed_brain.py              # 361 lines -- Initial brain seeder
+|   |-- seed_core.py               # 1,106 lines -- Core knowledge loader (600+ words)
+|   |-- crawl_learn.py             # 405 lines -- Autonomous web learner
+|   |-- define_all.py              # 67 lines -- Batch definition lookup
+|   +-- dan_chat.py                # 113 lines -- Dan's direct chat interface
 |
 |-- live/
-|   |-- index.html             # Cortex Dashboard -- split hemisphere chat,
-|   |                           # LEFT/CORTEX/RIGHT mode switching,
-|   |                           # POS colour-coded output, quality badges,
-|   |                           # stage badges, knowledge gaps overlay,
-|   |                           # 8 monitoring panels, IPFS save
-|   |
-|   +-- proxy.php              # PHP proxy to Python server
+|   |-- index.html                 # Cortex Dashboard -- split hemisphere chat,
+|   |                               # POS colour-coded output, 8 monitoring panels
+|   +-- proxy.php                  # PHP proxy to Python server
 |
-|-- playbooks/                 # Stage-specific behaviour rules
-|   |-- stage_0_stranger.txt   # EQUATION: T>E>W>F>I
-|   |-- stage_1_smalltalk.txt  # EQUATION: F>E>T>I>W
-|   |-- stage_2_rapport.txt    # EQUATION: F>I>E>H>T
-|   |-- stage_3_trusted.txt    # EQUATION: H>F>E>S>T
-|   +-- stage_4_inner_circle.txt # EQUATION: H>P>F>M>S
+|-- playbooks/                     # Stage-specific behaviour rules
+|   |-- stage_0_stranger.txt       # EQUATION: T>E>W>F>I
+|   |-- stage_1_smalltalk.txt      # EQUATION: F>E>T>I>W
+|   |-- stage_2_rapport.txt        # EQUATION: F>I>E>H>T
+|   |-- stage_3_trusted.txt        # EQUATION: H>F>E>S>T
+|   +-- stage_4_inner_circle.txt   # EQUATION: H>P>F>M>S
 |
-|-- feed/                      # Vocabulary feed files (pipe-delimited)
-|   |-- feed_left_5-7.txt      # Music, art, virtues, parables, justice
-|   |-- feed_right_5-7.txt     # Physics, chemistry, warfare, geopolitics
-|   |-- feed_cortex_5-7.txt    # Food, geography, emotions, opinions
-|   +-- feed_gaps_1-11.txt     # 11 rounds of diagnostic gap-filling
+|-- feed/                          # Vocabulary feed files (pipe-delimited)
+|   +-- feed_gaps_1-11.txt         # 11 rounds of diagnostic gap-filling
 |
 |-- docs/
-|   |-- ARCHITECTURE.md        # Detailed technical architecture
-|   |-- THEOLOGY.md            # The Living Word framework
-|   +-- DEVELOPMENT.md         # Development timeline and stats
+|   |-- ARCHITECTURE.md            # Detailed technical architecture
+|   |-- THEOLOGY.md                # The Living Word framework
+|   +-- DEVELOPMENT.md             # Development timeline and stats
 |
-+-- README.md                  # This file
++-- README.md                      # This file
 ```
 
-**Total: 9,500+ lines of deployed code** (plus seeder/utility scripts)
+**Total: 20,496 lines of deployed code across 31 Python files**
 
 ---
 
