@@ -68,9 +68,23 @@ class DuckDBBackend(object):
     def connect(self):
         """Open DuckDB file database."""
         import duckdb
+        import os
         self.conn = duckdb.connect(self.path)
+        # Set home directory for extension installation
+        home = os.environ.get('HOME', os.environ.get('USERPROFILE', '/tmp'))
+        try:
+            self.conn.execute("SET home_directory='%s'" % home)
+        except Exception:
+            pass
         # Install and load uuid extension
-        self.conn.execute("INSTALL 'uuid'; LOAD 'uuid';")
+        try:
+            self.conn.execute("INSTALL 'uuid'; LOAD 'uuid';")
+        except Exception:
+            # uuid might already be installed or built-in
+            try:
+                self.conn.execute("LOAD 'uuid';")
+            except Exception:
+                pass  # uuid() might work without explicit load in newer versions
         print('[MEMORY] DuckDB connected: %s' % self.path)
 
     def init_tables(self):
@@ -79,7 +93,7 @@ class DuckDBBackend(object):
             return
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS memories (
-                id VARCHAR DEFAULT uuid()::VARCHAR PRIMARY KEY,
+                id VARCHAR PRIMARY KEY,
                 brain VARCHAR NOT NULL,
                 emotion VARCHAR NOT NULL,
                 category VARCHAR NOT NULL,
@@ -99,6 +113,19 @@ class DuckDBBackend(object):
                 created_at TIMESTAMP DEFAULT current_timestamp
             )
         """)
+        # Add importance column if missing (upgrade from old schema)
+        try:
+            self.conn.execute("ALTER TABLE memories ADD COLUMN importance FLOAT DEFAULT 0.5")
+            print('[MEMORY] Added importance column to existing table')
+        except Exception:
+            pass  # column already exists
+
+        # Backfill importance from value for existing records
+        try:
+            self.conn.execute("UPDATE memories SET importance = value WHERE importance IS NULL OR importance = 0.5")
+        except Exception:
+            pass
+
         # Indexes for fast queries
         for col in ['emotion', 'brain', 'value', 'importance', 'promoted']:
             try:
