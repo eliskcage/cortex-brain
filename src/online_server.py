@@ -88,29 +88,13 @@ playbook = PlaybookEngine()
 cortex.playbook = playbook
 print('[CORTEX] Dashboard modules + Playbook Engine loaded')
 
-# --- Memory Store (persistent emotional memory + CockroachDB) ---
+# --- Memory Store (persistent emotional memory — DuckDB, local, zero latency) ---
 from memory_store import MemoryStore
 MEMORY_BACKENDS = [
     {
         'name': 'duckdb',
         'type': 'duckdb',
         'path': str(STUDIO_DIR / 'soul_memory.db'),
-    },
-    {
-        'name': 'cockroachdb',
-        'type': 'postgresql',
-        'dsn': 'postgresql://USER:PASS@HOST:26257/DB?sslmode=require'  # REDACTED
-    },
-    {
-        'name': 'supabase',
-        'type': 'supabase',
-        'url': 'https://YOUR_PROJECT.supabase.co',  # REDACTED
-        'service_key': 'YOUR_SERVICE_KEY'  # REDACTED
-    },
-    {
-        'name': 'neon',
-        'type': 'postgresql',
-        'dsn': 'postgresql://USER:PASS@HOST/DB?sslmode=require'  # REDACTED
     },
 ]
 try:
@@ -757,6 +741,52 @@ class OnlineHandler(http.server.SimpleHTTPRequestHandler):
             if memory:
                 affected = memory.decay_unused(days=7, amount=0.02)
                 self._json_response({'ok': True, 'decayed': affected})
+            else:
+                self._json_response({'ok': False})
+
+        elif self.path == '/api/memory-importance':
+            # Get memories ranked by importance — the brain's own priority ordering
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length)) if length else {}
+            limit = min(int(body.get('limit', 20)), 100)
+            topic = body.get('topic', '')
+            if memory:
+                if topic:
+                    mems = memory.get_important_by_topic(topic, limit)
+                else:
+                    mems = memory.get_by_importance(limit)
+                self._json_response({'ok': True, 'memories': mems})
+            else:
+                self._json_response({'ok': False, 'memories': []})
+
+        elif self.path == '/api/memory-reorganise':
+            # Recalculate importance for all memories — the brain's filing system
+            if memory:
+                affected = memory.reorganise()
+                self._json_response({'ok': True, 'reorganised': affected})
+            else:
+                self._json_response({'ok': False})
+
+        elif self.path == '/api/memory-topics':
+            # Get topic map ranked by importance
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length)) if length else {}
+            limit = min(int(body.get('limit', 20)), 50)
+            if memory:
+                topics = memory.summarise_topics(limit)
+                self._json_response({'ok': True, 'topics': topics})
+            else:
+                self._json_response({'ok': False, 'topics': []})
+
+        elif self.path == '/api/memory-set-importance':
+            # Directly set a memory's importance — brain decides what matters
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length)) if length else {}
+            mid = body.get('id', '')
+            importance = body.get('importance', 0.5)
+            if memory and mid:
+                memory.set_importance(mid, float(importance))
+                self._json_response({'ok': True, 'id': mid, 'importance': importance})
             else:
                 self._json_response({'ok': False})
 
