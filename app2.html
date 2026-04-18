@@ -59,11 +59,18 @@ body{background:#06000f;color:#d0d8f0;font-family:'Inter',system-ui,sans-serif;l
 .hero-creature img{width:100%;display:block}
 
 /* SOUL DEMO WINDOW */
-.soul-demo-wrap{width:min(94vw,560px);aspect-ratio:9/14;border-radius:20px;overflow:hidden;margin:0 auto 32px;border:1px solid rgba(204,68,255,0.15);box-shadow:0 20px 80px rgba(120,0,200,0.2),0 0 40px rgba(100,180,255,0.06);position:relative;background:#050208}
+.soul-demo-wrap{width:min(96vw,900px);aspect-ratio:16/9;border-radius:20px;overflow:hidden;margin:0 auto 32px;border:1px solid rgba(204,68,255,0.15);box-shadow:0 20px 80px rgba(120,0,200,0.2),0 0 40px rgba(100,180,255,0.06);position:relative;background:#050208}
 .soul-demo-wrap iframe{width:100%;height:100%;border:none}
-.soul-demo-badge{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:10;padding:3px 12px;border-radius:12px;font-size:8px;letter-spacing:3px;color:rgba(100,180,255,0.7);border:1px solid rgba(100,180,255,0.15);background:rgba(5,2,8,0.85);backdrop-filter:blur(8px);pointer-events:none;font-weight:700}
-.soul-demo-label{text-align:center;font-size:11px;color:rgba(208,216,240,0.3);margin-top:-20px;margin-bottom:24px;letter-spacing:1px}
-.soul-demo-label span{color:rgba(100,180,255,0.6);font-weight:600}
+/* HERO OVERLAY — sits ON TOP of 3D demo */
+.hero-overlay{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(6,0,15,0.75);backdrop-filter:blur(6px);cursor:pointer;transition:opacity 1.2s ease,visibility 1.2s;border-radius:20px}
+.hero-overlay.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.hero-overlay .overlay-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:16px;font-size:10px;letter-spacing:2px;color:rgba(204,68,255,0.7);border:1px solid rgba(204,68,255,0.15);background:rgba(204,68,255,0.04);margin-bottom:16px;text-transform:uppercase}
+.hero-overlay .overlay-badge .dot{width:6px;height:6px;border-radius:50%;background:#cc44ff;animation:pulse 2s ease infinite}
+.hero-overlay .overlay-title{font-size:clamp(40px,9vw,80px);font-weight:900;letter-spacing:6px;line-height:1;color:#fff;margin-bottom:8px}
+.hero-overlay .overlay-title .oi{color:#cc44ff}
+.hero-overlay .overlay-sub{font-size:16px;color:rgba(208,216,240,0.5);font-weight:300;margin-bottom:4px}
+.hero-overlay .overlay-line{font-size:12px;color:rgba(208,216,240,0.25);margin-bottom:16px}
+.hero-overlay .overlay-tap{font-size:9px;letter-spacing:3px;color:rgba(204,68,255,0.4);animation:pulse 2s ease infinite}
 .hero-ctas{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-bottom:24px}
 .btn-get{padding:14px 36px;background:linear-gradient(135deg,#cc44ff,#8822dd);color:#fff;font-weight:700;font-size:14px;letter-spacing:2px;border:none;border-radius:10px;cursor:pointer;text-decoration:none;transition:all .3s;box-shadow:0 4px 24px rgba(204,68,255,0.3)}
 .btn-get:hover{transform:translateY(-2px);box-shadow:0 8px 40px rgba(204,68,255,0.45)}
@@ -251,21 +258,23 @@ footer a:hover{color:#cc44ff}
 <!-- HERO -->
 <section class="hero">
   <div class="hero-bg"><canvas id="starfield"></canvas></div>
-  <div class="hero-badge"><span class="dot"></span> PROOF OF LIFE</div>
-  <h1><span class="a">A</span><span class="l">L</span><span class="i"><span class="i-dot" id="iDot"></span><span style="font-style:normal;display:inline-block;width:0.55em;text-align:center">&#305;</span></span><span class="v">V</span><span class="e">E</span></h1>
-  <p class="hero-sub">A creature that lives on your phone.</p>
-  <p class="hero-line">Teach it. Feed it. Watch it evolve.</p>
-  <div class="soul-demo-wrap">
-    <div class="soul-demo-badge">LIVE SOUL</div>
+  <div class="soul-demo-wrap" id="demoWrap">
     <iframe src="/alive/soul-demo.html" allow="autoplay" loading="lazy" title="Living Soul Demo"></iframe>
+    <!-- OVERLAY — fades out on tap, returns after 60s idle -->
+    <div class="hero-overlay" id="heroOverlay" onclick="enterDemo()">
+      <div class="overlay-badge"><span class="dot"></span> PROOF OF LIFE</div>
+      <div class="overlay-title">AL<span class="oi">i</span>VE</div>
+      <p class="overlay-sub">A creature that lives on your phone.</p>
+      <p class="overlay-line">Teach it. Feed it. Watch it evolve.</p>
+      <p class="overlay-tap">TAP TO PLAY</p>
+    </div>
   </div>
-  <p class="soul-demo-label">Tap the emotions. Tap the fairy. <span>It speaks in shapes.</span></p>
   <div class="hero-ctas">
     <a href="#skills" class="btn-get">UNLOCK SKILLS</a>
     <a href="/the-dot/" class="btn-book">READ THE BOOK</a>
   </div>
   <div class="store-badges">
-    <a href="https://www.amazon.co.uk/dp/B0DT1ALIVE" target="_blank">
+    <a href="https://www.amazon.co.uk/dp/B0GX7VV6LL" target="_blank">
       <svg viewBox="0 0 24 24"><path d="M13.96 22.06c-1.5.87-5.42 3.06-7.46.91-.68-.72-.52-2.07-.52-3.16V5.08c0-1.12-.17-2.53.56-3.22C8.58-.12 12.49 1.87 14 2.89l6.57 3.81c1.47.85 2.43 1.55 2.43 3.3s-.96 2.45-2.43 3.3l-6.61 3.86zM1.94 18.66c.82.42 1.85.89 2.78.42.65-.33.88-1.13.88-1.85V6.77c0-.72-.23-1.52-.88-1.85-.93-.47-1.96 0-2.78.42C.93 5.92 0 6.65 0 8V17c0 1.35.93 2.08 1.94 2.66z"/></svg>
       Amazon Appstore
     </a>
@@ -431,6 +440,26 @@ footer a:hover{color:#cc44ff}
   </div>
 </section>
 
+<!-- BABEL FISH TEASER -->
+<div style="max-width:600px;margin:0 auto;padding:60px 24px 0;text-align:center">
+  <div style="display:inline-flex;align-items:center;gap:14px;padding:18px 32px;border-radius:16px;border:1px solid rgba(255,200,60,0.08);background:rgba(255,200,60,0.02)">
+    <svg viewBox="0 0 48 48" width="36" height="36" style="flex-shrink:0">
+      <ellipse cx="24" cy="24" rx="18" ry="11" fill="none" stroke="rgba(255,200,60,0.3)" stroke-width="1"/>
+      <ellipse cx="24" cy="24" rx="18" ry="11" fill="rgba(255,200,60,0.04)"/>
+      <circle cx="16" cy="22" r="2" fill="rgba(255,200,60,0.4)"/>
+      <path d="M30 20 Q36 24 30 28" fill="none" stroke="rgba(255,200,60,0.3)" stroke-width="1"/>
+      <polygon points="24,14 27,17 21,17" fill="rgba(255,200,60,0.25)"/>
+      <polygon points="18,30 21,28 21,32" fill="rgba(255,200,60,0.2)"/>
+      <polygon points="30,30 33,28 33,32" fill="rgba(255,200,60,0.2)"/>
+    </svg>
+    <div style="text-align:left">
+      <div style="font-size:8px;letter-spacing:4px;color:rgba(255,200,60,0.35);font-weight:700">COMING SOON</div>
+      <div style="font-size:13px;color:rgba(255,200,60,0.55);font-weight:600;letter-spacing:1px;margin-top:2px">THE BABEL FISH</div>
+      <div style="font-size:10px;color:rgba(208,216,240,0.2);margin-top:3px;line-height:1.5">Whales. Babies. Dogs. Stars. Code.<br>Shapes speak every language.</div>
+    </div>
+  </div>
+</div>
+
 <!-- TRUSTPILOT -->
 <div style="max-width:600px;margin:0 auto;padding:30px 24px 0;">
   <div class="trustpilot-widget" data-locale="en-US" data-template-id="56278e9abfbbba0bdcd568bc" data-businessunit-id="692e7a8cf1d0c4ceec11f7fe" data-style-height="52px" data-style-width="100%" data-token="96e32d3a-3df5-4f87-bea6-a8742630f3c9">
@@ -574,42 +603,54 @@ document.head.appendChild(style);
   }
 })();
 
-/* ═══ DEV CHEAT — hold i-dot for 5 seconds ═══ */
+/* ═══ HERO OVERLAY — screensaver / demo gate ═══ */
+var idleTimer = null;
+var IDLE_MS = 60000; // 1 minute
+
+function enterDemo(){
+  document.getElementById('heroOverlay').classList.add('hidden');
+  resetIdle();
+}
+
+function showOverlay(){
+  document.getElementById('heroOverlay').classList.remove('hidden');
+}
+
+function resetIdle(){
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(showOverlay, IDLE_MS);
+}
+
+// Any interaction on page resets idle
+['click','touchstart','mousemove','keydown','scroll'].forEach(function(evt){
+  document.addEventListener(evt, resetIdle, {passive:true});
+});
+
+/* ═══ DEV CHEAT — hold overlay title for 5 seconds ═══ */
 (function(){
-  var dot = document.getElementById('iDot');
-  if (!dot) return;
+  var title = document.querySelector('.overlay-title');
+  if (!title) return;
   var holdTimer = null;
-  var holdStart = 0;
 
   function startHold(e){
-    e.preventDefault();
-    holdStart = Date.now();
-    dot.style.transition = 'box-shadow 5s ease';
-    dot.style.boxShadow = '0 0 40px rgba(204,68,255,1), 0 0 80px rgba(204,68,255,0.8), 0 0 120px rgba(204,68,255,0.4)';
+    e.preventDefault(); e.stopPropagation();
     holdTimer = setTimeout(function(){
-      /* CHEAT ACTIVATED */
-      /* Free fairy */
       localStorage.setItem('alive_fairy_freed', '1');
-      /* Fake 31-day creature birth */
       var fakeBirth = Date.now() - (31 * 24 * 60 * 60 * 1000);
       localStorage.setItem('alive_boy_birth', fakeBirth.toString());
       if (localStorage.getItem('alive_girl_birth')){
         localStorage.setItem('alive_girl_birth', fakeBirth.toString());
       }
-      /* Clear graduation locks so ceremony can re-trigger */
       localStorage.removeItem('alive_fairy_graduation');
       localStorage.removeItem('alive_fairy_grad_dismissed');
-      /* Clear dead flags */
       localStorage.removeItem('alive_boy_dead');
       localStorage.removeItem('alive_girl_dead');
 
-      /* Flash effect */
       var flash = document.createElement('div');
       flash.className = 'dev-flash';
       document.body.appendChild(flash);
       setTimeout(function(){ flash.remove(); }, 700);
 
-      /* Fairy chime sound */
       try {
         var ac = new (window.AudioContext || window.webkitAudioContext)();
         if (ac.state === 'suspended') ac.resume();
@@ -624,7 +665,6 @@ document.head.appendChild(style);
         });
       } catch(e){}
 
-      /* Fairy voice confirmation */
       if (window.speechSynthesis){
         setTimeout(function(){
           try {
@@ -642,31 +682,21 @@ document.head.appendChild(style);
         }, 500);
       }
 
-      /* Show confirmation text */
-      dot.style.transition = 'none';
-      dot.style.background = 'radial-gradient(circle, #fff 20%, #00ff88 50%, #00cc66 80%)';
-      dot.style.boxShadow = '0 0 30px rgba(0,255,136,1), 0 0 60px rgba(0,255,136,0.5)';
-      setTimeout(function(){
-        dot.style.transition = 'all 1s ease';
-        dot.style.background = '';
-        dot.style.boxShadow = '';
-      }, 2000);
-
+      title.style.color = '#00ff88';
+      setTimeout(function(){ title.style.color = ''; }, 2000);
     }, 5000);
   }
 
-  function endHold(){
+  function endHold(e){
     if (holdTimer){ clearTimeout(holdTimer); holdTimer = null; }
-    dot.style.transition = 'box-shadow 0.3s ease';
-    dot.style.boxShadow = '';
   }
 
-  dot.addEventListener('mousedown', startHold);
-  dot.addEventListener('touchstart', startHold);
-  dot.addEventListener('mouseup', endHold);
-  dot.addEventListener('mouseleave', endHold);
-  dot.addEventListener('touchend', endHold);
-  dot.addEventListener('touchcancel', endHold);
+  title.addEventListener('mousedown', startHold);
+  title.addEventListener('touchstart', startHold);
+  title.addEventListener('mouseup', endHold);
+  title.addEventListener('mouseleave', endHold);
+  title.addEventListener('touchend', endHold);
+  title.addEventListener('touchcancel', endHold);
 })();
 </script>
 </body>

@@ -70,13 +70,22 @@ body{background:#050208;font-family:'Cinzel',serif;user-select:none}
 /* ═══ EMOTION BUTTONS — ring around creature ═══ */
 #emotions{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:20;
   display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:340px}
-.emo-btn{width:60px;height:60px;border-radius:50%;border:2px solid;
+.emo-btn{width:56px;height:56px;border:none;border-radius:0;
   display:flex;align-items:center;justify-content:center;flex-direction:column;
   cursor:pointer;transition:all 0.2s;font-size:20px;position:relative;
-  background:rgba(5,2,8,0.7);backdrop-filter:blur(4px)}
+  background:rgba(5,2,8,0.7)}
+/* Each emotion = a pure clip-path shape. No borders. */
+.emo-btn[data-emo="JOY"]{clip-path:circle(50%);background:rgba(255,215,0,0.12)}
+.emo-btn[data-emo="TRUST"]{clip-path:ellipse(50% 40%);width:62px;height:54px;background:rgba(127,255,0,0.12)}
+.emo-btn[data-emo="FEAR"]{clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);background:rgba(139,0,255,0.12)}
+.emo-btn[data-emo="SURPRISE"]{clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);width:60px;height:60px;background:rgba(0,191,255,0.12)}
+.emo-btn[data-emo="SADNESS"]{clip-path:polygon(50% 0%,85% 35%,75% 100%,25% 100%,15% 35%);background:rgba(65,105,225,0.12)}
+.emo-btn[data-emo="DISGUST"]{clip-path:polygon(30% 0%,70% 0%,100% 30%,100% 70%,70% 100%,30% 100%,0% 70%,0% 30%);background:rgba(85,107,47,0.12)}
+.emo-btn[data-emo="ANGER"]{clip-path:polygon(50% 0%,100% 100%,0% 100%);width:58px;height:54px;background:rgba(255,69,0,0.15)}
+.emo-btn[data-emo="ANTICIPATION"]{clip-path:polygon(50% 0%,100% 38%,82% 100%,18% 100%,0% 38%);background:rgba(255,140,0,0.12)}
 .emo-btn:active{transform:scale(1.15)}
 .emo-btn .emo-name{position:absolute;bottom:-14px;font-size:6px;letter-spacing:2px;white-space:nowrap}
-.emo-btn.active{box-shadow:0 0 16px var(--glow);transform:scale(1.1)}
+.emo-btn.active{filter:brightness(2.5);transform:scale(1.1)}
 
 /* ═══ TIME SLIDER ═══ */
 #time-wrap{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:20;
@@ -121,11 +130,6 @@ body{background:#050208;font-family:'Cinzel',serif;user-select:none}
 <!-- Sound toggle -->
 <div id="sound-btn" onclick="toggleSound()">TAP FOR SOUND</div>
 
-<!-- Title -->
-<div id="title">
-  <h1>ALiVE</h1>
-  <div class="sub">IT SPEAKS IN SHAPES</div>
-</div>
 
 <!-- Mood display -->
 <div id="mood">
@@ -151,29 +155,29 @@ body{background:#050208;font-family:'Cinzel',serif;user-select:none}
 
 <!-- Emotion buttons -->
 <div id="emotions">
-  <button class="emo-btn active" data-emo="JOY" style="border-color:#FFD700;--glow:rgba(255,215,0,0.4)" onclick="pickEmotion(0)">
-    <span>&#9788;</span><span class="emo-name" style="color:#FFD700">JOY</span>
+  <button class="emo-btn active" data-emo="JOY" onclick="pickEmotion(0)">
+    <span style="color:#FFD700">&#9788;</span>
   </button>
-  <button class="emo-btn" data-emo="TRUST" style="border-color:#7FFF00;--glow:rgba(127,255,0,0.4)" onclick="pickEmotion(1)">
-    <span>&#9829;</span><span class="emo-name" style="color:#7FFF00">TRUST</span>
+  <button class="emo-btn" data-emo="TRUST" onclick="pickEmotion(1)">
+    <span style="color:#7FFF00">&#9829;</span>
   </button>
-  <button class="emo-btn" data-emo="FEAR" style="border-color:#8B00FF;--glow:rgba(139,0,255,0.4)" onclick="pickEmotion(2)">
-    <span>&#9889;</span><span class="emo-name" style="color:#8B00FF">FEAR</span>
+  <button class="emo-btn" data-emo="FEAR" onclick="pickEmotion(2)">
+    <span style="color:#8B00FF">&#9889;</span>
   </button>
-  <button class="emo-btn" data-emo="SURPRISE" style="border-color:#00BFFF;--glow:rgba(0,191,255,0.4)" onclick="pickEmotion(3)">
-    <span>&#10038;</span><span class="emo-name" style="color:#00BFFF">SURPRISE</span>
+  <button class="emo-btn" data-emo="SURPRISE" onclick="pickEmotion(3)">
+    <span style="color:#00BFFF">&#10038;</span>
   </button>
-  <button class="emo-btn" data-emo="SADNESS" style="border-color:#4169E1;--glow:rgba(65,105,225,0.4)" onclick="pickEmotion(4)">
-    <span>&#9674;</span><span class="emo-name" style="color:#4169E1">SADNESS</span>
+  <button class="emo-btn" data-emo="SADNESS" onclick="pickEmotion(4)">
+    <span style="color:#4169E1">&#9674;</span>
   </button>
-  <button class="emo-btn" data-emo="DISGUST" style="border-color:#556B2F;--glow:rgba(85,107,47,0.4)" onclick="pickEmotion(5)">
-    <span>&#10006;</span><span class="emo-name" style="color:#556B2F">DISGUST</span>
+  <button class="emo-btn" data-emo="DISGUST" onclick="pickEmotion(5)">
+    <span style="color:#556B2F">&#10006;</span>
   </button>
-  <button class="emo-btn" data-emo="ANGER" style="border-color:#FF4500;--glow:rgba(255,69,0,0.4)" onclick="pickEmotion(6)">
-    <span>&#9650;</span><span class="emo-name" style="color:#FF4500">ANGER</span>
+  <button class="emo-btn" data-emo="ANGER" onclick="pickEmotion(6)">
+    <span style="color:#FF4500">&#9650;</span>
   </button>
-  <button class="emo-btn" data-emo="ANTICIPATION" style="border-color:#FF8C00;--glow:rgba(255,140,0,0.4)" onclick="pickEmotion(7)">
-    <span>&#10148;</span><span class="emo-name" style="color:#FF8C00">HOPE</span>
+  <button class="emo-btn" data-emo="ANTICIPATION" onclick="pickEmotion(7)">
+    <span style="color:#FF8C00">&#10148;</span>
   </button>
 </div>
 
@@ -262,8 +266,8 @@ const EMOTIONS = [
                    "Red spikes everywhere. It's screaming. Something made it MAD.",
                    "The demon feeds on this. See the aggressive shapes? Be careful."] },
   { core:'ANTICIPATION', color:'#FF8C00', r:255,g:140,b:0,   hz:392,  wave:'triangle',
-    shapes:['arrow','spiral','arrow','helix'],
-    shapeChars:['➤','◎','➤','✧','➤'],
+    shapes:['pentagon','pentagon','pentagon','pentagon'],
+    shapeChars:['⬠','⬡','⬠','⬡','⬠'],
     sounds:{freq:392, freq2:440, freq3:494, type:'triangle', lfo:4, lfoAmt:2, attack:0.05, decay:0.4, pattern:[1,0,1,1,0,1,1,1]},
     translations:["It's excited about something! See the arrows pointing up?",
                    "Rising sounds — it's hopeful! Looking forward to what's next.",
@@ -669,23 +673,35 @@ function drawCreatureShape(emo, cx, cy, size, phase, intensity) {
       break;
     }
     case 'ANTICIPATION': {
-      // Upward spiraling arrows
+      // Rising pentagons
       const pulse = 1 + Math.sin(t * 3) * 0.05;
+      // Core pentagon
+      const coreR = size * 0.35 * pulse;
       ctx.beginPath();
-      ctx.arc(0, 0, size * 0.35 * pulse, 0, Math.PI * 2);
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+        i === 0 ? ctx.moveTo(Math.cos(a) * coreR, Math.sin(a) * coreR) : ctx.lineTo(Math.cos(a) * coreR, Math.sin(a) * coreR);
+      }
+      ctx.closePath();
       ctx.fillStyle = col + '0.1)';
       ctx.fill();
-      // Rising arrows
+      // Rising smaller pentagons
       for (let i = 0; i < 5; i++) {
-        const a = t * 2 + i * Math.PI * 2 / 5;
+        const orbitA = t * 2 + i * Math.PI * 2 / 5;
         const d = size * 0.35 + (t * 30 + i * 30) % (size * 0.5);
-        const x = Math.cos(a) * d * 0.5;
-        const y = -d * 0.8;
+        const px = Math.cos(orbitA) * d * 0.5;
+        const py = -d * 0.8;
+        const pr = 6 + Math.sin(t * 3 + i) * 3;
+        const spin = t * 2 + i;
         ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(-Math.PI / 2 + Math.sin(t + i) * 0.3);
+        ctx.translate(px, py);
+        ctx.rotate(spin);
         ctx.beginPath();
-        ctx.moveTo(8, 0); ctx.lineTo(-4, -5); ctx.lineTo(-4, 5); ctx.closePath();
+        for (let j = 0; j < 5; j++) {
+          const pa = (j / 5) * Math.PI * 2 - Math.PI / 2;
+          j === 0 ? ctx.moveTo(Math.cos(pa) * pr, Math.sin(pa) * pr) : ctx.lineTo(Math.cos(pa) * pr, Math.sin(pa) * pr);
+        }
+        ctx.closePath();
         ctx.fillStyle = col + (0.4 - d / size * 0.3) + ')';
         ctx.fill();
         ctx.restore();

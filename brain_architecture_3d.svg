@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1650" style="background:#000">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1750" style="background:#000">
   <defs>
     <radialGradient id="sg" cx="35%" cy="30%" r="50%">
       <stop offset="0%" stop-color="#888"/><stop offset="40%" stop-color="#555"/>
@@ -28,7 +28,7 @@
 
   <!-- ═══ TITLE ═══ -->
   <text x="700" y="38" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="20" font-weight="700" fill="#777" letter-spacing="8">CORTEX BRAIN — GYROSCOPIC ARCHITECTURE</text>
-  <text x="700" y="58" text-anchor="middle" font-family="monospace" font-size="10" fill="#444" letter-spacing="4">3 SPHERES · 6 HALOS · 2 FIGURE-8 CROSSED BELT DRIVES · 1 CORPUS CALLOSUM</text>
+  <text x="700" y="58" text-anchor="middle" font-family="monospace" font-size="10" fill="#444" letter-spacing="4">3 SPHERES · 6 HALOS · 2 FIGURE-8 CROSSED BELT DRIVES · 1 CORPUS CALLOSUM · 1 TIME AXIS</text>
   <text x="700" y="74" text-anchor="middle" font-family="monospace" font-size="9" fill="#383838" letter-spacing="3">POLAR HALOS = EMOTION WHEEL (2D LOCKED) · EQUATORIAL HALOS = OPPOSING DYNAMICS</text>
   <!-- Emotion wheel legend -->
   <text x="50" y="140" font-family="monospace" font-size="7" fill="#555" letter-spacing="1">EMOTION WHEEL — 8 SECTORS:</text>
@@ -236,6 +236,79 @@
   <ellipse cx="340" cy="675" rx="65" ry="6" fill="#111" opacity="0.4"/>
   <ellipse cx="1060" cy="675" rx="65" ry="6" fill="#111" opacity="0.4"/>
   <ellipse cx="700" cy="372" rx="75" ry="7" fill="#111" opacity="0.35"/>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- ═══ TIME AXIS — 4th variable, modulates everything ══ -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <!-- TIME bar — vertical, right side of brain -->
+  <rect x="1280" y="120" rx="4" width="90" height="620" fill="rgba(10,10,10,0.9)" stroke="#555" stroke-width="1"/>
+  <text x="1325" y="142" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="11" font-weight="700" fill="#daa520" letter-spacing="3">TIME</text>
+  <text x="1325" y="156" text-anchor="middle" font-family="monospace" font-size="7" fill="#666" letter-spacing="1">0–60 YEARS</text>
+
+  <!-- Gradient bar -->
+  <defs>
+    <linearGradient id="timeGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#5aaa5a"/><stop offset="30%" stop-color="#c8a832"/>
+      <stop offset="60%" stop-color="#c87832"/><stop offset="100%" stop-color="#8a2020"/>
+    </linearGradient>
+  </defs>
+  <rect x="1295" y="170" width="12" height="480" rx="6" fill="url(#timeGrad)" opacity="0.6"/>
+  <rect x="1295" y="170" width="12" height="480" rx="6" fill="none" stroke="#555" stroke-width="0.5"/>
+
+  <!-- Age markers -->
+  <line x1="1308" y1="170" x2="1318" y2="170" stroke="#5a5" stroke-width="1"/>
+  <text x="1322" y="174" font-family="monospace" font-size="7" fill="#5a5">0</text>
+  <text x="1345" y="174" font-family="monospace" font-size="6" fill="#444">CHILD</text>
+
+  <line x1="1308" y1="250" x2="1318" y2="250" stroke="#5a5" stroke-width="1"/>
+  <text x="1322" y="254" font-family="monospace" font-size="7" fill="#6a6">10</text>
+  <text x="1345" y="254" font-family="monospace" font-size="6" fill="#444">ADOLESCENT</text>
+
+  <line x1="1308" y1="330" x2="1318" y2="330" stroke="#aa8" stroke-width="1"/>
+  <text x="1322" y="334" font-family="monospace" font-size="7" fill="#aa8">20</text>
+  <text x="1345" y="334" font-family="monospace" font-size="6" fill="#444">YOUNG ADULT</text>
+
+  <line x1="1308" y1="410" x2="1318" y2="410" stroke="#c8a832" stroke-width="1"/>
+  <text x="1322" y="414" font-family="monospace" font-size="7" fill="#c8a832">30</text>
+  <text x="1345" y="414" font-family="monospace" font-size="6" fill="#444">ADULT</text>
+
+  <line x1="1308" y1="490" x2="1318" y2="490" stroke="#a86" stroke-width="1"/>
+  <text x="1322" y="494" font-family="monospace" font-size="7" fill="#a86">40</text>
+  <text x="1345" y="494" font-family="monospace" font-size="6" fill="#444">MIDDLE</text>
+
+  <line x1="1308" y1="570" x2="1318" y2="570" stroke="#a64" stroke-width="1"/>
+  <text x="1322" y="574" font-family="monospace" font-size="7" fill="#a64">50</text>
+  <text x="1345" y="574" font-family="monospace" font-size="6" fill="#444">MATURE</text>
+
+  <line x1="1308" y1="650" x2="1318" y2="650" stroke="#844" stroke-width="1"/>
+  <text x="1322" y="654" font-family="monospace" font-size="7" fill="#844">60</text>
+  <text x="1345" y="654" font-family="monospace" font-size="6" fill="#444">ELDER</text>
+
+  <!-- Current position indicator -->
+  <circle cx="1301" cy="410" r="5" fill="#c8a832" opacity="0.8"/>
+  <circle cx="1301" cy="410" r="8" fill="none" stroke="#c8a832" stroke-width="1" opacity="0.5"/>
+
+  <!-- Modulation arrows — what TIME changes -->
+  <line x1="1285" y1="200" x2="1270" y2="200" stroke="#555" stroke-width="0.5"/>
+  <text x="1268" y="196" text-anchor="end" font-family="monospace" font-size="6" fill="#5a5">HIGH impulse</text>
+  <text x="1268" y="206" text-anchor="end" font-family="monospace" font-size="6" fill="#5a5">HIGH emotion vol</text>
+  <text x="1268" y="216" text-anchor="end" font-family="monospace" font-size="6" fill="#5a5">LOW consequence</text>
+
+  <line x1="1285" y1="610" x2="1270" y2="610" stroke="#555" stroke-width="0.5"/>
+  <text x="1268" y="606" text-anchor="end" font-family="monospace" font-size="6" fill="#844">LOW impulse</text>
+  <text x="1268" y="616" text-anchor="end" font-family="monospace" font-size="6" fill="#844">LOW emotion vol</text>
+  <text x="1268" y="626" text-anchor="end" font-family="monospace" font-size="6" fill="#844">HIGH consequence</text>
+  <text x="1268" y="636" text-anchor="end" font-family="monospace" font-size="6" fill="#844">HIGH legacy drive</text>
+
+  <!-- Trajectory triangle -->
+  <text x="1325" y="685" text-anchor="middle" font-family="monospace" font-size="7" fill="#daa520" letter-spacing="1">TRAJECTORY</text>
+  <!-- Open triangle (young — many paths) -->
+  <polygon points="1300,700 1350,700 1325,720" fill="none" stroke="#5a5" stroke-width="1" opacity="0.6"/>
+  <text x="1325" y="734" text-anchor="middle" font-family="monospace" font-size="6" fill="#5a5">OPEN (young)</text>
+  <!-- Closed triangle (old — converging) -->
+  <polygon points="1300,746 1350,746 1325,726" fill="none" stroke="#844" stroke-width="1" opacity="0.6"/>
+  <text x="1325" y="756" text-anchor="middle" font-family="monospace" font-size="6" fill="#844">CLOSING (old)</text>
 
   <!-- ═══ SEPARATION — Brain above, External Tool below ═══ -->
   <!-- Dashed connection line: cortex CALLS this tool, it's not built in -->
@@ -505,8 +578,8 @@
   <text x="700" y="1520" text-anchor="middle" font-family="monospace" font-size="10" fill="#777" letter-spacing="2">CORE BRAIN: NEWTON'S THIRD LAW</text>
   <text x="700" y="1538" text-anchor="middle" font-family="monospace" font-size="9" fill="#666" letter-spacing="1">figure-8 crossed belt → cortex spins ↻ → hemispheres spin ↺ · TIGHT COUPLING · no slop</text>
   <text x="700" y="1555" text-anchor="middle" font-family="monospace" font-size="8" fill="#555" letter-spacing="1">polar halos = emotion (2D locked) · equatorial halos = opposing dynamics</text>
-  <text x="700" y="1572" text-anchor="middle" font-family="monospace" font-size="8" fill="#555" letter-spacing="1">each sphere = ballpoint pen tip · cortex fine-tunes emotion to draw linear points in time</text>
+  <text x="700" y="1572" text-anchor="middle" font-family="monospace" font-size="8" fill="#555" letter-spacing="1">each sphere = ballpoint pen tip · TIME modulates impulse, emotion vol, consequence, legacy</text>
   <text x="700" y="1589" text-anchor="middle" font-family="monospace" font-size="8" fill="#444" letter-spacing="1">NEURALINK: 2 implants → 2 hemispheres → figure-8 counter-rotation → calibration vector</text>
 
-  <text x="1385" y="1640" text-anchor="end" font-family="monospace" font-size="7" fill="#333" letter-spacing="1">CORTEX BRAIN · SHORTFACTORY · 2026</text>
+  <text x="1385" y="1740" text-anchor="end" font-family="monospace" font-size="7" fill="#333" letter-spacing="1">CORTEX BRAIN · SHORTFACTORY · 2026</text>
 </svg>
