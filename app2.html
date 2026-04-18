@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>ALiVE 2.0</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;touch-action:none}
+body{background:#050208;font-family:'Cinzel',serif;user-select:none}
+
+/* ═══ CREATURE CANVAS — full screen background ═══ */
+#creature{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1}
+
+/* ═══ HEARTS ═══ */
+#hearts{position:fixed;top:12px;left:12px;z-index:20;display:flex;gap:1px}
+.ht{width:18px;height:18px;filter:drop-shadow(0 0 3px rgba(200,30,30,0.5));transition:opacity 0.4s}
+.ht.off{opacity:0.12;filter:none}
+.ht.half{opacity:0.5}
+
+/* ═══ AGE ═══ */
+#age-bar{position:fixed;top:14px;right:12px;z-index:20;font-size:9px;letter-spacing:3px;color:#5a4a1a}
+
+/* ═══ TITLE ═══ */
+#title{position:fixed;top:40px;left:50%;transform:translateX(-50%);z-index:20;text-align:center;
+  pointer-events:none;opacity:0;animation:fadeTitle 3s 0.3s forwards}
+#title h1{font-size:28px;font-weight:900;letter-spacing:14px;
+  background:linear-gradient(180deg,#f5d96a,#8a6e14);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#title .sub{font-size:8px;color:#3a3020;letter-spacing:6px;margin-top:2px}
+@keyframes fadeTitle{from{opacity:0}to{opacity:1}}
+
+/* ═══ CREATURE MOOD LABEL ═══ */
+#mood{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:15;
+  pointer-events:none;text-align:center}
+#mood-shapes{font-size:40px;letter-spacing:8px;line-height:1;opacity:0.6;transition:all 0.5s}
+#mood-sound{font-size:8px;letter-spacing:4px;color:#5a4a1a;margin-top:6px;opacity:0.4}
+
+/* ═══ FAIRY ═══ */
+#fairy{position:fixed;z-index:30;cursor:pointer;text-align:center;
+  transition:all 0.3s;filter:drop-shadow(0 0 12px rgba(100,180,255,0.4))}
+#fairy:active{transform:scale(1.2)}
+#fairy-glow{width:60px;height:60px;border-radius:50%;
+  background:radial-gradient(circle,rgba(100,180,255,0.5) 0%,rgba(100,180,255,0.1) 50%,transparent 70%);
+  animation:fairyPulse 2s ease-in-out infinite;position:relative}
+#fairy-body{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:20px;height:20px;border-radius:50%;background:#64b4ff;
+  box-shadow:0 0 10px #64b4ff,0 0 20px rgba(100,180,255,0.3)}
+#fairy-wing-l,#fairy-wing-r{position:absolute;top:40%;width:16px;height:10px;
+  border-radius:50%;background:rgba(100,180,255,0.3);border:1px solid rgba(100,180,255,0.4)}
+#fairy-wing-l{right:55%;transform:rotate(-20deg);animation:wingL 0.4s ease-in-out infinite alternate}
+#fairy-wing-r{left:55%;transform:rotate(20deg);animation:wingR 0.4s ease-in-out infinite alternate}
+@keyframes fairyPulse{0%,100%{opacity:0.8;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
+@keyframes wingL{from{transform:rotate(-20deg)}to{transform:rotate(-40deg)}}
+@keyframes wingR{from{transform:rotate(20deg)}to{transform:rotate(40deg)}}
+#fairy-label{font-size:7px;letter-spacing:3px;color:#64b4ff;margin-top:2px}
+
+/* ═══ FAIRY BUBBLE ═══ */
+#bubble{position:fixed;z-index:25;max-width:240px;padding:12px 16px;
+  background:rgba(5,2,8,0.92);border:1px solid rgba(100,180,255,0.2);border-radius:14px;
+  font-size:13px;color:#c8b06a;line-height:1.5;letter-spacing:0.3px;
+  opacity:0;transition:opacity 0.6s;pointer-events:none;
+  box-shadow:0 0 20px rgba(100,180,255,0.08)}
+#bubble.show{opacity:1}
+#bubble-name{font-size:7px;letter-spacing:4px;color:#64b4ff;display:block;margin-bottom:4px}
+
+/* ═══ EMOTION BUTTONS — ring around creature ═══ */
+#emotions{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:20;
+  display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:340px}
+.emo-btn{width:60px;height:60px;border-radius:50%;border:2px solid;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  cursor:pointer;transition:all 0.2s;font-size:20px;position:relative;
+  background:rgba(5,2,8,0.7);backdrop-filter:blur(4px)}
+.emo-btn:active{transform:scale(1.15)}
+.emo-btn .emo-name{position:absolute;bottom:-14px;font-size:6px;letter-spacing:2px;white-space:nowrap}
+.emo-btn.active{box-shadow:0 0 16px var(--glow);transform:scale(1.1)}
+
+/* ═══ TIME SLIDER ═══ */
+#time-wrap{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:20;
+  width:280px;display:flex;align-items:center;gap:8px}
+#time-label-l,#time-label-r{font-size:7px;letter-spacing:2px;color:#5a4a1a}
+#time-slider{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;
+  background:linear-gradient(90deg,#2a6a2a,#c8a832,#8a2020);outline:none;cursor:pointer}
+#time-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;
+  border-radius:50%;background:#c8a832;cursor:grab;box-shadow:0 0 8px rgba(200,168,50,0.4)}
+#time-slider::-moz-range-thumb{width:20px;height:20px;border:none;
+  border-radius:50%;background:#c8a832;cursor:grab}
+
+/* ═══ SOUND TOGGLE ═══ */
+#sound-btn{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:20;
+  font-size:7px;letter-spacing:3px;color:#5a4a1a;cursor:pointer;
+  padding:4px 12px;border:1px solid rgba(200,168,50,0.12);border-radius:12px;
+  background:rgba(200,168,50,0.04);transition:all 0.3s}
+#sound-btn.active{color:#c8a832;border-color:rgba(200,168,50,0.3);
+  box-shadow:0 0 8px rgba(200,168,50,0.1)}
+
+/* ═══ SHAPE PARTICLES ═══ */
+.shape-particle{position:fixed;pointer-events:none;z-index:10;opacity:0;
+  animation:shapeFloat 2.5s ease-out forwards}
+@keyframes shapeFloat{
+  0%{opacity:0;transform:scale(0.3) translateY(0)}
+  15%{opacity:0.7}
+  100%{opacity:0;transform:scale(1.2) translateY(-120px)}
+}
+</style>
+</head>
+<body>
+
+<!-- Creature canvas — the living thing -->
+<canvas id="creature"></canvas>
+
+<!-- Hearts -->
+<div id="hearts"></div>
+
+<!-- Age -->
+<div id="age-bar">AGE <span id="age-num">30</span></div>
+
+<!-- Sound toggle -->
+<div id="sound-btn" onclick="toggleSound()">TAP FOR SOUND</div>
+
+<!-- Title -->
+<div id="title">
+  <h1>ALiVE</h1>
+  <div class="sub">IT SPEAKS IN SHAPES</div>
+</div>
+
+<!-- Mood display -->
+<div id="mood">
+  <div id="mood-shapes"></div>
+  <div id="mood-sound"></div>
+</div>
+
+<!-- Fairy -->
+<div id="fairy" onclick="fairyTapped()">
+  <div id="fairy-glow">
+    <div id="fairy-body"></div>
+    <div id="fairy-wing-l"></div>
+    <div id="fairy-wing-r"></div>
+  </div>
+  <div id="fairy-label">NAVI</div>
+</div>
+
+<!-- Fairy speech bubble -->
+<div id="bubble">
+  <span id="bubble-name">NAVI</span>
+  <span id="bubble-text">Tap me to hear what it's saying...</span>
+</div>
+
+<!-- Emotion buttons -->
+<div id="emotions">
+  <button class="emo-btn active" data-emo="JOY" style="border-color:#FFD700;--glow:rgba(255,215,0,0.4)" onclick="pickEmotion(0)">
+    <span>&#9788;</span><span class="emo-name" style="color:#FFD700">JOY</span>
+  </button>
+  <button class="emo-btn" data-emo="TRUST" style="border-color:#7FFF00;--glow:rgba(127,255,0,0.4)" onclick="pickEmotion(1)">
+    <span>&#9829;</span><span class="emo-name" style="color:#7FFF00">TRUST</span>
+  </button>
+  <button class="emo-btn" data-emo="FEAR" style="border-color:#8B00FF;--glow:rgba(139,0,255,0.4)" onclick="pickEmotion(2)">
+    <span>&#9889;</span><span class="emo-name" style="color:#8B00FF">FEAR</span>
+  </button>
+  <button class="emo-btn" data-emo="SURPRISE" style="border-color:#00BFFF;--glow:rgba(0,191,255,0.4)" onclick="pickEmotion(3)">
+    <span>&#10038;</span><span class="emo-name" style="color:#00BFFF">SURPRISE</span>
+  </button>
+  <button class="emo-btn" data-emo="SADNESS" style="border-color:#4169E1;--glow:rgba(65,105,225,0.4)" onclick="pickEmotion(4)">
+    <span>&#9674;</span><span class="emo-name" style="color:#4169E1">SADNESS</span>
+  </button>
+  <button class="emo-btn" data-emo="DISGUST" style="border-color:#556B2F;--glow:rgba(85,107,47,0.4)" onclick="pickEmotion(5)">
+    <span>&#10006;</span><span class="emo-name" style="color:#556B2F">DISGUST</span>
+  </button>
+  <button class="emo-btn" data-emo="ANGER" style="border-color:#FF4500;--glow:rgba(255,69,0,0.4)" onclick="pickEmotion(6)">
+    <span>&#9650;</span><span class="emo-name" style="color:#FF4500">ANGER</span>
+  </button>
+  <button class="emo-btn" data-emo="ANTICIPATION" style="border-color:#FF8C00;--glow:rgba(255,140,0,0.4)" onclick="pickEmotion(7)">
+    <span>&#10148;</span><span class="emo-name" style="color:#FF8C00">HOPE</span>
+  </button>
+</div>
+
+<!-- Time slider -->
+<div id="time-wrap">
+  <span id="time-label-l">BABY</span>
+  <input type="range" id="time-slider" min="0" max="60" value="30" oninput="setAge(this.value)">
+  <span id="time-label-r">ELDER</span>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  ALiVE 2.0 — KIDS VERSION
+//  The creature speaks in SOUNDS and SHAPES.
+//  Only the fairy can translate.
+//  Only the fairy is the conscience.
+//  This is the engagement loop.
+// ═══════════════════════════════════════════════════════════════
+
+const canvas = document.getElementById('creature');
+const ctx = canvas.getContext('2d');
+let W, H;
+function resize() {
+  W = canvas.width = innerWidth;
+  H = canvas.height = innerHeight;
+}
+resize();
+addEventListener('resize', resize);
+
+// ═══ EMOTION STATE ═══
+const EMOTIONS = [
+  { core:'JOY',          color:'#FFD700', r:255,g:215,b:0,   hz:440,  wave:'sine',
+    shapes:['circle','star','circle','star','circle'],
+    shapeChars:['●','✦','○','★','◉'],
+    sounds:{freq:440, freq2:554, freq3:659, type:'sine', lfo:6, lfoAmt:3, attack:0.02, decay:0.3, pattern:[1,0,1,0,1,1,0,1]},
+    translations:["It's laughing! See the circles? That's pure joy!",
+                   "Happy sounds! The round shapes mean it feels safe and warm.",
+                   "It's singing! Those stars are how it shows delight!",
+                   "Listen to that melody — it's doing its happy dance!"] },
+  { core:'TRUST',        color:'#7FFF00', r:127,g:255,b:0,   hz:330,  wave:'sine',
+    shapes:['oval','ring','oval','ring'],
+    shapeChars:['◎','◌','◎','◯','◎'],
+    sounds:{freq:330, freq2:392, freq3:494, type:'sine', lfo:2, lfoAmt:1, attack:0.1, decay:0.5, pattern:[1,0,0,1,0,0,1,0]},
+    translations:["Those rings mean trust. It's opening up to you.",
+                   "Soft and steady — it feels safe with you right now.",
+                   "Nested shapes. It's wrapping itself in comfort. It trusts you.",
+                   "That gentle hum means it's at peace. You've earned this."] },
+  { core:'FEAR',         color:'#8B00FF', r:139,g:0,  b:255, hz:880,  wave:'sawtooth',
+    shapes:['zigzag','triangle','zigzag','spike'],
+    shapeChars:['◇','△','⚡','▽','◇'],
+    sounds:{freq:880, freq2:932, freq3:740, type:'sawtooth', lfo:18, lfoAmt:15, attack:0.01, decay:0.15, pattern:[1,1,0,1,1,1,0,1]},
+    translations:["It's scared! Those jagged shapes — it's trembling!",
+                   "Hear that shaking? It's frightened. It needs comfort.",
+                   "Lightning shapes mean danger in its language. It's afraid.",
+                   "The fast sounds mean panic. Try something gentler."] },
+  { core:'SURPRISE',     color:'#00BFFF', r:0,  g:191,b:255, hz:660,  wave:'sine',
+    shapes:['burst','polygon','burst','spark'],
+    shapeChars:['✸','◆','✹','✧','✸'],
+    sounds:{freq:660, freq2:880, freq3:1100, type:'sine', lfo:0, lfoAmt:0, attack:0.005, decay:0.2, pattern:[1,0,0,0,1,0,0,0]},
+    translations:["WOAH! It didn't expect that! See the explosions?",
+                   "Surprise! Those bursting shapes mean 'what just happened?!'",
+                   "Sparkle shapes — it's amazed! Something caught its attention.",
+                   "That sudden sound? It's startled! But in a curious way."] },
+  { core:'SADNESS',      color:'#4169E1', r:65, g:105,b:225, hz:220,  wave:'sine',
+    shapes:['teardrop','droop','teardrop','curve'],
+    shapeChars:['◇','○','◦','◇','○'],
+    sounds:{freq:220, freq2:196, freq3:175, type:'sine', lfo:3, lfoAmt:2, attack:0.2, decay:1.0, pattern:[1,0,0,0,0,0,1,0]},
+    translations:["It's sad. Those falling shapes are tears in its language.",
+                   "Hear how slow and low that is? It's hurting inside.",
+                   "Drooping shapes. Heavy sounds. It needs you right now.",
+                   "The blue curves mean sorrow. Hold it. Don't leave."] },
+  { core:'DISGUST',      color:'#556B2F', r:85, g:107,b:47,  hz:150,  wave:'square',
+    shapes:['blob','warp','blob','squish'],
+    shapeChars:['◍','◎','◙','◍','◎'],
+    sounds:{freq:150, freq2:157, freq3:143, type:'square', lfo:7, lfoAmt:8, attack:0.05, decay:0.25, pattern:[1,1,1,0,1,1,1,0]},
+    translations:["Ewww! Those warped shapes mean it hates something!",
+                   "That buzzing sound — it's grossed out!",
+                   "Blobby shapes mean 'get it away from me!'",
+                   "It's disgusted. The ugly sounds are its way of saying NO."] },
+  { core:'ANGER',        color:'#FF4500', r:255,g:69, b:0,   hz:110,  wave:'sawtooth',
+    shapes:['spike','triangle','spike','bolt'],
+    shapeChars:['▲','✦','▼','▲','✦'],
+    sounds:{freq:110, freq2:117, freq3:1320, type:'sawtooth', lfo:25, lfoAmt:10, attack:0.005, decay:0.1, pattern:[1,1,1,1,1,1,1,1]},
+    translations:["ANGRY! Those spikes are RAGE in its language!",
+                   "That growl — it's furious! The sharp shapes are warnings!",
+                   "Red spikes everywhere. It's screaming. Something made it MAD.",
+                   "The demon feeds on this. See the aggressive shapes? Be careful."] },
+  { core:'ANTICIPATION', color:'#FF8C00', r:255,g:140,b:0,   hz:392,  wave:'triangle',
+    shapes:['arrow','spiral','arrow','helix'],
+    shapeChars:['➤','◎','➤','✧','➤'],
+    sounds:{freq:392, freq2:440, freq3:494, type:'triangle', lfo:4, lfoAmt:2, attack:0.05, decay:0.4, pattern:[1,0,1,1,0,1,1,1]},
+    translations:["It's excited about something! See the arrows pointing up?",
+                   "Rising sounds — it's hopeful! Looking forward to what's next.",
+                   "Spirals mean anticipation. It wants something. Badly.",
+                   "Building energy! Those arrows are pure hope and excitement."] }
+];
+
+let currentIdx = 0;
+let targetIdx = 0;
+let emotionBlend = 0; // 0-1 transition
+let lifeAge = 30;
+let soundEnabled = false;
+let audioCtx = null;
+
+// ═══ WEB AUDIO — creature's voice ═══
+let masterGain = null;
+let osc1 = null, osc2 = null, osc3 = null, lfo = null;
+let patternTimer = null;
+let patternStep = 0;
+
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0;
+  masterGain.connect(audioCtx.destination);
+
+  // 3 oscillators for rich creature voice
+  osc1 = audioCtx.createOscillator();
+  osc2 = audioCtx.createOscillator();
+  osc3 = audioCtx.createOscillator();
+
+  const gain1 = audioCtx.createGain(); gain1.gain.value = 0.15;
+  const gain2 = audioCtx.createGain(); gain2.gain.value = 0.08;
+  const gain3 = audioCtx.createGain(); gain3.gain.value = 0.05;
+
+  osc1.connect(gain1); gain1.connect(masterGain);
+  osc2.connect(gain2); gain2.connect(masterGain);
+  osc3.connect(gain3); gain3.connect(masterGain);
+
+  // LFO for vibrato/tremolo
+  lfo = audioCtx.createOscillator();
+  const lfoGain = audioCtx.createGain();
+  lfoGain.gain.value = 0;
+  lfo.connect(lfoGain);
+  lfoGain.connect(osc1.frequency);
+  lfo.lfoGain = lfoGain;
+
+  osc1.start(); osc2.start(); osc3.start(); lfo.start();
+
+  // Pattern — rhythmic voice
+  patternTimer = setInterval(playPatternStep, 180);
+}
+
+function playPatternStep() {
+  if (!soundEnabled || !audioCtx) return;
+  const emo = EMOTIONS[currentIdx];
+  const s = emo.sounds;
+  const step = s.pattern[patternStep % s.pattern.length];
+  const t = audioCtx.currentTime;
+
+  // Age modulation: young = faster, higher pitch. Old = slower, lower
+  const ageRatio = 1.0 + (30 - lifeAge) / 60 * 0.3; // young=1.15, old=0.85
+
+  if (step) {
+    masterGain.gain.cancelScheduledValues(t);
+    masterGain.gain.setValueAtTime(0, t);
+    masterGain.gain.linearRampToValueAtTime(0.12 * ageRatio, t + s.attack);
+    masterGain.gain.linearRampToValueAtTime(0, t + s.attack + s.decay);
+
+    // Frequency with age pitch shift
+    osc1.frequency.setValueAtTime(s.freq * ageRatio, t);
+    osc2.frequency.setValueAtTime(s.freq2 * ageRatio, t);
+    osc3.frequency.setValueAtTime(s.freq3 * ageRatio, t);
+    osc1.type = s.type;
+    osc2.type = s.type;
+    osc3.type = s.type === 'sawtooth' ? 'square' : 'sine'; // 3rd always softer
+
+    lfo.frequency.setValueAtTime(s.lfo, t);
+    lfo.lfoGain.gain.setValueAtTime(s.lfoAmt * ageRatio, t);
+  }
+  patternStep++;
+}
+
+function updatePatternSpeed() {
+  if (patternTimer) clearInterval(patternTimer);
+  const emo = EMOTIONS[currentIdx];
+  // Anger = fast (100ms), Sadness = slow (350ms), Joy = bouncy (160ms)
+  const speeds = { JOY:160, TRUST:280, FEAR:100, SURPRISE:200, SADNESS:350, DISGUST:180, ANGER:90, ANTICIPATION:140 };
+  const base = speeds[emo.core] || 180;
+  // Age: young = faster, old = slower
+  const ageMod = 1.0 + (lifeAge - 30) / 60 * 0.4;
+  patternTimer = setInterval(playPatternStep, base * ageMod);
+}
+
+// ═══ NAVI — fairy voice (Web Speech API) ═══
+let naviVoice = null;
+let bubbleTimer = null;
+
+function loadVoices() {
+  const v = speechSynthesis.getVoices();
+  naviVoice = v.find(x => x.lang === 'en-GB' && /female/i.test(x.name)) ||
+              v.find(x => x.lang === 'en-GB') ||
+              v.find(x => x.lang.startsWith('en') && /female/i.test(x.name)) ||
+              v.find(x => x.lang.startsWith('en')) || v[0];
+}
+if (speechSynthesis.onvoiceschanged !== undefined) speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+function naviSay(text) {
+  // Show bubble
+  const bubble = document.getElementById('bubble');
+  document.getElementById('bubble-text').textContent = text;
+  bubble.classList.add('show');
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(() => bubble.classList.remove('show'), Math.max(3500, text.length * 55));
+
+  // Speak
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  if (naviVoice) u.voice = naviVoice;
+  u.rate = 0.9;
+  u.pitch = 1.2;
+  u.volume = 0.8;
+  speechSynthesis.speak(u);
+
+  // Fairy sparkle
+  const fairy = document.getElementById('fairy');
+  fairy.style.filter = 'drop-shadow(0 0 20px rgba(100,180,255,0.8))';
+  setTimeout(() => fairy.style.filter = 'drop-shadow(0 0 12px rgba(100,180,255,0.4))', 1500);
+}
+
+// ═══ FAIRY TAPPED — translate what the creature is saying ═══
+window.fairyTapped = function() {
+  if (!soundEnabled) {
+    toggleSound();
+    return;
+  }
+  const emo = EMOTIONS[currentIdx];
+  const pool = emo.translations;
+  const msg = pool[Math.floor(Math.random() * pool.length)];
+  naviSay(msg);
+};
+
+// ═══ PICK EMOTION ═══
+window.pickEmotion = function(idx) {
+  // Deactivate all, activate selected
+  document.querySelectorAll('.emo-btn').forEach((b,i) => b.classList.toggle('active', i === idx));
+  targetIdx = idx;
+  currentIdx = idx;
+  updatePatternSpeed();
+
+  // Fairy reacts to dangerous emotions
+  const emo = EMOTIONS[idx];
+  const danger = { JOY:0, TRUST:0, FEAR:0.3, SURPRISE:0.1, SADNESS:0.2, DISGUST:0.3, ANGER:0.7, ANTICIPATION:0.1 };
+  const d = danger[emo.core] || 0;
+
+  if (d > 0.5) {
+    // Conscience mode — fairy warns
+    const warnings = {
+      ANGER: ["Hey! Listen! I feel rage building. Be careful with this.",
+              "The creature is angry. The demon loves anger. Watch yourself.",
+              "Those spikes are dangerous. Don't let the anger take over."],
+      FEAR:  ["It's scared. And scared creatures do desperate things.",
+              "Fear... the demon feeds on fear too. Stay calm."]
+    };
+    const pool = warnings[emo.core] || ["Be careful with this emotion."];
+    setTimeout(() => naviSay(pool[Math.floor(Math.random() * pool.length)]), 500);
+  }
+
+  // Spawn shape burst
+  spawnShapeBurst(emo, 8);
+};
+
+// ═══ AGE ═══
+window.setAge = function(val) {
+  lifeAge = parseInt(val);
+  document.getElementById('age-num').textContent = lifeAge;
+  renderHearts();
+  updatePatternSpeed();
+
+  // Fairy comments on age extremes
+  if (lifeAge <= 5) {
+    setTimeout(() => naviSay("So tiny! Everything is new. It can barely make sounds yet."), 300);
+  } else if (lifeAge >= 55) {
+    setTimeout(() => naviSay("Old and wise. The sounds are slow but deep. Every note means something."), 300);
+  }
+};
+
+// ═══ SOUND TOGGLE ═══
+window.toggleSound = function() {
+  soundEnabled = !soundEnabled;
+  const btn = document.getElementById('sound-btn');
+  if (soundEnabled) {
+    initAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    btn.textContent = 'SOUND ON';
+    btn.classList.add('active');
+    updatePatternSpeed();
+    setTimeout(() => naviSay("Hey... listen! I can hear it now. Tap me to understand what it's saying."), 500);
+  } else {
+    btn.textContent = 'TAP FOR SOUND';
+    btn.classList.remove('active');
+    if (masterGain) masterGain.gain.value = 0;
+    speechSynthesis.cancel();
+  }
+};
+
+// ═══ HEARTS ═══
+function renderHearts() {
+  let html = '';
+  for (let i = 0; i < 6; i++) {
+    const heartAge = (i + 1) * 10;
+    const cls = lifeAge >= heartAge ? '' : lifeAge >= heartAge - 5 ? 'half' : 'off';
+    html += `<svg class="ht ${cls}" viewBox="0 0 24 24"><path fill="#cc2222" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
+  }
+  document.getElementById('hearts').innerHTML = html;
+}
+renderHearts();
+
+// ═══ SHAPE PARTICLES — creature's language ═══
+function spawnShapeBurst(emo, count) {
+  for (let i = 0; i < count; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'shape-particle';
+      el.textContent = emo.shapeChars[Math.floor(Math.random() * emo.shapeChars.length)];
+      el.style.color = emo.color;
+      el.style.textShadow = `0 0 8px ${emo.color}`;
+      el.style.fontSize = (16 + Math.random() * 24) + 'px';
+      el.style.left = (W * 0.3 + Math.random() * W * 0.4) + 'px';
+      el.style.top = (H * 0.3 + Math.random() * H * 0.2) + 'px';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 2800);
+    }, i * 80);
+  }
+}
+
+// Auto-spawn shapes periodically
+let shapeSpawnTimer = 0;
+
+// ═══ CREATURE RENDERING — the living blob ═══
+let creatureSize = 0;
+let creatureTargetSize = 1;
+let creaturePhase = 0;
+let breathPhase = 0;
+
+// Shape functions for each emotion
+function drawCreatureShape(emo, cx, cy, size, phase, intensity) {
+  const col = `rgba(${emo.r},${emo.g},${emo.b},`;
+  const t = phase;
+
+  // Core glow
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 1.5);
+  grad.addColorStop(0, col + '0.15)');
+  grad.addColorStop(0.5, col + '0.05)');
+  grad.addColorStop(1, 'transparent');
+  ctx.fillStyle = grad;
+  ctx.fillRect(cx - size * 2, cy - size * 2, size * 4, size * 4);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  switch(emo.core) {
+    case 'JOY': {
+      // Bouncing, pulsing circles — happy blob
+      const pulse = 1 + Math.sin(t * 3) * 0.08;
+      const bounce = Math.sin(t * 2) * size * 0.05;
+      ctx.translate(0, bounce);
+      for (let i = 3; i >= 0; i--) {
+        const r = size * (0.4 + i * 0.15) * pulse;
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fillStyle = col + (0.08 + i * 0.04) + ')';
+        ctx.fill();
+      }
+      // Sparkle dots orbiting
+      for (let i = 0; i < 6; i++) {
+        const a = t * 1.5 + i * Math.PI / 3;
+        const d = size * 0.7 + Math.sin(t * 4 + i) * size * 0.1;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * d, Math.sin(a) * d, 3 + Math.sin(t * 5 + i) * 2, 0, Math.PI * 2);
+        ctx.fillStyle = col + '0.6)';
+        ctx.fill();
+      }
+      break;
+    }
+    case 'TRUST': {
+      // Smooth nested ovals — calm, steady breathing
+      const breathe = 1 + Math.sin(t * 1.2) * 0.05;
+      for (let i = 4; i >= 0; i--) {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, size * (0.3 + i * 0.12) * breathe, size * (0.25 + i * 0.1) * breathe, 0, 0, Math.PI * 2);
+        ctx.fillStyle = col + (0.06 + i * 0.025) + ')';
+        ctx.fill();
+      }
+      break;
+    }
+    case 'FEAR': {
+      // Jagged, trembling shape
+      const shake = () => (Math.random() - 0.5) * size * 0.06;
+      const points = 12;
+      ctx.beginPath();
+      for (let i = 0; i <= points; i++) {
+        const a = (i / points) * Math.PI * 2;
+        const r = size * (0.4 + Math.sin(a * 3 + t * 8) * 0.15) + shake();
+        const x = Math.cos(a) * r + shake();
+        const y = Math.sin(a) * r + shake();
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = col + '0.12)';
+      ctx.fill();
+      ctx.strokeStyle = col + '0.3)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      break;
+    }
+    case 'SURPRISE': {
+      // Exploding polygon
+      const expand = 1 + Math.sin(t * 4) * 0.15;
+      const sides = 8;
+      ctx.beginPath();
+      for (let i = 0; i <= sides; i++) {
+        const a = (i / sides) * Math.PI * 2 + t * 0.5;
+        const r = size * 0.5 * expand * (i % 2 === 0 ? 1 : 0.6);
+        i === 0 ? ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      }
+      ctx.closePath();
+      ctx.fillStyle = col + '0.12)';
+      ctx.fill();
+      // Radiating lines
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 + t;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * size * 0.35, Math.sin(a) * size * 0.35);
+        ctx.lineTo(Math.cos(a) * size * (0.6 + Math.sin(t * 3 + i) * 0.2), Math.sin(a) * size * (0.6 + Math.sin(t * 3 + i) * 0.2));
+        ctx.strokeStyle = col + '0.2)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'SADNESS': {
+      // Drooping oval with falling teardrops
+      const droop = Math.sin(t * 0.8) * 0.03;
+      ctx.beginPath();
+      ctx.ellipse(0, size * 0.05, size * 0.4, size * 0.5 + Math.sin(t) * size * 0.02, droop, 0, Math.PI * 2);
+      ctx.fillStyle = col + '0.1)';
+      ctx.fill();
+      // Tears falling
+      for (let i = 0; i < 4; i++) {
+        const tx = (i - 1.5) * size * 0.2;
+        const ty = (t * 40 + i * 60) % (size * 1.5) - size * 0.3;
+        const tearSize = 4 - ty / size * 2;
+        if (tearSize > 0) {
+          ctx.beginPath();
+          ctx.arc(tx, ty, tearSize, 0, Math.PI * 2);
+          ctx.fillStyle = col + (0.3 - ty / size * 0.2) + ')';
+          ctx.fill();
+        }
+      }
+      break;
+    }
+    case 'DISGUST': {
+      // Warped, pulsing blob
+      const points = 20;
+      ctx.beginPath();
+      for (let i = 0; i <= points; i++) {
+        const a = (i / points) * Math.PI * 2;
+        const warp = Math.sin(a * 3 + t * 4) * 0.25 + Math.sin(a * 7 + t * 2) * 0.1;
+        const r = size * (0.4 + warp);
+        i === 0 ? ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      }
+      ctx.closePath();
+      ctx.fillStyle = col + '0.12)';
+      ctx.fill();
+      break;
+    }
+    case 'ANGER': {
+      // Aggressive spikes radiating
+      const spikes = 16;
+      ctx.beginPath();
+      for (let i = 0; i <= spikes; i++) {
+        const a = (i / spikes) * Math.PI * 2;
+        const isSpike = i % 2 === 0;
+        const pulse = 1 + Math.sin(t * 8) * 0.1;
+        const r = isSpike ? size * 0.7 * pulse : size * 0.25;
+        i === 0 ? ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      }
+      ctx.closePath();
+      ctx.fillStyle = col + '0.15)';
+      ctx.fill();
+      ctx.strokeStyle = col + '0.4)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // Inner rage core
+      const rageR = size * 0.15 * (1 + Math.sin(t * 12) * 0.3);
+      ctx.beginPath();
+      ctx.arc(0, 0, rageR, 0, Math.PI * 2);
+      ctx.fillStyle = col + '0.5)';
+      ctx.fill();
+      break;
+    }
+    case 'ANTICIPATION': {
+      // Upward spiraling arrows
+      const pulse = 1 + Math.sin(t * 3) * 0.05;
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.35 * pulse, 0, Math.PI * 2);
+      ctx.fillStyle = col + '0.1)';
+      ctx.fill();
+      // Rising arrows
+      for (let i = 0; i < 5; i++) {
+        const a = t * 2 + i * Math.PI * 2 / 5;
+        const d = size * 0.35 + (t * 30 + i * 30) % (size * 0.5);
+        const x = Math.cos(a) * d * 0.5;
+        const y = -d * 0.8;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(-Math.PI / 2 + Math.sin(t + i) * 0.3);
+        ctx.beginPath();
+        ctx.moveTo(8, 0); ctx.lineTo(-4, -5); ctx.lineTo(-4, 5); ctx.closePath();
+        ctx.fillStyle = col + (0.4 - d / size * 0.3) + ')';
+        ctx.fill();
+        ctx.restore();
+      }
+      break;
+    }
+  }
+
+  ctx.restore();
+}
+
+// ═══ FAIRY POSITION — floats near the creature ═══
+let fairyPhase = 0;
+function updateFairyPosition() {
+  fairyPhase += 0.02;
+  const fx = W * 0.78 + Math.sin(fairyPhase * 1.3) * 30;
+  const fy = H * 0.32 + Math.sin(fairyPhase * 0.9) * 20;
+  const fairy = document.getElementById('fairy');
+  fairy.style.left = fx + 'px';
+  fairy.style.top = fy + 'px';
+
+  // Bubble position near fairy
+  const bubble = document.getElementById('bubble');
+  bubble.style.left = (fx - 250) + 'px';
+  bubble.style.top = (fy + 10) + 'px';
+}
+
+// ═══ MAIN RENDER LOOP ═══
+let lastTime = 0;
+function render(now) {
+  requestAnimationFrame(render);
+  const dt = Math.min((now - lastTime) / 1000, 0.05);
+  lastTime = now;
+
+  creaturePhase += dt * 2;
+  breathPhase += dt;
+
+  // Clear
+  ctx.fillStyle = 'rgba(5,2,8,0.15)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Creature center
+  const cx = W * 0.5;
+  const cy = H * 0.38;
+  const baseSize = Math.min(W, H) * 0.28;
+  // Age affects size: young = small, old = large
+  const ageScale = 0.6 + (lifeAge / 60) * 0.5;
+  const size = baseSize * ageScale;
+
+  const emo = EMOTIONS[currentIdx];
+  drawCreatureShape(emo, cx, cy, size, creaturePhase, emotionBlend);
+
+  // Mood shape characters display
+  const moodEl = document.getElementById('mood-shapes');
+  const chars = emo.shapeChars;
+  const displayIdx = Math.floor(creaturePhase * 2) % chars.length;
+  moodEl.textContent = chars[(displayIdx + 0) % chars.length] + ' ' + chars[(displayIdx + 1) % chars.length] + ' ' + chars[(displayIdx + 2) % chars.length];
+  moodEl.style.color = emo.color;
+  moodEl.style.textShadow = `0 0 12px ${emo.color}`;
+
+  // Auto-spawn shapes
+  shapeSpawnTimer -= dt;
+  if (shapeSpawnTimer <= 0) {
+    spawnShapeBurst(emo, 1);
+    shapeSpawnTimer = 1.5 + Math.random() * 2;
+  }
+
+  updateFairyPosition();
+}
+requestAnimationFrame(render);
+
+// ═══ STARTUP ═══
+setTimeout(() => {
+  document.getElementById('title').style.opacity = '1';
+}, 300);
+
+// Position fairy initially
+updateFairyPosition();
+</script>
+</body>
+</html>
