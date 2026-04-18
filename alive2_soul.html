@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ALIVE 2.0 — The Living Soul</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;color:#c8b06a;font-family:'Philosopher',serif;overflow:hidden;cursor:default;user-select:none}
+canvas#c3d{display:block}
+
+/* ═══ ZELDA GOLD FRAME ═══ */
+#frame-top,#frame-bottom{position:fixed;left:0;right:0;height:3px;z-index:100;
+  background:linear-gradient(90deg,transparent 0%,#c8a832 15%,#f5d96a 50%,#c8a832 85%,transparent 100%)}
+#frame-top{top:0}
+#frame-bottom{bottom:0}
+#frame-left,#frame-right{position:fixed;top:0;bottom:0;width:3px;z-index:100;
+  background:linear-gradient(180deg,transparent 0%,#c8a832 15%,#f5d96a 50%,#c8a832 85%,transparent 100%)}
+#frame-left{left:0}
+#frame-right{right:0}
+
+/* ═══ TITLE ═══ */
+#alive-title{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:50;text-align:center;pointer-events:none;opacity:0;animation:fadeIn 3s 0.5s forwards}
+#alive-title h1{font-family:'Cinzel',serif;font-size:22px;font-weight:900;letter-spacing:12px;
+  background:linear-gradient(180deg,#f5d96a 0%,#c8a832 50%,#8a6e14 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;text-shadow:none}
+#alive-title .sub{font-size:10px;color:#5a4a1a;letter-spacing:6px;margin-top:4px;font-family:'Cinzel',serif}
+
+@keyframes fadeIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ═══ HEARTS — LIFE STAGE ═══ */
+#hearts{position:fixed;top:24px;left:24px;z-index:50;display:flex;gap:2px;flex-wrap:wrap;max-width:200px}
+.heart{width:22px;height:22px;filter:drop-shadow(0 0 4px rgba(200,50,50,0.4));transition:all 0.3s}
+.heart.empty{opacity:0.15;filter:none}
+.heart.half{opacity:0.6}
+#age-label{font-family:'Cinzel',serif;font-size:10px;color:#8a6e14;letter-spacing:3px;margin-top:4px}
+
+/* ═══ HUD — SOUL STATE ═══ */
+#soul-hud{position:fixed;top:24px;right:24px;z-index:50;font-size:11px;text-align:right;letter-spacing:1px;line-height:1.7}
+#soul-hud .lbl{color:#5a4a1a}
+#soul-hud .val{color:#c8b06a}
+#soul-hud .conflict{color:#cc4444;font-weight:700}
+
+/* ═══ FAIRY SPEECH BUBBLE ═══ */
+#fairy-bubble{position:fixed;top:50%;right:60px;transform:translateY(-50%);z-index:50;
+  max-width:280px;padding:14px 18px;
+  background:rgba(10,8,2,0.85);border:1px solid rgba(200,168,50,0.25);border-radius:16px;
+  font-size:13px;font-style:italic;color:#c8b06a;line-height:1.6;letter-spacing:0.3px;
+  opacity:0;transition:opacity 0.8s;pointer-events:none;
+  box-shadow:0 0 30px rgba(100,180,255,0.08),inset 0 0 20px rgba(100,180,255,0.03)}
+#fairy-bubble.show{opacity:1}
+#fairy-bubble::before{content:'✦';position:absolute;left:-8px;top:50%;transform:translateY(-50%);
+  color:#64b4ff;font-size:16px;text-shadow:0 0 8px #64b4ff}
+#fairy-name{font-family:'Cinzel',serif;font-size:8px;letter-spacing:4px;color:#64b4ff;margin-bottom:6px;display:block}
+
+/* ═══ EMOTION WHEEL — bottom center ═══ */
+#emo-wrap{position:fixed;bottom:260px;left:50%;transform:translateX(-50%);z-index:50;
+  width:320px;height:170px;cursor:pointer}
+#emo-canvas{width:320px;height:170px}
+#emo-label{position:absolute;top:-16px;left:50%;transform:translateX(-50%);
+  font-family:'Cinzel',serif;font-size:8px;letter-spacing:4px;color:#5a4a1a}
+
+/* ═══ TIME BAR ═══ */
+#time-wrap{position:fixed;bottom:224px;left:50%;transform:translateX(-50%);z-index:50;width:320px;height:30px}
+#time-track{width:100%;height:10px;background:rgba(200,168,50,0.06);border:1px solid rgba(200,168,50,0.12);
+  border-radius:5px;position:relative;cursor:pointer;margin-top:14px}
+#time-fill{height:100%;border-radius:5px;pointer-events:none;
+  background:linear-gradient(90deg,#2a6a2a 0%,#c8a832 50%,#8a2020 100%)}
+#time-thumb{position:absolute;top:-6px;width:10px;height:22px;background:#c8a832;
+  border-radius:3px;cursor:grab;box-shadow:0 0 10px rgba(200,168,50,0.3)}
+#time-labels{display:flex;justify-content:space-between;font-family:'Cinzel',serif;font-size:7px;color:#5a4a1a;letter-spacing:2px}
+
+/* ═══ CONSEQUENCE DIAL ═══ */
+#con-wrap{position:fixed;bottom:50px;left:50%;transform:translateX(-50%);z-index:50;
+  width:320px;height:170px;cursor:pointer}
+#con-canvas{width:320px;height:170px}
+#con-label{position:absolute;top:-16px;left:50%;transform:translateX(-50%);
+  font-family:'Cinzel',serif;font-size:8px;letter-spacing:4px;color:#5a4a1a}
+#con-label-l{position:absolute;bottom:0;left:4px;font:bold 8px 'Cinzel',serif;color:#2a6a2a;letter-spacing:2px}
+#con-label-r{position:absolute;bottom:0;right:4px;font:bold 8px 'Cinzel',serif;color:#8a2020;letter-spacing:2px}
+
+/* ═══ TRAJECTORY TRIANGLE ═══ */
+#traj-wrap{position:fixed;bottom:58px;left:24px;z-index:50;text-align:center}
+#traj-label{font-family:'Cinzel',serif;font-size:8px;letter-spacing:3px;color:#5a4a1a;margin-top:2px}
+#traj-dir{font-family:'Cinzel',serif;font-size:14px;color:#c8a832}
+
+/* ═══ CONTROLS ═══ */
+#controls{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:50;
+  display:flex;gap:4px;flex-wrap:wrap;justify-content:center;max-width:600px}
+#controls button{padding:5px 10px;background:rgba(200,168,50,0.04);
+  border:1px solid rgba(200,168,50,0.12);color:#8a6e14;
+  font-family:'Cinzel',serif;font-size:8px;letter-spacing:2px;
+  cursor:pointer;border-radius:4px;transition:all 0.3s}
+#controls button:hover{background:rgba(200,168,50,0.1);color:#f5d96a;border-color:rgba(200,168,50,0.3);
+  box-shadow:0 0 12px rgba(200,168,50,0.1)}
+
+/* ═══ FAIRY PARTICLES ═══ */
+.fairy-particle{position:fixed;width:3px;height:3px;border-radius:50%;pointer-events:none;z-index:45;
+  animation:particleFade 1.5s forwards}
+@keyframes particleFade{
+  0%{opacity:1;transform:scale(1)}
+  100%{opacity:0;transform:scale(0) translateY(-20px)}
+}
+
+/* ═══ VOICE TOGGLE ═══ */
+#voice-toggle{position:fixed;bottom:12px;right:24px;z-index:50;
+  font-family:'Cinzel',serif;font-size:8px;letter-spacing:3px;color:#5a4a1a;
+  cursor:pointer;padding:6px 12px;border:1px solid rgba(200,168,50,0.12);border-radius:4px;
+  background:rgba(200,168,50,0.04);transition:all 0.3s}
+#voice-toggle:hover{color:#c8a832;border-color:rgba(200,168,50,0.3)}
+#voice-toggle.active{color:#64b4ff;border-color:rgba(100,180,255,0.3);
+  background:rgba(100,180,255,0.04);box-shadow:0 0 12px rgba(100,180,255,0.08)}
+</style>
+</head>
+<body>
+
+<!-- Gold frame -->
+<div id="frame-top"></div>
+<div id="frame-bottom"></div>
+<div id="frame-left"></div>
+<div id="frame-right"></div>
+
+<!-- Title -->
+<div id="alive-title">
+  <h1>ALIVE</h1>
+  <div class="sub">THE LIVING SOUL</div>
+</div>
+
+<!-- Hearts = Life Stage (6 hearts × 10 years each = 60 years) -->
+<div id="hearts">
+  <div id="hearts-row"></div>
+  <div id="age-label">AGE 30 · YOUNG ADULT</div>
+</div>
+
+<!-- Soul State HUD -->
+<div id="soul-hud">
+  <div><span class="lbl">FEELING</span> <span class="val" id="s-emotion">JOY</span></div>
+  <div><span class="lbl">INTENSITY</span> <span class="val" id="s-intensity">30%</span></div>
+  <div><span class="lbl">ANGEL</span> <span class="val" id="s-angel">JOY</span></div>
+  <div><span class="lbl">DEMON</span> <span class="conflict" id="s-demon">SADNESS</span></div>
+  <div style="margin-top:6px"><span class="lbl">IMPULSE</span> <span class="val" id="s-impulse">0.76</span></div>
+  <div><span class="lbl">WISDOM</span> <span class="val" id="s-wisdom">0.57</span></div>
+  <div style="margin-top:6px"><span class="val" id="s-traj-sym">△</span> <span class="val" id="s-traj-lbl">OPEN</span></div>
+</div>
+
+<!-- Fairy speech bubble -->
+<div id="fairy-bubble">
+  <span id="fairy-name">NAVI</span>
+  <span id="fairy-text">Hey... listen. I'm here.</span>
+</div>
+
+<!-- Emotion wheel -->
+<div id="emo-wrap">
+  <div id="emo-label">SOUL COMPASS</div>
+  <canvas id="emo-canvas" width="640" height="340"></canvas>
+</div>
+
+<!-- Time bar -->
+<div id="time-wrap">
+  <div id="time-labels"><span>BIRTH</span><span id="time-age-display">30 YEARS</span><span>60</span></div>
+  <div id="time-track">
+    <div id="time-fill" style="width:50%"></div>
+    <div id="time-thumb" style="left:calc(50% - 5px)"></div>
+  </div>
+</div>
+
+<!-- Consequence dial -->
+<div id="con-wrap">
+  <div id="con-label">PHONE A FRIEND</div>
+  <canvas id="con-canvas" width="640" height="340"></canvas>
+  <div id="con-label-l">SAFETY</div>
+  <div id="con-label-r">RISK</div>
+</div>
+
+<!-- Trajectory -->
+<div id="traj-wrap">
+  <canvas id="traj-canvas" width="80" height="80"></canvas>
+  <div id="traj-dir">△</div>
+  <div id="traj-label">OPEN</div>
+</div>
+
+<!-- Controls -->
+<div id="controls">
+  <button onclick="setEmotion('joy')">JOY</button>
+  <button onclick="setEmotion('trust')">TRUST</button>
+  <button onclick="setEmotion('fear')">FEAR</button>
+  <button onclick="setEmotion('surprise')">SURPRISE</button>
+  <button onclick="setEmotion('sadness')">SADNESS</button>
+  <button onclick="setEmotion('disgust')">DISGUST</button>
+  <button onclick="setEmotion('anger')">ANGER</button>
+  <button onclick="setEmotion('anticipation')">ANTICIPATION</button>
+  <button onclick="cycleAxis()">CYCLE AXIS</button>
+  <button onclick="resetAll()">RESET</button>
+</div>
+
+<!-- Voice toggle -->
+<div id="voice-toggle" onclick="toggleVoice()">VOICE: OFF</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ═══════════════════════════════════════════════════════════════
+//  ALIVE 2.0 — THE LIVING SOUL
+//  Gyroscopic consciousness visualisation. Zelda-inspired.
+//  Navi fairy as audible conscience. Premium product version.
+// ═══════════════════════════════════════════════════════════════
+
+// ═══ SCENE ═══
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x020108, 0.012);
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 200);
+camera.position.set(0, 3, 15);
+const renderer = new THREE.WebGLRenderer({antialias:true, alpha:false});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.9;
+document.body.appendChild(renderer.domElement);
+
+const orbit = new OrbitControls(camera, renderer.domElement);
+orbit.enableDamping = true;
+orbit.dampingFactor = 0.04;
+orbit.target.set(0, 0.5, 0);
+orbit.minDistance = 8;
+orbit.maxDistance = 25;
+
+// Lighting — warm Zelda dungeon glow
+scene.add(new THREE.AmbientLight(0x1a1408, 1.0));
+const keyLight = new THREE.DirectionalLight(0xf5d96a, 0.5);
+keyLight.position.set(5, 8, 5);
+scene.add(keyLight);
+const rimLight = new THREE.PointLight(0x64b4ff, 0.4, 25);
+rimLight.position.set(-4, 5, -3);
+scene.add(rimLight);
+// Fairy glow light — moves with the fairy
+const fairyLight = new THREE.PointLight(0x64b4ff, 0.8, 8);
+scene.add(fairyLight);
+
+// ═══ STARFIELD BACKGROUND ═══
+const starGeo = new THREE.BufferGeometry();
+const starVerts = [];
+for (let i = 0; i < 600; i++) {
+  starVerts.push((Math.random()-0.5)*80, (Math.random()-0.5)*80, (Math.random()-0.5)*80);
+}
+starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starVerts, 3));
+const starMat = new THREE.PointsMaterial({color:0xc8a832, size:0.08, transparent:true, opacity:0.4});
+scene.add(new THREE.Points(starGeo, starMat));
+
+// ═══ BELT SYSTEM ═══
+let masterVel = 0;
+const R_CORTEX = 1.4;
+const R_HEMI = 1.0;
+const BELT_RATIO = R_CORTEX / R_HEMI;
+const FRICTION = 0.997;
+let cortexAngle = 0, leftAngle = 0, rightAngle = 0;
+
+// ═══ EMOTION WHEEL ═══
+const EMOTION_WHEEL = [
+  { deg:0,   core:'JOY',          color:'#FFD700', hz:1.6,
+    ring2:['Happy','Cheerful','Content','Pleased','Grateful'],
+    ring3:['Blissful','Delighted','Amused','Proud','Optimistic','Playful','Relieved','Satisfied'] },
+  { deg:45,  core:'TRUST',        color:'#7FFF00', hz:2.0,
+    ring2:['Accepted','Loving','Caring','Tolerant','Warm'],
+    ring3:['Respected','Devoted','Faithful','Friendly','Considerate','Benevolent','Cooperative'] },
+  { deg:90,  core:'FEAR',         color:'#8B00FF', hz:11.0,
+    ring2:['Scared','Anxious','Worried','Nervous','Insecure'],
+    ring3:['Terrified','Panicked','Helpless','Horrified','Desperate','Overwhelmed','Dread'] },
+  { deg:135, core:'SURPRISE',     color:'#00BFFF', hz:8.0,
+    ring2:['Shocked','Amazed','Stunned','Confused','Startled'],
+    ring3:['Astonished','Bewildered','Perplexed','Speechless','Awestruck','Disillusioned'] },
+  { deg:180, core:'SADNESS',      color:'#4169E1', hz:7.5,
+    ring2:['Hurt','Lonely','Disappointed','Ashamed','Empty'],
+    ring3:['Grief','Despair','Heartbroken','Abandoned','Neglected','Hopeless','Melancholy'] },
+  { deg:225, core:'DISGUST',      color:'#556B2F', hz:9.0,
+    ring2:['Revolted','Contempt','Repulsed','Judgmental','Loathing'],
+    ring3:['Nauseated','Appalled','Detesting','Offended','Horrified','Aversion','Scornful'] },
+  { deg:270, core:'ANGER',        color:'#FF4500', hz:12.0,
+    ring2:['Frustrated','Irritated','Hostile','Agitated','Bitter'],
+    ring3:['Rage','Fury','Hateful','Vengeful','Aggressive','Resentful','Enraged','Violent'] },
+  { deg:315, core:'ANTICIPATION', color:'#FF8C00', hz:4.0,
+    ring2:['Interested','Hopeful','Eager','Excited','Vigilant'],
+    ring3:['Expectant','Curious','Enthusiastic','Intrigued','Alert','Passionate','Yearning'] }
+];
+
+let emotionAngle = 0, emotionIntensity = 0.3;
+let targetEmotionAngle = 0, targetEmotionIntensity = 0.3;
+let currentEmotion = 'JOY', currentHz = 3.0, targetHz = 3.0;
+
+function getEmotionAtAngle(angle) {
+  const norm = ((angle % 360) + 360) % 360;
+  let closest = EMOTION_WHEEL[0], minDist = 999;
+  for (const s of EMOTION_WHEEL) {
+    let d = Math.abs(norm - s.deg);
+    if (d > 180) d = 360 - d;
+    if (d < minDist) { minDist = d; closest = s; }
+  }
+  return closest;
+}
+
+function getGranularEmotion(sector, intensity) {
+  if (intensity < 0.2) return sector.core;
+  if (intensity < 0.5) {
+    const idx = Math.floor(intensity * sector.ring2.length / 0.5);
+    return sector.ring2[Math.min(idx, sector.ring2.length - 1)];
+  }
+  const idx = Math.floor((intensity - 0.5) * sector.ring3.length / 0.5);
+  return sector.ring3[Math.min(idx, sector.ring3.length - 1)];
+}
+
+function updateEmotionPosition(dt) {
+  let diff = targetEmotionAngle - emotionAngle;
+  if (diff > 180) diff -= 360;
+  if (diff < -180) diff += 360;
+  emotionAngle += diff * 0.04;
+  emotionAngle = ((emotionAngle % 360) + 360) % 360;
+  emotionIntensity += (targetEmotionIntensity - emotionIntensity) * 0.04;
+  const sector = getEmotionAtAngle(emotionAngle);
+  currentEmotion = getGranularEmotion(sector, emotionIntensity);
+  targetHz = 3.0 + (sector.hz - 3.0) * emotionIntensity;
+  currentHz += (targetHz - currentHz) * 0.04;
+}
+
+// ═══ TIME AXIS ═══
+let lifeAge = 30;
+
+function getTimeWeights(age) {
+  const t = age / 60;
+  return {
+    shortTermBias:    Math.max(0, 1.0 - t * 1.5),
+    longTermWeight:   Math.min(1.0, t * 1.5),
+    riskAppetite:     Math.max(0, 1.0 - Math.abs(t - 0.33) * 2.5),
+    consequenceAware: Math.min(1.0, 0.1 + t * 1.2),
+    impulseStrength:  Math.max(0.1, 1.0 - t * 0.8),
+    legacyDrive:      Math.max(0, (t - 0.5) * 2.5),
+    emotionalVol:     Math.max(0.2, 1.0 - t * 0.7),
+    conscienceRecep:  Math.min(1.0, 0.3 + t * 0.9),
+    phase: age < 10 ? 'CHILD' : age < 18 ? 'ADOLESCENT' : age < 30 ? 'YOUNG ADULT' :
+           age < 45 ? 'PRIME' : age < 55 ? 'MATURE' : 'ELDER'
+  };
+}
+
+// ═══ EQUATOR SYSTEM ═══
+const EQ_PAIRS = [
+  {name:['MONEY','TIME'], voice:{
+    green:["Breathing room. Freedom.","You're completely free... and totally broke."],
+    red:["Building security. But who for?","You're rich. And alone."],
+    centre:"Good balance."}},
+  {name:['LOVE','FREEDOM'], voice:{
+    green:["Nobody telling you what to do.","No strings. No one remembers your birthday."],
+    red:["Putting someone first. Respect.","You've given everything. What's left of you?"],
+    centre:"Love and freedom in balance."}},
+  {name:['SAFETY','EXCITEMENT'], voice:{
+    green:["Safe. Comfortable. A bit numb maybe?","Completely safe. Completely dead inside."],
+    red:["Adventure. Could go either way.","That's reckless, mate."],
+    centre:"Safe enough to sleep. Alive enough to care."}},
+  {name:['TRUTH','KINDNESS'], voice:{
+    green:["Being nice. That's fine.","You've lied so much you believe it yourself."],
+    red:["Honest. Clean.","That wasn't truth. That was a weapon."],
+    centre:"Honest but kind. The hardest balance."}},
+  {name:['SHORT-TERM','LONG-TERM'], voice:{
+    green:["Living in the moment.","Tomorrow's problems are massive."],
+    red:["Thinking ahead. Smart.","You forgot to live today."],
+    centre:"Present and prepared."}},
+  {name:['SELF','OTHERS'], voice:{
+    green:["Looking after number one.","Nobody left around you."],
+    red:["Team player. Respect.","You've disappeared into other people's needs."],
+    centre:"Healthy balance of self and others."}}
+];
+let eqIdx = 0;
+let golfAngle = 0; // -1 to 1
+
+// ═══ NAVI — THE FAIRY CONSCIENCE ═══
+let voiceEnabled = false;
+let lastSpokenText = '';
+let speechQueue = [];
+let fairyBubbleTimer = null;
+
+// Available voices (set after voices load)
+let naviVoice = null;
+function loadVoices() {
+  const voices = speechSynthesis.getVoices();
+  // Prefer a female UK English voice for Navi
+  naviVoice = voices.find(v => v.lang === 'en-GB' && v.name.includes('Female')) ||
+              voices.find(v => v.lang === 'en-GB') ||
+              voices.find(v => v.lang.startsWith('en') && v.name.includes('Female')) ||
+              voices.find(v => v.lang.startsWith('en')) ||
+              voices[0];
+}
+if (speechSynthesis.onvoiceschanged !== undefined) {
+  speechSynthesis.onvoiceschanged = loadVoices;
+}
+loadVoices();
+
+function naviSpeak(text, urgency) {
+  // Always show bubble
+  const bubble = document.getElementById('fairy-bubble');
+  const textEl = document.getElementById('fairy-text');
+  textEl.textContent = text;
+  bubble.classList.add('show');
+  clearTimeout(fairyBubbleTimer);
+  const displayTime = Math.max(4000, text.length * 60);
+  fairyBubbleTimer = setTimeout(() => bubble.classList.remove('show'), displayTime);
+
+  // Speak if voice enabled
+  if (voiceEnabled && text !== lastSpokenText) {
+    speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    if (naviVoice) utter.voice = naviVoice;
+    utter.rate = urgency > 0.7 ? 1.1 : urgency > 0.4 ? 0.95 : 0.85;
+    utter.pitch = urgency > 0.7 ? 1.3 : urgency > 0.4 ? 1.1 : 1.0;
+    utter.volume = 0.3 + urgency * 0.7;
+    speechSynthesis.speak(utter);
+    lastSpokenText = text;
+  }
+
+  // Spawn fairy particles
+  spawnFairyParticles(6 + Math.floor(urgency * 8));
+}
+
+function spawnFairyParticles(count) {
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'fairy-particle';
+    const hue = 200 + Math.random() * 40;
+    p.style.background = `hsl(${hue}, 80%, 70%)`;
+    p.style.boxShadow = `0 0 6px hsl(${hue}, 80%, 70%)`;
+    p.style.left = (fairyScreenX + (Math.random()-0.5) * 40) + 'px';
+    p.style.top = (fairyScreenY + (Math.random()-0.5) * 40) + 'px';
+    p.style.animationDuration = (0.8 + Math.random() * 1.2) + 's';
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 2000);
+  }
+}
+
+window.toggleVoice = function() {
+  voiceEnabled = !voiceEnabled;
+  const btn = document.getElementById('voice-toggle');
+  btn.textContent = 'VOICE: ' + (voiceEnabled ? 'ON' : 'OFF');
+  btn.classList.toggle('active', voiceEnabled);
+  if (voiceEnabled) {
+    naviSpeak("Hey... listen. I'm here now.", 0.3);
+  } else {
+    speechSynthesis.cancel();
+  }
+};
+
+// ═══ BUILD SPHERES ═══
+function makeSphere(radius, pos, name, col) {
+  const geo = new THREE.SphereGeometry(radius, 64, 64);
+  const mat = new THREE.MeshStandardMaterial({
+    color: col, metalness: 0.85, roughness: 0.15,
+    envMapIntensity: 1.2
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(...pos);
+  mesh.userData = { name, radius };
+  scene.add(mesh);
+  return mesh;
+}
+
+const cortexMesh = makeSphere(R_CORTEX, [0, 3.2, 0], 'cortex', 0x3a3020);
+const leftMesh   = makeSphere(R_HEMI, [-3.5, -1.5, 0], 'left', 0x1a2a3a);
+const rightMesh  = makeSphere(R_HEMI, [3.5, -1.5, 0], 'right', 0x3a1a1a);
+const allSpheres = [cortexMesh, leftMesh, rightMesh];
+
+// Sphere labels
+function addLabel(mesh, text, yOff) {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 48;
+  const ctx = c.getContext('2d');
+  ctx.font = 'bold 22px Cinzel, serif';
+  ctx.fillStyle = '#c8a832';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, 128, 32);
+  const tex = new THREE.CanvasTexture(c);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, opacity:0.6}));
+  sprite.position.set(mesh.position.x, mesh.position.y + yOff, 0);
+  sprite.scale.set(2.2, 0.42, 1);
+  scene.add(sprite);
+}
+addLabel(cortexMesh, 'CORTEX', -2.0);
+addLabel(leftMesh, 'ANGEL', -1.5);
+addLabel(rightMesh, 'DEMON', -1.5);
+
+// ═══ POLAR HALOS — EMOTION WHEEL ═══
+function makePolarHalo(parent, radius, name) {
+  const group = new THREE.Group();
+  group.position.copy(parent.position);
+
+  for (let i = 0; i < 8; i++) {
+    const sector = EMOTION_WHEEL[i];
+    const startA = (i / 8) * Math.PI * 2 - Math.PI / 8;
+    const arcGeo = new THREE.TorusGeometry(radius, 0.04, 8, 16, Math.PI / 4);
+    const color = new THREE.Color(sector.color);
+    const mat = new THREE.MeshStandardMaterial({
+      color, transparent:true, opacity:0.5, metalness:0.8, roughness:0.2,
+      side:THREE.DoubleSide, emissive:color, emissiveIntensity:0.15
+    });
+    const arcMesh = new THREE.Mesh(arcGeo, mat);
+    arcMesh.rotation.z = startA + Math.PI / 8;
+    group.add(arcMesh);
+  }
+
+  // Cursor dot
+  const cursorGeo = new THREE.SphereGeometry(name === 'cortex' ? 0.12 : 0.08, 12, 12);
+  const cursorMat = new THREE.MeshBasicMaterial({color:0xffffff});
+  const cursor = new THREE.Mesh(cursorGeo, cursorMat);
+  cursor.position.set(radius, 0, 0.08);
+  group.add(cursor);
+
+  // Glow
+  const glowGeo = new THREE.RingGeometry(0.12, 0.2, 16);
+  const glowMat = new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.25, side:THREE.DoubleSide});
+  const glow = new THREE.Mesh(glowGeo, glowMat);
+  glow.position.copy(cursor.position);
+  group.add(glow);
+
+  scene.add(group);
+  return { mesh: group, cursor, cursorMat, glow, glowMat, radius };
+}
+
+const cortexPolar = makePolarHalo(cortexMesh, 1.9, 'cortex');
+const leftPolar   = makePolarHalo(leftMesh, 1.4, 'left');
+const rightPolar  = makePolarHalo(rightMesh, 1.4, 'right');
+
+// ═══ EQUATORIAL HALOS ═══
+function makeEquatorHalo(parent, radius) {
+  const geo = new THREE.TorusGeometry(radius, 0.03, 16, 80);
+  const colors = [];
+  const posAttr = geo.getAttribute('position');
+  for (let i = 0; i < posAttr.count; i++) {
+    const x = posAttr.getX(i);
+    if (x < 0) colors.push(0.2, 0.5, 0.2);
+    else colors.push(0.5, 0.2, 0.2);
+  }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  const mat = new THREE.MeshStandardMaterial({
+    vertexColors:true, metalness:0.8, roughness:0.2,
+    transparent:true, opacity:0.4, side:THREE.DoubleSide,
+    emissive:0x444444, emissiveIntensity:0.05
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.copy(parent.position);
+  mesh.rotation.x = Math.PI / 2;
+  scene.add(mesh);
+  return { mesh, mat };
+}
+
+const cortexEq = makeEquatorHalo(cortexMesh, 1.7);
+const leftEq   = makeEquatorHalo(leftMesh, 1.2);
+const rightEq  = makeEquatorHalo(rightMesh, 1.2);
+
+// ═══ FIGURE-8 CROSSED BELT DRIVES ═══
+function makeFig8(from, to) {
+  const pts = [];
+  const steps = 120;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const curve = Math.sin(t * Math.PI);
+    const x = from.x + (to.x - from.x) * t;
+    const y = from.y + (to.y - from.y) * t;
+    const z = curve * 1.8 * (to.x > from.x ? 1 : -1) * (t < 0.5 ? 1 : -1);
+    pts.push(new THREE.Vector3(x, y, z));
+  }
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const tubeGeo = new THREE.TubeGeometry(curve, 80, 0.02, 8, false);
+  const mat = new THREE.MeshStandardMaterial({
+    color:0xc8a832, transparent:true, opacity:0.2,
+    metalness:0.9, roughness:0.1, emissive:0xc8a832, emissiveIntensity:0.05
+  });
+  const mesh = new THREE.Mesh(tubeGeo, mat);
+  scene.add(mesh);
+
+  // Travelling dot
+  const dotGeo = new THREE.SphereGeometry(0.06, 8, 8);
+  const dotMat = new THREE.MeshBasicMaterial({color:0xf5d96a});
+  const dot = new THREE.Mesh(dotGeo, dotMat);
+  scene.add(dot);
+
+  const sampledPts = curve.getPoints(200);
+  return { mesh, dot, pts: sampledPts, t: 0 };
+}
+
+const fig8L = makeFig8(cortexMesh.position, leftMesh.position);
+const fig8R = makeFig8(cortexMesh.position, rightMesh.position);
+
+// ═══ CORPUS CALLOSUM ═══
+const corpusCurve = new THREE.CatmullRomCurve3([
+  leftMesh.position.clone().add(new THREE.Vector3(0.5, 0, 0)),
+  new THREE.Vector3(0, -1.5, -1.5),
+  rightMesh.position.clone().add(new THREE.Vector3(-0.5, 0, 0))
+]);
+const corpusTube = new THREE.TubeGeometry(corpusCurve, 40, 0.015, 8, false);
+const corpusMat = new THREE.MeshStandardMaterial({
+  color:0xc8a832, transparent:true, opacity:0.1,
+  emissive:0xc8a832, emissiveIntensity:0.02
+});
+const corpusLine = new THREE.Mesh(corpusTube, corpusMat);
+scene.add(corpusLine);
+
+// ═══ NAVI FAIRY — 3D object that orbits the brain ═══
+const fairyGroup = new THREE.Group();
+// Core glow sphere
+const fairyCoreGeo = new THREE.SphereGeometry(0.15, 16, 16);
+const fairyCoreMat = new THREE.MeshBasicMaterial({color:0x64b4ff, transparent:true, opacity:0.9});
+const fairyCore = new THREE.Mesh(fairyCoreGeo, fairyCoreMat);
+fairyGroup.add(fairyCore);
+
+// Wing 1
+const wingGeo = new THREE.PlaneGeometry(0.4, 0.2);
+const wingMat = new THREE.MeshBasicMaterial({color:0x88ccff, transparent:true, opacity:0.4, side:THREE.DoubleSide});
+const wing1 = new THREE.Mesh(wingGeo, wingMat);
+wing1.position.set(-0.15, 0.05, 0);
+wing1.rotation.y = -0.4;
+fairyGroup.add(wing1);
+const wing2 = new THREE.Mesh(wingGeo, wingMat.clone());
+wing2.position.set(0.15, 0.05, 0);
+wing2.rotation.y = 0.4;
+fairyGroup.add(wing2);
+
+// Outer glow
+const fairyGlowGeo = new THREE.SphereGeometry(0.35, 16, 16);
+const fairyGlowMat = new THREE.MeshBasicMaterial({color:0x64b4ff, transparent:true, opacity:0.12});
+const fairyGlow = new THREE.Mesh(fairyGlowGeo, fairyGlowMat);
+fairyGroup.add(fairyGlow);
+
+scene.add(fairyGroup);
+
+let fairyOrbitAngle = 0;
+let fairyScreenX = 0, fairyScreenY = 0;
+
+// Fairy trail particles in 3D
+const FAIRY_TRAIL_COUNT = 30;
+const fairyTrailGeo = new THREE.BufferGeometry();
+const trailPositions = new Float32Array(FAIRY_TRAIL_COUNT * 3);
+const trailSizes = new Float32Array(FAIRY_TRAIL_COUNT);
+for (let i = 0; i < FAIRY_TRAIL_COUNT; i++) { trailSizes[i] = 3.0 - (i / FAIRY_TRAIL_COUNT) * 2.5; }
+fairyTrailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+fairyTrailGeo.setAttribute('size', new THREE.BufferAttribute(trailSizes, 1));
+const trailMat = new THREE.PointsMaterial({color:0x64b4ff, transparent:true, opacity:0.3, size:0.06, sizeAttenuation:true});
+const fairyTrail = new THREE.Points(fairyTrailGeo, trailMat);
+scene.add(fairyTrail);
+const trailHistory = [];
+
+// ═══ HEARTS RENDERING ═══
+function renderHearts() {
+  const row = document.getElementById('hearts-row');
+  const tw = getTimeWeights(lifeAge);
+  // 6 hearts × 10 years each
+  let html = '';
+  for (let i = 0; i < 6; i++) {
+    const heartAge = (i + 1) * 10;
+    if (lifeAge >= heartAge) {
+      html += '<svg class="heart" viewBox="0 0 24 24"><path fill="#cc2222" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
+    } else if (lifeAge >= heartAge - 5) {
+      html += '<svg class="heart half" viewBox="0 0 24 24"><path fill="#cc2222" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
+    } else {
+      html += '<svg class="heart empty" viewBox="0 0 24 24"><path fill="#cc2222" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
+    }
+  }
+  row.innerHTML = html;
+  document.getElementById('age-label').textContent = 'AGE ' + lifeAge + ' · ' + tw.phase;
+}
+renderHearts();
+
+// ═══ BELT PHYSICS ═══
+function updateBelt(dt) {
+  updateEmotionPosition(dt);
+  masterVel *= FRICTION;
+  cortexAngle += masterVel * dt;
+  const hemiVel = -masterVel * BELT_RATIO;
+  leftAngle += hemiVel * dt;
+  rightAngle += hemiVel * dt;
+
+  // Position polar halos (no spin — positioned by emotion)
+  cortexPolar.mesh.position.copy(cortexMesh.position);
+  leftPolar.mesh.position.copy(leftMesh.position);
+  rightPolar.mesh.position.copy(rightMesh.position);
+
+  // CORTEX cursor = emotion position
+  const cursorA = (emotionAngle / 360) * Math.PI * 2;
+  const cr = cortexPolar.radius;
+  cortexPolar.cursor.position.set(Math.cos(cursorA) * cr, Math.sin(cursorA) * cr, 0.08);
+  cortexPolar.glow.position.copy(cortexPolar.cursor.position);
+  const sector = getEmotionAtAngle(emotionAngle);
+  cortexPolar.cursorMat.color.set(sector.color);
+  cortexPolar.glowMat.color.set(sector.color);
+
+  // DEMON = 180° counter from cortex (CONFLICT)
+  const demonAngle = (emotionAngle + 180) % 360;
+  const demonA = (demonAngle / 360) * Math.PI * 2;
+  const rr = rightPolar.radius;
+  rightPolar.cursor.position.set(Math.cos(demonA) * rr, Math.sin(demonA) * rr, 0.08);
+  rightPolar.glow.position.copy(rightPolar.cursor.position);
+  const demonSector = getEmotionAtAngle(demonAngle);
+  rightPolar.cursorMat.color.set(demonSector.color);
+  rightPolar.glowMat.color.set(demonSector.color);
+
+  // ANGEL = same as cortex
+  const lr = leftPolar.radius;
+  leftPolar.cursor.position.set(Math.cos(cursorA) * lr, Math.sin(cursorA) * lr, 0.08);
+  leftPolar.glow.position.copy(leftPolar.cursor.position);
+  leftPolar.cursorMat.color.set(sector.color);
+  leftPolar.glowMat.color.set(sector.color);
+}
+
+// Equatorial tilt
+function updateEquatorTilt() {
+  const tiltRad = golfAngle * (Math.PI / 4);
+  [cortexEq, leftEq, rightEq].forEach(eq => {
+    eq.mesh.rotation.x = Math.PI / 2 + tiltRad;
+  });
+  cortexEq.mesh.position.copy(cortexMesh.position);
+  leftEq.mesh.position.copy(leftMesh.position);
+  rightEq.mesh.position.copy(rightMesh.position);
+}
+
+// Figure-8 dots
+function updateFig8Dots(dt) {
+  const speed = Math.abs(masterVel) * 0.8 + 0.3;
+  const dir = masterVel >= 0 ? 1 : -1;
+  [fig8L, fig8R].forEach(f => {
+    f.t = (f.t + dt * speed * dir * 30 + f.pts.length) % f.pts.length;
+    const idx = Math.floor(Math.abs(f.t)) % f.pts.length;
+    f.dot.position.copy(f.pts[idx]);
+  });
+}
+
+// Fairy orbit
+function updateFairy(dt) {
+  fairyOrbitAngle += dt * 0.4;
+  const orbitR = 5.5;
+  const fy = 2.0 + Math.sin(fairyOrbitAngle * 1.7) * 1.5;
+  const fx = Math.cos(fairyOrbitAngle) * orbitR;
+  const fz = Math.sin(fairyOrbitAngle) * orbitR * 0.6;
+  fairyGroup.position.set(fx, fy, fz);
+  fairyLight.position.copy(fairyGroup.position);
+
+  // Wing flutter
+  wing1.rotation.z = Math.sin(Date.now() * 0.015) * 0.3;
+  wing2.rotation.z = -Math.sin(Date.now() * 0.015) * 0.3;
+
+  // Pulse glow
+  fairyGlowMat.opacity = 0.08 + Math.sin(Date.now() * 0.003) * 0.04;
+  fairyCoreMat.opacity = 0.7 + Math.sin(Date.now() * 0.005) * 0.3;
+
+  // Screen position for 2D particles
+  const vec = fairyGroup.position.clone().project(camera);
+  fairyScreenX = (vec.x * 0.5 + 0.5) * innerWidth;
+  fairyScreenY = (-vec.y * 0.5 + 0.5) * innerHeight;
+
+  // Trail
+  trailHistory.unshift(fairyGroup.position.clone());
+  if (trailHistory.length > FAIRY_TRAIL_COUNT) trailHistory.pop();
+  const posArr = fairyTrailGeo.getAttribute('position').array;
+  for (let i = 0; i < FAIRY_TRAIL_COUNT; i++) {
+    const p = trailHistory[Math.min(i, trailHistory.length - 1)];
+    posArr[i*3] = p.x; posArr[i*3+1] = p.y; posArr[i*3+2] = p.z;
+  }
+  fairyTrailGeo.getAttribute('position').needsUpdate = true;
+}
+
+// ═══ TRAJECTORY TRIANGLE ═══
+const trajCanvas = document.getElementById('traj-canvas');
+const trajCtx = trajCanvas.getContext('2d');
+
+function getTrajectory() {
+  const openEmotions = { JOY:0.95, TRUST:0.85, ANTICIPATION:0.8, SURPRISE:0.5,
+                         FEAR:0.15, SADNESS:0.1, DISGUST:0.2, ANGER:0.1 };
+  const sector = getEmotionAtAngle(emotionAngle);
+  const emotionOpen = (openEmotions[sector.core] || 0.5) * (1.0 - emotionIntensity * 0.3);
+  const consequenceOpen = 1.0 - Math.abs(golfAngle) * 0.8;
+  const timeOpen = 1.0 - (lifeAge / 60) * 0.85;
+  const openness = emotionOpen * 0.35 + consequenceOpen * 0.3 + timeOpen * 0.35;
+  const arcCount = Math.max(1, Math.round(openness * 8));
+  let label, symbol;
+  if (openness > 0.75) { label = 'WIDE OPEN'; symbol = '△'; }
+  else if (openness > 0.55) { label = 'OPEN'; symbol = '△'; }
+  else if (openness > 0.45) { label = 'BALANCED'; symbol = '◇'; }
+  else if (openness > 0.3) { label = 'NARROWING'; symbol = '▽'; }
+  else if (openness > 0.15) { label = 'CONVERGING'; symbol = '▽'; }
+  else { label = 'DEATH ROAD'; symbol = '▽'; }
+  return { openness, arcCount, label, symbol, emotionOpen, consequenceOpen, timeOpen };
+}
+
+function drawTrajectory() {
+  const w = trajCanvas.width, h = trajCanvas.height;
+  trajCtx.clearRect(0, 0, w, h);
+  const traj = getTrajectory();
+  const cx = w/2, cy = h/2, size = 26;
+  const rotation = (1.0 - traj.openness) * Math.PI;
+  const r = Math.floor(traj.openness < 0.5 ? 200 + (0.5 - traj.openness) * 110 : (1 - traj.openness) * 2 * 200);
+  const g = Math.floor(traj.openness > 0.5 ? 180 + (traj.openness - 0.5) * 150 : traj.openness * 2 * 180);
+  const color = `rgb(${r},${g},20)`;
+
+  trajCtx.save();
+  trajCtx.translate(cx, cy);
+  trajCtx.rotate(rotation);
+  trajCtx.beginPath();
+  trajCtx.moveTo(0, -size);
+  trajCtx.lineTo(-size*0.8, size*0.6);
+  trajCtx.lineTo(size*0.8, size*0.6);
+  trajCtx.closePath();
+  trajCtx.fillStyle = color + '33';
+  trajCtx.fill();
+  trajCtx.strokeStyle = color;
+  trajCtx.lineWidth = 2;
+  trajCtx.stroke();
+
+  const arcSpread = traj.openness * 0.8;
+  for (let i = 0; i < traj.arcCount; i++) {
+    const t = traj.arcCount === 1 ? 0 : (i / (traj.arcCount - 1)) * 2 - 1;
+    const angle = t * arcSpread * Math.PI * 0.4;
+    const len = size * 0.6 + size * 0.4 * traj.openness;
+    trajCtx.beginPath();
+    trajCtx.moveTo(0, -size);
+    trajCtx.lineTo(Math.sin(angle) * len, -size - Math.cos(angle) * len);
+    trajCtx.strokeStyle = color + '66';
+    trajCtx.lineWidth = 1;
+    trajCtx.stroke();
+  }
+  trajCtx.restore();
+
+  document.getElementById('traj-dir').textContent = traj.symbol;
+  document.getElementById('traj-dir').style.color = color;
+  document.getElementById('traj-label').textContent = traj.label;
+  document.getElementById('traj-label').style.color = color;
+  document.getElementById('s-traj-sym').textContent = traj.symbol;
+  document.getElementById('s-traj-sym').style.color = color;
+  document.getElementById('s-traj-lbl').textContent = traj.label;
+  document.getElementById('s-traj-lbl').style.color = color;
+}
+
+// ═══ SOUL HUD UPDATE ═══
+function updateHUD() {
+  const sector = getEmotionAtAngle(emotionAngle);
+  document.getElementById('s-emotion').textContent = currentEmotion.toUpperCase();
+  document.getElementById('s-emotion').style.color = sector.color;
+  document.getElementById('s-intensity').textContent = Math.round(emotionIntensity * 100) + '%';
+  const demonSector = getEmotionAtAngle((emotionAngle + 180) % 360);
+  document.getElementById('s-demon').textContent = getGranularEmotion(demonSector, emotionIntensity).toUpperCase();
+  document.getElementById('s-demon').style.color = demonSector.color;
+  document.getElementById('s-angel').textContent = currentEmotion.toUpperCase();
+  document.getElementById('s-angel').style.color = sector.color;
+  const tw = getTimeWeights(lifeAge);
+  document.getElementById('s-impulse').textContent = tw.impulseStrength.toFixed(2);
+  document.getElementById('s-wisdom').textContent = tw.conscienceRecep.toFixed(2);
+
+  // Consequence dial labels
+  document.getElementById('con-label-l').textContent = EQ_PAIRS[eqIdx].name[0];
+  document.getElementById('con-label-r').textContent = EQ_PAIRS[eqIdx].name[1];
+}
+
+// ═══ EMOTION DIAL RENDERING ═══
+const emoCanvas = document.getElementById('emo-canvas');
+const eCtx = emoCanvas.getContext('2d');
+
+function drawEmotionDial() {
+  const w = emoCanvas.width, h = emoCanvas.height;
+  eCtx.clearRect(0, 0, w, h);
+  const cx = w/2, cy = h - 16, r = w/2 - 40;
+
+  // Glow background
+  const grad = eCtx.createRadialGradient(cx, cy, 0, cx, cy, r + 20);
+  grad.addColorStop(0, 'rgba(200,168,50,0.03)');
+  grad.addColorStop(1, 'transparent');
+  eCtx.fillStyle = grad;
+  eCtx.fillRect(0, 0, w, h);
+
+  for (let i = 0; i < 8; i++) {
+    const sector = EMOTION_WHEEL[i];
+    const startA = Math.PI - (i/8) * Math.PI;
+    const endA = Math.PI - ((i+1)/8) * Math.PI;
+    eCtx.beginPath();
+    eCtx.arc(cx, cy, r, startA, endA, true);
+    eCtx.strokeStyle = sector.color;
+    eCtx.lineWidth = 16;
+    eCtx.lineCap = 'butt';
+    eCtx.stroke();
+
+    // Sector glow
+    eCtx.beginPath();
+    eCtx.arc(cx, cy, r, startA, endA, true);
+    eCtx.strokeStyle = sector.color + '22';
+    eCtx.lineWidth = 28;
+    eCtx.stroke();
+
+    const midA = (startA + endA) / 2;
+    const lx = cx + Math.cos(midA) * (r + 24);
+    const ly = cy - Math.sin(midA) * (r + 24);
+    eCtx.font = 'bold 12px Cinzel, serif';
+    eCtx.fillStyle = sector.color;
+    eCtx.textAlign = 'center';
+    eCtx.fillText(sector.core, lx, ly + 3);
+  }
+
+  // Neutral center
+  eCtx.font = 'bold 13px Cinzel, serif';
+  eCtx.fillStyle = '#3a3020';
+  eCtx.textAlign = 'center';
+  eCtx.fillText('NEUTRAL', cx, cy + 14);
+
+  // Pointer needle
+  const normAngle = ((emotionAngle % 360) + 360) % 360;
+  const pointerA = Math.PI - (normAngle / 360) * Math.PI;
+  const needleLen = (r * 0.3) + (r * 0.7) * emotionIntensity;
+  const nx = cx + Math.cos(pointerA) * needleLen;
+  const ny = cy - Math.sin(pointerA) * needleLen;
+  const sector = getEmotionAtAngle(emotionAngle);
+
+  // Needle glow
+  eCtx.beginPath();
+  eCtx.moveTo(cx, cy);
+  eCtx.lineTo(nx, ny);
+  eCtx.strokeStyle = sector.color + '44';
+  eCtx.lineWidth = 8;
+  eCtx.lineCap = 'round';
+  eCtx.stroke();
+
+  eCtx.beginPath();
+  eCtx.moveTo(cx, cy);
+  eCtx.lineTo(nx, ny);
+  eCtx.strokeStyle = sector.color;
+  eCtx.lineWidth = 2.5;
+  eCtx.stroke();
+
+  // Needle head
+  eCtx.beginPath();
+  eCtx.arc(nx, ny, 7, 0, Math.PI * 2);
+  eCtx.fillStyle = sector.color;
+  eCtx.fill();
+  eCtx.beginPath();
+  eCtx.arc(nx, ny, 3, 0, Math.PI * 2);
+  eCtx.fillStyle = '#000';
+  eCtx.fill();
+
+  // Current emotion
+  eCtx.font = 'bold 11px Cinzel, serif';
+  eCtx.fillStyle = sector.color;
+  eCtx.fillText(currentEmotion.toUpperCase(), cx, cy - 10);
+}
+
+// ═══ CONSEQUENCE DIAL ═══
+const conCanvas = document.getElementById('con-canvas');
+const cCtx = conCanvas.getContext('2d');
+
+function drawConsequenceDial() {
+  const w = conCanvas.width, h = conCanvas.height;
+  cCtx.clearRect(0, 0, w, h);
+  const cx = w/2, cy = h - 16, r = w/2 - 40;
+  const pair = EQ_PAIRS[eqIdx];
+
+  const segments = 60;
+  for (let i = 0; i < segments; i++) {
+    const t = i / segments;
+    const a1 = Math.PI - t * Math.PI;
+    const a2 = Math.PI - (t + 1/segments) * Math.PI;
+    const rc = Math.floor(t < 0.5 ? t * 2 * 200 : 200);
+    const gc = Math.floor(t < 0.5 ? 200 : Math.max(0, (1 - (t-0.5)*2) * 200));
+    cCtx.beginPath();
+    cCtx.arc(cx, cy, r, a1, a2, true);
+    cCtx.strokeStyle = `rgba(${rc},${gc},40,0.5)`;
+    cCtx.lineWidth = 14;
+    cCtx.stroke();
+  }
+
+  // Pointer
+  const pointerT = (golfAngle + 1) / 2; // 0-1
+  const pointerA = Math.PI - pointerT * Math.PI;
+  const px = cx + Math.cos(pointerA) * (r * 0.85);
+  const py = cy - Math.sin(pointerA) * (r * 0.85);
+
+  // Glow line
+  cCtx.beginPath();
+  cCtx.moveTo(cx, cy);
+  cCtx.lineTo(px, py);
+  cCtx.strokeStyle = 'rgba(200,168,50,0.2)';
+  cCtx.lineWidth = 6;
+  cCtx.lineCap = 'round';
+  cCtx.stroke();
+
+  cCtx.beginPath();
+  cCtx.moveTo(cx, cy);
+  cCtx.lineTo(px, py);
+  cCtx.strokeStyle = '#c8a832';
+  cCtx.lineWidth = 2;
+  cCtx.stroke();
+
+  cCtx.beginPath();
+  cCtx.arc(px, py, 6, 0, Math.PI * 2);
+  cCtx.fillStyle = '#c8a832';
+  cCtx.fill();
+
+  // Centre label
+  cCtx.font = 'bold 11px Cinzel, serif';
+  cCtx.fillStyle = '#5a4a1a';
+  cCtx.textAlign = 'center';
+  cCtx.fillText(pair.name[0] + ' vs ' + pair.name[1], cx, cy + 14);
+}
+
+// ═══ FAIRY CONSCIENCE — speaks when dials move ═══
+let lastFairyEmotion = 'JOY';
+let lastFairyAge = 30;
+let lastFairyTilt = 0;
+let fairySpeakCooldown = 0;
+
+function fairyReact(dt) {
+  fairySpeakCooldown -= dt;
+  if (fairySpeakCooldown > 0) return;
+
+  const sector = getEmotionAtAngle(emotionAngle);
+  const tw = getTimeWeights(lifeAge);
+
+  // React to emotion change
+  if (sector.core !== lastFairyEmotion) {
+    const demonSector = getEmotionAtAngle((emotionAngle + 180) % 360);
+    const urgency = emotionIntensity;
+    const messages = {
+      JOY: ["Joy. That's good. Stay here a while.", "You're happy. The demon wants sadness — don't let him win."],
+      TRUST: ["Trust. Beautiful. But the demon craves disgust — watch yourself.", "Opening your heart. Brave."],
+      FEAR: ["Hey... I feel your fear. The demon feeds on anticipation right now.", "You're scared. That's okay. I'm here."],
+      SURPRISE: ["Woah! Didn't expect that, did you?", "Surprised. The demon's disgusted. Interesting conflict."],
+      SADNESS: ["I know it hurts. The demon's enjoying this — he wants joy from your pain.", "Sadness. The heaviest emotion. I'm right here."],
+      DISGUST: ["Something's wrong and you know it.", "Disgust. The demon trusts what you hate. Think about that."],
+      ANGER: ["Hey! Listen! The anger is rising. The demon wants more.", "Rage building. The demon LOVES this. Don't give him what he wants."],
+      ANTICIPATION: ["Looking forward to something? Good. Channel it.", "Anticipation. The demon fears what you hope for."]
+    };
+    const pool = messages[sector.core] || ["I feel a shift in you."];
+    const msg = pool[Math.floor(Math.random() * pool.length)];
+    naviSpeak(msg, urgency);
+    lastFairyEmotion = sector.core;
+    fairySpeakCooldown = 3.0;
+    return;
+  }
+
+  // React to age change (big shifts)
+  if (Math.abs(lifeAge - lastFairyAge) >= 8) {
+    const phase = tw.phase;
+    const ageMessages = {
+      CHILD: "You're so young. The whole world is open. Every path is possible.",
+      ADOLESCENT: "Growing up. Starting to feel the weight of choices.",
+      'YOUNG ADULT': "The world is yours. But the roads are starting to narrow. Choose wisely.",
+      PRIME: "Prime of your life. The demon is strongest here. The angel too.",
+      MATURE: "Wisdom comes. The conscience speaks louder now. You've learned to listen.",
+      ELDER: "The roads are few now. But each one matters more than ever."
+    };
+    naviSpeak(ageMessages[phase] || "Time moves.", tw.consequenceAware);
+    lastFairyAge = lifeAge;
+    fairySpeakCooldown = 3.0;
+    return;
+  }
+
+  // React to extreme tilt
+  if (Math.abs(golfAngle) > 0.6 && Math.abs(golfAngle - lastFairyTilt) > 0.3) {
+    const pair = EQ_PAIRS[eqIdx];
+    const leaning = golfAngle > 0 ? pair.name[1] : pair.name[0];
+    const pool = golfAngle > 0 ? pair.voice.red : pair.voice.green;
+    const idx = Math.min(pool.length - 1, Math.floor(Math.abs(golfAngle) * pool.length));
+    naviSpeak(pool[idx], Math.abs(golfAngle));
+    lastFairyTilt = golfAngle;
+    fairySpeakCooldown = 3.0;
+  }
+}
+
+// ═══ DIAL INTERACTIONS ═══
+let emoDragging = false;
+const emoWrap = document.getElementById('emo-wrap');
+
+function emoPointerToAngle(clientX, clientY) {
+  const rect = emoCanvas.getBoundingClientRect();
+  const sx = emoCanvas.width / rect.width;
+  const sy = emoCanvas.height / rect.height;
+  const x = (clientX - rect.left) * sx;
+  const y = (clientY - rect.top) * sy;
+  const ecx = emoCanvas.width / 2, ecy = emoCanvas.height - 16;
+  const r = emoCanvas.width / 2 - 40;
+  const angle = Math.atan2(-(y - ecy), x - ecx);
+  let wheelAngle = ((Math.PI - angle) / Math.PI) * 360;
+  wheelAngle = Math.max(0, Math.min(360, wheelAngle));
+  const dist = Math.sqrt((x - ecx) ** 2 + (y - ecy) ** 2);
+  return { angle: wheelAngle, intensity: Math.min(1.0, Math.max(0.05, dist / r)) };
+}
+
+emoWrap.addEventListener('mousedown', e => {
+  emoDragging = true;
+  const r = emoPointerToAngle(e.clientX, e.clientY);
+  targetEmotionAngle = r.angle; targetEmotionIntensity = r.intensity;
+  orbit.enabled = false;
+});
+window.addEventListener('mousemove', e => {
+  if (!emoDragging) return;
+  const r = emoPointerToAngle(e.clientX, e.clientY);
+  targetEmotionAngle = r.angle; targetEmotionIntensity = r.intensity;
+});
+window.addEventListener('mouseup', () => { if (emoDragging) { emoDragging = false; orbit.enabled = true; } });
+emoWrap.addEventListener('touchstart', e => {
+  emoDragging = true;
+  const r = emoPointerToAngle(e.touches[0].clientX, e.touches[0].clientY);
+  targetEmotionAngle = r.angle; targetEmotionIntensity = r.intensity;
+  orbit.enabled = false; e.preventDefault();
+}, {passive:false});
+window.addEventListener('touchmove', e => {
+  if (!emoDragging) return;
+  const r = emoPointerToAngle(e.touches[0].clientX, e.touches[0].clientY);
+  targetEmotionAngle = r.angle; targetEmotionIntensity = r.intensity;
+}, {passive:false});
+window.addEventListener('touchend', () => { if (emoDragging) { emoDragging = false; orbit.enabled = true; } });
+
+// Consequence dial drag
+let conDragging = false;
+const conWrap = document.getElementById('con-wrap');
+
+function conPointerToAngle(clientX, clientY) {
+  const rect = conCanvas.getBoundingClientRect();
+  const sx = conCanvas.width / rect.width;
+  const x = (clientX - rect.left) * sx;
+  const ecx = conCanvas.width / 2;
+  return Math.max(-1, Math.min(1, (x - ecx) / (conCanvas.width / 2 - 40)));
+}
+
+conWrap.addEventListener('mousedown', e => {
+  conDragging = true;
+  golfAngle = conPointerToAngle(e.clientX, e.clientY);
+  orbit.enabled = false;
+});
+window.addEventListener('mousemove', e => { if (conDragging) golfAngle = conPointerToAngle(e.clientX, e.clientY); });
+window.addEventListener('mouseup', () => { if (conDragging) { conDragging = false; orbit.enabled = true; } });
+conWrap.addEventListener('touchstart', e => {
+  conDragging = true;
+  golfAngle = conPointerToAngle(e.touches[0].clientX, e.touches[0].clientY);
+  orbit.enabled = false; e.preventDefault();
+}, {passive:false});
+window.addEventListener('touchmove', e => {
+  if (!conDragging) return;
+  golfAngle = conPointerToAngle(e.touches[0].clientX, e.touches[0].clientY);
+}, {passive:false});
+window.addEventListener('touchend', () => { if (conDragging) { conDragging = false; orbit.enabled = true; } });
+
+// Time bar drag
+const timeTrack = document.getElementById('time-track');
+const timeFill = document.getElementById('time-fill');
+const timeThumb = document.getElementById('time-thumb');
+let timeDragging = false;
+
+function setTimeFromX(clientX) {
+  const rect = timeTrack.getBoundingClientRect();
+  let t = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  lifeAge = Math.round(t * 60);
+  timeFill.style.width = (t * 100) + '%';
+  timeThumb.style.left = 'calc(' + (t * 100) + '% - 5px)';
+  document.getElementById('time-age-display').textContent = lifeAge + ' YEARS';
+  renderHearts();
+}
+
+timeTrack.addEventListener('mousedown', e => { timeDragging = true; setTimeFromX(e.clientX); orbit.enabled = false; });
+window.addEventListener('mousemove', e => { if (timeDragging) setTimeFromX(e.clientX); });
+window.addEventListener('mouseup', () => { if (timeDragging) { timeDragging = false; orbit.enabled = true; } });
+timeTrack.addEventListener('touchstart', e => {
+  timeDragging = true; setTimeFromX(e.touches[0].clientX); orbit.enabled = false; e.preventDefault();
+}, {passive:false});
+window.addEventListener('touchmove', e => { if (!timeDragging) return; setTimeFromX(e.touches[0].clientX); }, {passive:false});
+window.addEventListener('touchend', () => { if (timeDragging) { timeDragging = false; orbit.enabled = true; } });
+
+// Sphere drag
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let sphereDrag = null, lastDragX = 0;
+
+renderer.domElement.addEventListener('mousedown', e => {
+  mouse.x = (e.clientX / innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(allSpheres);
+  if (hits.length > 0) { sphereDrag = hits[0].object.userData.name; lastDragX = e.clientX; orbit.enabled = false; }
+});
+renderer.domElement.addEventListener('mousemove', e => {
+  if (!sphereDrag) return;
+  const dx = e.clientX - lastDragX; lastDragX = e.clientX;
+  masterVel += sphereDrag === 'cortex' ? dx * 0.03 : -dx * 0.03 / BELT_RATIO;
+});
+renderer.domElement.addEventListener('mouseup', () => { if (sphereDrag) { sphereDrag = null; orbit.enabled = true; } });
+
+// ═══ GLOBAL CONTROLS ═══
+window.setEmotion = function(name) {
+  const upper = name.toUpperCase();
+  for (const s of EMOTION_WHEEL) {
+    if (s.core === upper) { targetEmotionAngle = s.deg; targetEmotionIntensity = 0.45; return; }
+  }
+};
+
+window.cycleAxis = function() {
+  eqIdx = (eqIdx + 1) % EQ_PAIRS.length;
+  golfAngle = 0;
+};
+
+window.resetAll = function() {
+  masterVel = 0; cortexAngle = 0; leftAngle = 0; rightAngle = 0;
+  emotionAngle = 0; emotionIntensity = 0.3;
+  targetEmotionAngle = 0; targetEmotionIntensity = 0.3;
+  currentEmotion = 'JOY'; targetHz = 3.0; currentHz = 3.0;
+  lifeAge = 30; eqIdx = 0; golfAngle = 0;
+  timeFill.style.width = '50%';
+  timeThumb.style.left = 'calc(50% - 5px)';
+  document.getElementById('time-age-display').textContent = '30 YEARS';
+  renderHearts();
+  naviSpeak("Reset. Back to the beginning. All paths open.", 0.2);
+};
+
+// ═══ RENDER LOOP ═══
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  updateBelt(dt);
+  updateEquatorTilt();
+  updateFig8Dots(dt);
+  updateFairy(dt);
+  fairyReact(dt);
+  updateHUD();
+  drawEmotionDial();
+  drawConsequenceDial();
+  drawTrajectory();
+
+  orbit.update();
+  renderer.render(scene, camera);
+}
+
+// Startup — Navi introduces herself after 2 seconds
+setTimeout(() => {
+  document.getElementById('alive-title').style.opacity = '1';
+  naviSpeak("Hey... listen. I can see your soul. Move the dials. I'll tell you what I see.", 0.3);
+}, 2000);
+
+animate();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+</script>
+</body>
+</html>

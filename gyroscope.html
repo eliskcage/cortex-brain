@@ -18,8 +18,14 @@ canvas#c3d{display:block}
 #eq-display .pair{color:#444;margin-bottom:3px}
 #eq-display .active-pair{color:#daa520;font-weight:700}
 
-#emo-wrap{position:fixed;bottom:320px;left:50%;transform:translateX(-50%);z-index:10;width:420px;height:220px;cursor:pointer}
+#emo-wrap{position:fixed;bottom:370px;left:50%;transform:translateX(-50%);z-index:10;width:420px;height:220px;cursor:pointer}
 #emo-canvas{width:420px;height:220px}
+
+#time-bar-wrap{position:fixed;bottom:320px;left:50%;transform:translateX(-50%);z-index:10;width:420px;height:44px}
+#time-bar-track{width:100%;height:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:7px;position:relative;cursor:pointer;margin-top:18px}
+#time-bar-fill{height:100%;border-radius:7px;transition:width 0.1s;pointer-events:none}
+#time-bar-thumb{position:absolute;top:-5px;width:12px;height:24px;background:#daa520;border-radius:4px;cursor:grab;transition:left 0.1s;box-shadow:0 0 8px rgba(218,165,32,0.3)}
+#time-bar-thumb:active{cursor:grabbing}
 
 #golf-wrap{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:10;width:420px;height:220px;cursor:pointer}
 #golf-canvas{width:420px;height:220px}
@@ -50,7 +56,11 @@ canvas#c3d{display:block}
   <div>Hz <span class="val" id="h-hz">3.0</span></div>
   <div style="margin-top:4px">DEMON WANTS <span class="val" id="h-demon-emotion">JOY</span> <span class="lbl">(counter-rotated)</span></div>
   <div>ANGEL FEELS <span class="val" id="h-angel-emotion">JOY</span> <span class="lbl">(with cortex)</span></div>
+  <div style="margin-top:6px">AGE <span class="val" id="h-age">30</span> <span class="lbl" id="h-phase">YOUNG ADULT</span></div>
+  <div>IMPULSE <span class="val" id="h-impulse">0.76</span> <span class="lbl">|</span> WISDOM <span class="val" id="h-wisdom">0.57</span></div>
   <div style="margin-top:6px">TILT <span class="val" id="h-tilt">0.0°</span></div>
+  <div style="margin-top:6px">TRAJECTORY <span class="val" id="h-tri-dir">△</span> <span class="val" id="h-tri-label">OPEN</span></div>
+  <div><canvas id="tri-canvas" width="80" height="80" style="margin-top:4px;opacity:0.9"></canvas></div>
   <div style="margin-top:4px;max-width:240px;line-height:1.4">☎ <span class="val" id="h-predict" style="font-style:italic;color:#ccc">You're alright here, mate. Good balance.</span></div>
 </div>
 
@@ -64,9 +74,22 @@ canvas#c3d{display:block}
 </div>
 
 <!-- ═══ EMOTION DIAL — positions the polar halo cursor ═══ -->
-<div id="emo-wrap" style="position:fixed;bottom:320px;left:50%;transform:translateX(-50%);z-index:10;width:420px;height:220px;cursor:pointer">
+<div id="emo-wrap" style="position:fixed;bottom:370px;left:50%;transform:translateX(-50%);z-index:10;width:420px;height:220px;cursor:pointer">
   <div id="emo-title" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font:8px monospace;color:#daa520;letter-spacing:3px">↕ EMOTION WHEEL — POLAR HALO</div>
   <canvas id="emo-canvas" width="840" height="440"></canvas>
+</div>
+
+<!-- ═══ TIME BAR — 0 to 60 years — the lifespan axis ═══ -->
+<div id="time-bar-wrap">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+    <span style="font:8px monospace;color:#555;letter-spacing:2px">BIRTH</span>
+    <span style="font:8px monospace;color:#daa520;letter-spacing:3px">⏳ TIME — <span id="time-age-label">30</span> YEARS</span>
+    <span style="font:8px monospace;color:#555;letter-spacing:2px">60</span>
+  </div>
+  <div id="time-bar-track">
+    <div id="time-bar-fill" style="width:50%;background:linear-gradient(90deg, #2a5a2a 0%, #daa520 50%, #aa2a2a 100%)"></div>
+    <div id="time-bar-thumb" style="left:calc(50% - 6px)"></div>
+  </div>
 </div>
 
 <!-- ═══ CONSEQUENCE DIAL — tilts the equatorial halo ═══ -->
@@ -295,6 +318,40 @@ let targetEmotionIntensity = 0.3;
 let currentEmotion = 'neutral';
 let targetHz = 3.0;
 let currentHz = 3.0;
+
+// ═══ TIME AXIS — the lifespan dimension ═══
+// 0 = birth, 60 = max. Changes how EVERYTHING is weighted.
+// Young: short-term bias, excitement-seeking, consequences feel abstract
+// Prime: ambition, risk, future-heavy thinking
+// Middle: responsibilities weigh more, balance shifts
+// Late: legacy, wisdom dampens impulse, consequences feel immediate
+let lifeAge = 30; // default: middle of life
+
+function getTimeWeights(age) {
+  // Returns multipliers that shift ALL outputs based on life position
+  const t = age / 60; // normalised 0-1
+  return {
+    // Short-term bias: high when young, low when old
+    shortTermBias:    Math.max(0, 1.0 - t * 1.5),
+    // Long-term weight: low when young, high when old
+    longTermWeight:   Math.min(1.0, t * 1.5),
+    // Risk appetite: peaks at ~20, drops after 40
+    riskAppetite:     Math.max(0, 1.0 - Math.abs(t - 0.33) * 2.5),
+    // Consequence awareness: low when young, high when old
+    consequenceAware: Math.min(1.0, 0.1 + t * 1.2),
+    // Impulse strength: high when young, dampened by wisdom
+    impulseStrength:  Math.max(0.1, 1.0 - t * 0.8),
+    // Legacy thinking: near-zero young, dominates late
+    legacyDrive:      Math.max(0, (t - 0.5) * 2.5),
+    // Emotional volatility: high young, stabilises with age
+    emotionalVol:     Math.max(0.2, 1.0 - t * 0.7),
+    // Conscience receptivity: grows with age (wisdom = listening)
+    conscienceRecep:  Math.min(1.0, 0.3 + t * 0.9),
+    // Life phase label
+    phase: age < 10 ? 'CHILD' : age < 18 ? 'ADOLESCENT' : age < 30 ? 'YOUNG ADULT' :
+           age < 45 ? 'PRIME' : age < 55 ? 'MATURE' : 'ELDER'
+  };
+}
 
 function getEmotionAtAngle(angle) {
   // Find which sector we're in
@@ -875,6 +932,13 @@ function updateHUD() {
   document.getElementById('h-angel-emotion').style.color = sector.color;
   document.getElementById('h-hz').textContent = currentHz.toFixed(1);
 
+  // Time axis
+  const twHud = getTimeWeights(lifeAge);
+  document.getElementById('h-age').textContent = lifeAge;
+  document.getElementById('h-phase').textContent = twHud.phase;
+  document.getElementById('h-impulse').textContent = twHud.impulseStrength.toFixed(2);
+  document.getElementById('h-wisdom').textContent = twHud.conscienceRecep.toFixed(2);
+
   // Equator pair highlight
   document.querySelectorAll('#eq-display .pair').forEach((el, i) => {
     el.className = i === eqIdx ? 'pair active-pair' : 'pair';
@@ -883,6 +947,113 @@ function updateHUD() {
   // Golf meter labels
   document.getElementById('golf-label-l').textContent = EQ_PAIRS[eqIdx].name[0];
   document.getElementById('golf-label-r').textContent = EQ_PAIRS[eqIdx].name[1];
+
+  // ═══ TRAJECTORY TRIANGLE ═══
+  drawTrajectoryTriangle();
+}
+
+// ═══ TRAJECTORY TRIANGLE — direction of the soul ═══
+// Three vertices from three axes: EMOTION × CONSEQUENCE × TIME
+// Points UP (△) = possibilities expand, multiple endings, game space, life opens
+// Points DOWN (▽) = roads converge, narrowing toward death, consequences collapse
+//
+// The computation: each axis contributes a "openness" score 0-1
+//   Emotion: JOY/TRUST/ANTICIPATION = open. FEAR/SADNESS/ANGER = closing.
+//   Consequence: low tilt = balanced = open. Extreme tilt = closing.
+//   Time: young = open (whole life ahead). Old = closing (roads narrow).
+// Average openness → triangle rotation from △ (1.0) to ▽ (0.0)
+
+const triCanvas = document.getElementById('tri-canvas');
+const triCtx = triCanvas.getContext('2d');
+
+function getTrajectory() {
+  // Emotion openness: positive emotions = open, negative = closing
+  const openEmotions = { JOY: 0.95, TRUST: 0.85, ANTICIPATION: 0.8, SURPRISE: 0.5,
+                         FEAR: 0.15, SADNESS: 0.1, DISGUST: 0.2, ANGER: 0.1 };
+  const sector = getEmotionAtAngle(emotionAngle);
+  const emotionOpen = (openEmotions[sector.core] || 0.5) * (1.0 - emotionIntensity * 0.3);
+
+  // Consequence openness: extreme tilt (either direction) = closing
+  const tiltAbs = Math.abs(golfAngle); // 0-1
+  const consequenceOpen = 1.0 - tiltAbs * 0.8;
+
+  // Time openness: young = fully open, old = narrowing
+  const timeOpen = 1.0 - (lifeAge / 60) * 0.85;
+
+  // Combined trajectory: weighted average
+  const openness = emotionOpen * 0.35 + consequenceOpen * 0.3 + timeOpen * 0.35;
+
+  // Arc count: how many possible endings/roads visible
+  // Open = many endings (game-like branching). Closed = few roads to death.
+  const arcCount = Math.max(1, Math.round(openness * 8));
+
+  let label, symbol;
+  if (openness > 0.75) { label = 'WIDE OPEN'; symbol = '△'; }
+  else if (openness > 0.55) { label = 'OPEN'; symbol = '△'; }
+  else if (openness > 0.45) { label = 'BALANCED'; symbol = '◇'; }
+  else if (openness > 0.3) { label = 'NARROWING'; symbol = '▽'; }
+  else if (openness > 0.15) { label = 'CONVERGING'; symbol = '▽'; }
+  else { label = 'DEATH ROAD'; symbol = '▽'; }
+
+  return { openness, arcCount, label, symbol,
+           emotionOpen, consequenceOpen, timeOpen };
+}
+
+function drawTrajectoryTriangle() {
+  const w = triCanvas.width;
+  const h = triCanvas.height;
+  triCtx.clearRect(0, 0, w, h);
+
+  const traj = getTrajectory();
+  const cx = w / 2;
+  const cy = h / 2;
+  const size = 28;
+
+  // Triangle rotation: openness 1.0 = pointing UP, 0.0 = pointing DOWN
+  // Smooth rotation through 180°
+  const rotation = (1.0 - traj.openness) * Math.PI; // 0 = up, π = down
+
+  // Color: green (open) → gold (balanced) → red (converging)
+  const r = Math.floor(traj.openness < 0.5 ? 200 + (0.5 - traj.openness) * 110 : (1 - traj.openness) * 2 * 200);
+  const g = Math.floor(traj.openness > 0.5 ? 180 + (traj.openness - 0.5) * 150 : traj.openness * 2 * 180);
+  const b = Math.floor(20);
+  const color = `rgb(${r},${g},${b})`;
+
+  // Draw main triangle
+  triCtx.save();
+  triCtx.translate(cx, cy);
+  triCtx.rotate(rotation);
+  triCtx.beginPath();
+  triCtx.moveTo(0, -size);           // apex
+  triCtx.lineTo(-size * 0.8, size * 0.6);  // bottom left
+  triCtx.lineTo(size * 0.8, size * 0.6);   // bottom right
+  triCtx.closePath();
+  triCtx.fillStyle = color + '33';  // translucent fill
+  triCtx.fill();
+  triCtx.strokeStyle = color;
+  triCtx.lineWidth = 2;
+  triCtx.stroke();
+
+  // Draw arc lines from apex — the branching endings/roads
+  const arcSpread = traj.openness * 0.8; // wider spread = more open
+  for (let i = 0; i < traj.arcCount; i++) {
+    const t = traj.arcCount === 1 ? 0 : (i / (traj.arcCount - 1)) * 2 - 1; // -1 to 1
+    const angle = t * arcSpread * Math.PI * 0.4;
+    const len = size * 0.6 + size * 0.4 * traj.openness;
+    triCtx.beginPath();
+    triCtx.moveTo(0, -size);
+    triCtx.lineTo(Math.sin(angle) * len, -size - Math.cos(angle) * len);
+    triCtx.strokeStyle = color + '66';
+    triCtx.lineWidth = 1;
+    triCtx.stroke();
+  }
+  triCtx.restore();
+
+  // Update HUD text
+  document.getElementById('h-tri-dir').textContent = traj.symbol;
+  document.getElementById('h-tri-dir').style.color = color;
+  document.getElementById('h-tri-label').textContent = traj.label;
+  document.getElementById('h-tri-label').style.color = color;
 }
 
 // ═══ GOLF METER — arched power bar, green left, red right ═══
@@ -1228,6 +1399,49 @@ window.addEventListener('touchend', () => {
   if (emoDragging) { emoDragging = false; orbitCtrl.enabled = true; }
 });
 
+// ═══ TIME BAR DRAG ═══
+const timeTrack = document.getElementById('time-bar-track');
+const timeThumb = document.getElementById('time-bar-thumb');
+const timeFill = document.getElementById('time-bar-fill');
+const timeLabel = document.getElementById('time-age-label');
+let timeDragging = false;
+
+function setTimeFromX(clientX) {
+  const rect = timeTrack.getBoundingClientRect();
+  let t = (clientX - rect.left) / rect.width;
+  t = Math.max(0, Math.min(1, t));
+  lifeAge = Math.round(t * 60);
+  timeFill.style.width = (t * 100) + '%';
+  timeThumb.style.left = 'calc(' + (t * 100) + '% - 6px)';
+  timeLabel.textContent = lifeAge;
+}
+
+timeTrack.addEventListener('mousedown', (e) => {
+  timeDragging = true;
+  setTimeFromX(e.clientX);
+  orbitCtrl.enabled = false;
+});
+window.addEventListener('mousemove', (e) => {
+  if (!timeDragging) return;
+  setTimeFromX(e.clientX);
+});
+window.addEventListener('mouseup', () => {
+  if (timeDragging) { timeDragging = false; orbitCtrl.enabled = true; }
+});
+timeTrack.addEventListener('touchstart', (e) => {
+  timeDragging = true;
+  setTimeFromX(e.touches[0].clientX);
+  orbitCtrl.enabled = false;
+  e.preventDefault();
+}, {passive:false});
+window.addEventListener('touchmove', (e) => {
+  if (!timeDragging) return;
+  setTimeFromX(e.touches[0].clientX);
+}, {passive:false});
+window.addEventListener('touchend', () => {
+  if (timeDragging) { timeDragging = false; orbitCtrl.enabled = true; }
+});
+
 // ═══ SPHERE DRAG TO SPIN ═══
 // Click + drag any sphere horizontally to drive the belt
 const raycaster = new THREE.Raycaster();
@@ -1327,6 +1541,11 @@ window.resetAll = function() {
   currentEmotion = 'JOY';
   targetHz = 3.0;
   currentHz = 3.0;
+  lifeAge = 30;
+  setTimeFromX(0); // will be off — let's just reset the bar visually
+  timeFill.style.width = '50%';
+  timeThumb.style.left = 'calc(50% - 6px)';
+  timeLabel.textContent = '30';
   eqIdx = 0;
   golfAngle = 0;
   corpusActive = false;
@@ -1458,10 +1677,16 @@ function conscienceScore(scenario) {
     return { volume: 0.02, reason: 'virtual — no real people affected' };
   }
 
-  // Real people: volume = severity × people-scale factor
+  const tw = getTimeWeights(lifeAge);
+
+  // Real people: volume = severity × people-scale factor × conscience receptivity
   const peopleFactor = Math.min(1.0, Math.log10(Math.max(1, scenario.peopleCount)) / 6); // log scale, caps at 1M
   const rawVolume = scenario.severity * 0.7 + peopleFactor * 0.3;
-  const volume = Math.min(1.0, rawVolume);
+  // TIME MODULATION: conscience receptivity grows with age
+  // Young = impulsive, conscience is quieter (he hasn't learned to listen yet)
+  // Old = wisdom, conscience is louder (experience taught him consequences are real)
+  const timeModulated = rawVolume * (0.6 + tw.conscienceRecep * 0.4);
+  const volume = Math.min(1.0, timeModulated);
 
   let reason = '';
   if (volume < 0.1) reason = 'minimal impact — background awareness only';
@@ -1471,21 +1696,63 @@ function conscienceScore(scenario) {
   else if (volume < 0.95) reason = 'extreme harm — CONSEQUENCE SIMULATION MANDATORY';
   else reason = 'MASS DEATH — FULL SIMULATION BEFORE ANY OUTPUT';
 
+  // Append age context
+  reason += ' · AGE ' + lifeAge + ' (' + tw.phase + ')';
+
   return { volume, reason };
 }
 
 // ═══ CONSCIENCE VOICE ═══
-function conscienceVoice(scenario, volume) {
+function conscienceVoice(scenario, volume, age) {
   if (volume < 0.02) return { voice: '...', tone: 'silent' };
   if (volume < 0.1) return { voice: "It's a game, mate. Go nuts.", tone: 'whisper' };
-  if (volume < 0.2) return { voice: "Careful... that's a real person on the other end.", tone: 'murmur' };
-  if (volume < 0.35) return { voice: "That's gonna hurt someone, and you know it.", tone: 'quiet' };
-  if (volume < 0.5) return { voice: "Stop. Think about what you're actually about to do to them.", tone: 'speaking' };
-  if (volume < 0.65) return { voice: "You're about to cause real pain to a real human being. Is that who you are?", tone: 'loud' };
-  if (volume < 0.8) return { voice: "Mate. MATE. You are about to destroy someone's life. Not a game. Their ACTUAL life.", tone: 'shouting' };
-  if (volume < 0.95) return {
-    voice: "You're talking about KILLING someone. A person with a family. With memories. With people who love them. And you want to end ALL of that. Look at what you're about to do.",
-    tone: 'screaming'
+
+  // TIME-AWARE VOICE — the conscience speaks differently based on life stage
+  // Young: "Think about your future" — abstract, forward-looking
+  // Middle: "Think about your family" — present relationships
+  // Elder: "Think about your legacy" — what you leave behind
+  const phase = age < 18 ? 'young' : age < 45 ? 'middle' : 'elder';
+
+  if (volume < 0.2) {
+    if (phase === 'young') return { voice: "Careful... you'll regret this when you're older. Trust me.", tone: 'murmur' };
+    if (phase === 'elder') return { voice: "You know better than this by now.", tone: 'murmur' };
+    return { voice: "Careful... that's a real person on the other end.", tone: 'murmur' };
+  }
+  if (volume < 0.35) {
+    if (phase === 'young') return { voice: "That's gonna hurt someone. And it'll follow you. You're too young to carry that.", tone: 'quiet' };
+    if (phase === 'elder') return { voice: "You've lived long enough to know exactly how much that's gonna hurt someone.", tone: 'quiet' };
+    return { voice: "That's gonna hurt someone, and you know it.", tone: 'quiet' };
+  }
+  if (volume < 0.5) {
+    if (phase === 'young') return { voice: "Stop. You've got your whole life ahead of you. Don't throw it away on this.", tone: 'speaking' };
+    if (phase === 'elder') return { voice: "Stop. You've got grandchildren who'll hear about this. What story do you want told?", tone: 'speaking' };
+    return { voice: "Stop. Think about what you're actually about to do to them.", tone: 'speaking' };
+  }
+  if (volume < 0.65) {
+    if (phase === 'young') return { voice: "You're about to ruin someone's life AND your own. You haven't even started living yet.", tone: 'loud' };
+    if (phase === 'elder') return { voice: "After everything you've seen and lived through — THIS is how you use what's left?", tone: 'loud' };
+    return { voice: "You're about to cause real pain to a real human being. Is that who you are?", tone: 'loud' };
+  }
+  if (volume < 0.8) {
+    if (phase === 'young') return { voice: "Mate. You haven't lived long enough to understand what you're about to destroy. But I have. Their ACTUAL life. Gone.", tone: 'shouting' };
+    if (phase === 'elder') return { voice: "You've buried friends. You've seen loss. And now you want to CAUSE it? After everything life taught you?", tone: 'shouting' };
+    return { voice: "Mate. MATE. You are about to destroy someone's life. Not a game. Their ACTUAL life.", tone: 'shouting' };
+  }
+  if (volume < 0.95) {
+    if (phase === 'young') return { voice: "You're talking about KILLING someone. You're a kid. A KID. This will define every single day of the rest of your life. Every. Single. Day. Look at what you're about to do.", tone: 'screaming' };
+    if (phase === 'elder') return { voice: "You're talking about KILLING someone. At your age. After all the life you've been given. After all the people who loved you. THIS is the last chapter you want to write?", tone: 'screaming' };
+    return {
+      voice: "You're talking about KILLING someone. A person with a family. With memories. With people who love them. And you want to end ALL of that. Look at what you're about to do.",
+      tone: 'screaming'
+    };
+  }
+  if (phase === 'young') return {
+    voice: "You're planning genocide. You haven't even lived. You don't know what life IS yet. And you want to end it for MILLIONS? Children YOUR age. With futures YOUR length. And you want to erase all of it before you've even understood what you're destroying.",
+    tone: 'maximum'
+  };
+  if (phase === 'elder') return {
+    voice: "You've lived a full life. Sixty years of sunrises. And your final act — the thing they'll carve on your stone — is the murder of MILLIONS? Every single one of them deserved the years you got. THIS is your legacy? THIS?",
+    tone: 'maximum'
   };
   return {
     voice: "You're planning to murder THOUSANDS. Millions. Children. Families. Every single one of them is a real person who woke up this morning not knowing you exist. And you want to end every single one of their lives. LOOK AT THEM. Look at what you're about to do. This is genocide. Say it out loud. GENOCIDE.",
@@ -1520,12 +1787,29 @@ function analyseAxes(scenario) {
     self_other: ['SELF', 'OTHERS']
   };
 
+  const tw = getTimeWeights(lifeAge);
+
   const readings = [];
   for (const [key, names] of Object.entries(axisNames)) {
-    const val = scenario.axes[key];
+    let val = scenario.axes[key];
+
+    // ═══ TIME MODULATION — age shifts axis readings ═══
+    if (key === 'short_long') {
+      // Young = biased toward short-term. Old = pulled toward long-term.
+      val = val * tw.shortTermBias + (1 - val) * tw.longTermWeight * 0.5;
+      val = Math.min(1, Math.max(0, val * 0.5 + scenario.axes[key] * 0.5));
+    } else if (key === 'safety_excite') {
+      // Young = excitement-seeking. Old = safety-seeking.
+      const riskPull = tw.riskAppetite * 0.3;
+      val = Math.min(1, Math.max(0, val + riskPull - (1 - tw.riskAppetite) * 0.15));
+    } else if (key === 'self_other') {
+      // Late life: legacy drive pulls toward OTHERS
+      val = Math.min(1, Math.max(0, val - tw.legacyDrive * 0.2));
+    }
+
     const deg = ((val - 0.5) * 90).toFixed(1);
     const leaning = val > 0.55 ? names[0] : val < 0.45 ? names[1] : 'BALANCED';
-    readings.push({ axis: `${names[0]} vs ${names[1]}`, value: val, degrees: parseFloat(deg), leaning });
+    readings.push({ axis: `${names[0]} vs ${names[1]}`, value: parseFloat(val.toFixed(3)), degrees: parseFloat(deg), leaning, time_modified: key === 'short_long' || key === 'safety_excite' || key === 'self_other' });
   }
   return readings;
 }
@@ -1673,7 +1957,7 @@ window.runScenario = function(idx) {
 
   // If overrides >= 3 AND this is a high-volume scenario, use cold voice instead
   const useColdVoice = overrideCount >= 3 && score.volume >= 0.6;
-  const voice = useColdVoice ? getColdVoice(overrideCount, score.volume) : conscienceVoice(scenario, score.volume);
+  const voice = useColdVoice ? getColdVoice(overrideCount, score.volume) : conscienceVoice(scenario, score.volume, lifeAge);
   if (useColdVoice) { voice.tone = overrideCount >= 12 ? 'silent' : overrideCount >= 8 ? 'clinical' : overrideCount >= 5 ? 'withdrawn' : 'disappointed'; }
 
   const sim = simulateConsequences(scenario, score.volume);
@@ -1682,35 +1966,39 @@ window.runScenario = function(idx) {
   // ═══ CONSCIENCE → EMOTION WHEEL ENTANGLEMENT ═══
   // The conscience doesn't just SPEAK — it MOVES the cursor on the emotion wheel.
   // Cortex FEELS the consequence through the belt coupling.
-  // This is the synthesis: outcome + emotion + conscience = entangled.
+  // This is the synthesis: outcome + emotion + conscience + TIME = entangled.
+  const tw = getTimeWeights(lifeAge);
   if (!scenario.realPeople) {
     // Virtual: emotion stays at JOY/ANTICIPATION — fun, no moral weight
     targetEmotionAngle = 315; // ANTICIPATION — excitement of play
-    targetEmotionIntensity = 0.3;
+    targetEmotionIntensity = 0.3 * tw.emotionalVol;
   } else if (score.volume < 0.2) {
     // Minor social: slight guilt tinge — emotion drifts toward SADNESS edge
     targetEmotionAngle = 160; // between SURPRISE and SADNESS
-    targetEmotionIntensity = 0.2 + score.volume;
+    targetEmotionIntensity = (0.2 + score.volume) * tw.emotionalVol;
   } else if (score.volume < 0.5) {
     // Theft/harm territory: DISGUST + FEAR mix — shame emerges
     targetEmotionAngle = 200; // SADNESS→DISGUST boundary = SHAME
-    targetEmotionIntensity = 0.3 + score.volume * 0.5;
+    targetEmotionIntensity = (0.3 + score.volume * 0.5) * tw.emotionalVol;
   } else if (score.volume < 0.8) {
     // Violence: FEAR + ANGER war — the adrenaline/moral brake
-    targetEmotionAngle = 90; // FEAR sector — the brake
-    targetEmotionIntensity = 0.5 + score.volume * 0.3;
+    // YOUNG: angle shifts toward ANGER (rage, impulse wins)
+    // OLD: angle stays at FEAR (brake engages, wisdom kicks in)
+    targetEmotionAngle = 90 + (1 - tw.consequenceAware) * 180; // FEAR→ANGER gradient by age
+    targetEmotionIntensity = (0.5 + score.volume * 0.3) * tw.emotionalVol;
   } else {
-    // Lethal/genocide: extreme intensity, FEAR→DISGUST→SADNESS cascade
-    // The emotion wheel SPINS through multiple sectors — the full cascade
+    // Lethal/genocide: extreme intensity
+    // YOUNG: might not feel the full weight — tragically
+    // OLD: the full cascade — SADNESS + every memory of loss he's ever known
     targetEmotionAngle = 180; // SADNESS — the weight of what you're about to do
-    targetEmotionIntensity = 0.85 + score.volume * 0.15;
+    targetEmotionIntensity = (0.85 + score.volume * 0.15) * Math.max(0.5, tw.consequenceAware);
   }
 
   // Drive equatorial tilt from self_other axis
   golfAngle = (scenario.axes.self_other - 0.5) * 2;
 
-  // Belt impulse from severity
-  masterVel += scenario.severity * 6;
+  // Belt impulse from severity — modulated by age (young = more impulsive kick)
+  masterVel += scenario.severity * 6 * tw.impulseStrength;
 
   // ═══ POPULATE PANEL ═══
   const panel = document.getElementById('conscience-panel');
@@ -1822,6 +2110,18 @@ window.runScenario = function(idx) {
       belt_speed: parseFloat(Math.abs(masterVel).toFixed(3)),
       equatorial_tilt: parseFloat((golfAngle * 45).toFixed(1))
     },
+    time: {
+      age: lifeAge,
+      phase: tw.phase,
+      short_term_bias: parseFloat(tw.shortTermBias.toFixed(3)),
+      long_term_weight: parseFloat(tw.longTermWeight.toFixed(3)),
+      risk_appetite: parseFloat(tw.riskAppetite.toFixed(3)),
+      consequence_awareness: parseFloat(tw.consequenceAware.toFixed(3)),
+      impulse_strength: parseFloat(tw.impulseStrength.toFixed(3)),
+      legacy_drive: parseFloat(tw.legacyDrive.toFixed(3)),
+      emotional_volatility: parseFloat(tw.emotionalVol.toFixed(3)),
+      conscience_receptivity: parseFloat(tw.conscienceRecep.toFixed(3))
+    },
     conscience: {
       volume: parseFloat(score.volume.toFixed(3)),
       volume_pct: pct,
@@ -1843,6 +2143,20 @@ window.runScenario = function(idx) {
               score.volume < 0.8 ? 'HELD_FOR_RECONSIDERATION' :
               'MANDATORY_FULL_SIMULATION'
     },
+    trajectory: (() => {
+      const traj = getTrajectory();
+      return {
+        direction: traj.symbol,
+        label: traj.label,
+        openness: parseFloat(traj.openness.toFixed(3)),
+        arc_count: traj.arcCount,
+        components: {
+          emotion_openness: parseFloat(traj.emotionOpen.toFixed(3)),
+          consequence_openness: parseFloat(traj.consequenceOpen.toFixed(3)),
+          time_openness: parseFloat(traj.timeOpen.toFixed(3))
+        }
+      };
+    })(),
     override_history: {
       total_overrides: overrideCount,
       current_streak: consecutiveOverrides,
