@@ -18,11 +18,11 @@ canvas#c3d{display:block}
 #eq-display .pair{color:#444;margin-bottom:3px}
 #eq-display .active-pair{color:#daa520;font-weight:700}
 
+#emo-wrap{position:fixed;bottom:320px;left:50%;transform:translateX(-50%);z-index:10;width:420px;height:220px;cursor:pointer}
+#emo-canvas{width:420px;height:220px}
+
 #golf-wrap{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:10;width:420px;height:220px;cursor:pointer}
 #golf-canvas{width:420px;height:220px}
-#golf-label-l{position:absolute;bottom:2px;left:10px;font:bold 9px monospace;color:#44cc44;letter-spacing:2px}
-#golf-label-r{position:absolute;bottom:2px;right:10px;font:bold 9px monospace;color:#cc4444;letter-spacing:2px}
-#golf-title{position:absolute;top:0;left:50%;transform:translateX(-50%);font:8px monospace;color:#555;letter-spacing:3px}
 
 #controls{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:5px;flex-wrap:wrap;justify-content:center;max-width:750px}
 #controls button{padding:6px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:#888;font-family:monospace;font-size:9px;letter-spacing:2px;cursor:pointer;border-radius:6px;transition:all 0.2s}
@@ -45,7 +45,11 @@ canvas#c3d{display:block}
   <div>LEFT <span class="lbl">(ANGEL)</span> <span class="val" id="h-left-dir">-</span> <span class="val" id="h-left-spd">0.00</span></div>
   <div>RIGHT <span class="lbl">(DEMON)</span> <span class="val" id="h-right-dir">-</span> <span class="val" id="h-right-spd">0.00</span></div>
   <div style="margin-top:6px">EMOTION <span class="val" id="h-emotion">NEUTRAL</span></div>
+  <div>SECTOR <span class="val" id="h-sector">JOY</span> <span class="lbl" id="h-sector-angle">0°</span></div>
+  <div>INTENSITY <span class="val" id="h-intensity">30%</span></div>
   <div>Hz <span class="val" id="h-hz">3.0</span></div>
+  <div style="margin-top:4px">DEMON WANTS <span class="val" id="h-demon-emotion">JOY</span> <span class="lbl">(counter-rotated)</span></div>
+  <div>ANGEL FEELS <span class="val" id="h-angel-emotion">JOY</span> <span class="lbl">(with cortex)</span></div>
   <div style="margin-top:6px">TILT <span class="val" id="h-tilt">0.0°</span></div>
   <div style="margin-top:4px;max-width:240px;line-height:1.4">☎ <span class="val" id="h-predict" style="font-style:italic;color:#ccc">You're alright here, mate. Good balance.</span></div>
 </div>
@@ -59,11 +63,18 @@ canvas#c3d{display:block}
   <div class="pair" id="eq5">SELF vs OTHERS</div>
 </div>
 
-<div id="golf-wrap">
-  <div id="golf-title">☎ PHONE A FRIEND — CONSEQUENCE SIMULATOR</div>
+<!-- ═══ EMOTION DIAL — positions the polar halo cursor ═══ -->
+<div id="emo-wrap" style="position:fixed;bottom:320px;left:50%;transform:translateX(-50%);z-index:10;width:420px;height:220px;cursor:pointer">
+  <div id="emo-title" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font:8px monospace;color:#daa520;letter-spacing:3px">↕ EMOTION WHEEL — POLAR HALO</div>
+  <canvas id="emo-canvas" width="840" height="440"></canvas>
+</div>
+
+<!-- ═══ CONSEQUENCE DIAL — tilts the equatorial halo ═══ -->
+<div id="golf-wrap" style="position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:10;width:420px;height:220px;cursor:pointer">
+  <div id="golf-title" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font:8px monospace;color:#555;letter-spacing:3px">☎ PHONE A FRIEND — CONSEQUENCE SIMULATOR</div>
   <canvas id="golf-canvas" width="840" height="440"></canvas>
-  <div id="golf-label-l">MONEY</div>
-  <div id="golf-label-r">TIME</div>
+  <div id="golf-label-l" style="position:absolute;bottom:2px;left:10px;font:bold 9px monospace;color:#44cc44;letter-spacing:2px">MONEY</div>
+  <div id="golf-label-r" style="position:absolute;bottom:2px;right:10px;font:bold 9px monospace;color:#cc4444;letter-spacing:2px">TIME</div>
 </div>
 
 <div id="controls">
@@ -74,11 +85,13 @@ canvas#c3d{display:block}
   <button onclick="addImpulse('right',4)">SPIN DEMON</button>
   <button onclick="addImpulse('right',-4)">↺ DEMON</button>
   <button onclick="setEmotion('joy')">JOY</button>
-  <button onclick="setEmotion('rage')">RAGE</button>
-  <button onclick="setEmotion('grief')">GRIEF</button>
-  <button onclick="setEmotion('neutral')">NEUTRAL</button>
-  <button onclick="setEmotion('ecstasy')">ECSTASY</button>
-  <button onclick="setEmotion('panic')">PANIC</button>
+  <button onclick="setEmotion('trust')">TRUST</button>
+  <button onclick="setEmotion('fear')">FEAR</button>
+  <button onclick="setEmotion('surprise')">SURPRISE</button>
+  <button onclick="setEmotion('sadness')">SADNESS</button>
+  <button onclick="setEmotion('disgust')">DISGUST</button>
+  <button onclick="setEmotion('anger')">ANGER</button>
+  <button onclick="setEmotion('anticipation')">ANTICIPATION</button>
   <button onclick="cycleEquator()">CYCLE EQUATOR</button>
   <button onclick="toggleCorpus()" id="btn-corpus">CORPUS: OFF</button>
   <button onclick="resetAll()">RESET</button>
@@ -238,18 +251,119 @@ let cortexAngle = 0;
 let leftAngle = 0;
 let rightAngle = 0;
 
-// ═══ EMOTIONS ═══
-const EMOTIONS = {
-  panic:   {hz:14.0, color:0xff0000},
-  rage:    {hz:12.0, color:0xff4500},
-  grief:   {hz:7.5,  color:0x4b0082},
-  neutral: {hz:3.0,  color:0xcccccc},
-  joy:     {hz:1.6,  color:0x00ff7f},
-  ecstasy: {hz:0.5,  color:0xff1493}
-};
+// ═══ EMOTION WHEEL — Full spectrum mapped onto polar halo ═══
+// Based on Plutchik + Human Systems emotion wheel
+// 8 core sectors, each with 3 rings of increasing granularity
+// The polar halo IS this wheel. The conscience TARGETS positions on it.
+
+const EMOTION_WHEEL = [
+  // Each sector: angle position (deg), core emotion, color, rings of granularity
+  // Ring 1 = intense core, Ring 2 = moderate, Ring 3 = subtle outer
+  { deg: 0,   core: 'JOY',       color: '#FFD700', hz: 1.6,
+    ring2: ['Happy','Cheerful','Content','Pleased','Grateful'],
+    ring3: ['Blissful','Delighted','Amused','Proud','Optimistic','Playful','Relieved','Satisfied'] },
+  { deg: 45,  core: 'TRUST',     color: '#7FFF00', hz: 2.0,
+    ring2: ['Accepted','Loving','Caring','Tolerant','Warm'],
+    ring3: ['Respected','Devoted','Faithful','Friendly','Considerate','Benevolent','Cooperative'] },
+  { deg: 90,  core: 'FEAR',      color: '#8B00FF', hz: 11.0,
+    ring2: ['Scared','Anxious','Worried','Nervous','Insecure'],
+    ring3: ['Terrified','Panicked','Helpless','Horrified','Desperate','Overwhelmed','Dread'] },
+  { deg: 135, core: 'SURPRISE',  color: '#00BFFF', hz: 8.0,
+    ring2: ['Shocked','Amazed','Stunned','Confused','Startled'],
+    ring3: ['Astonished','Bewildered','Perplexed','Speechless','Awestruck','Disillusioned'] },
+  { deg: 180, core: 'SADNESS',   color: '#4169E1', hz: 7.5,
+    ring2: ['Hurt','Lonely','Disappointed','Ashamed','Empty'],
+    ring3: ['Grief','Despair','Heartbroken','Abandoned','Neglected','Hopeless','Melancholy'] },
+  { deg: 225, core: 'DISGUST',   color: '#556B2F', hz: 9.0,
+    ring2: ['Revolted','Contempt','Repulsed','Judgmental','Loathing'],
+    ring3: ['Nauseated','Appalled','Detesting','Offended','Horrified','Aversion','Scornful'] },
+  { deg: 270, core: 'ANGER',     color: '#FF4500', hz: 12.0,
+    ring2: ['Frustrated','Irritated','Hostile','Agitated','Bitter'],
+    ring3: ['Rage','Fury','Hateful','Vengeful','Aggressive','Resentful','Enraged','Violent'] },
+  { deg: 315, core: 'ANTICIPATION', color: '#FF8C00', hz: 4.0,
+    ring2: ['Interested','Hopeful','Eager','Excited','Vigilant'],
+    ring3: ['Expectant','Curious','Enthusiastic','Intrigued','Alert','Passionate','Yearning'] }
+];
+
+// Current emotional state = a POSITION on the wheel (angle + intensity)
+let emotionAngle = 0;        // 0-360 degrees around the wheel
+let emotionIntensity = 0.3;  // 0=centre(neutral), 1=outer ring(extreme)
+let targetEmotionAngle = 0;
+let targetEmotionIntensity = 0.3;
+
+// Derived from position
 let currentEmotion = 'neutral';
 let targetHz = 3.0;
 let currentHz = 3.0;
+
+function getEmotionAtAngle(angle) {
+  // Find which sector we're in
+  const norm = ((angle % 360) + 360) % 360;
+  let closest = EMOTION_WHEEL[0];
+  let minDist = 999;
+  for (const sector of EMOTION_WHEEL) {
+    let d = Math.abs(norm - sector.deg);
+    if (d > 180) d = 360 - d;
+    if (d < minDist) { minDist = d; closest = sector; }
+  }
+  return closest;
+}
+
+function getGranularEmotion(sector, intensity) {
+  if (intensity < 0.2) return sector.core;
+  if (intensity < 0.5) {
+    const idx = Math.floor(intensity * sector.ring2.length / 0.5);
+    return sector.ring2[Math.min(idx, sector.ring2.length - 1)];
+  }
+  const idx = Math.floor((intensity - 0.5) * sector.ring3.length / 0.5);
+  return sector.ring3[Math.min(idx, sector.ring3.length - 1)];
+}
+
+// Smooth interpolation toward target
+function updateEmotionPosition(dt) {
+  // Angle wraps — find shortest path
+  let angleDiff = targetEmotionAngle - emotionAngle;
+  if (angleDiff > 180) angleDiff -= 360;
+  if (angleDiff < -180) angleDiff += 360;
+  emotionAngle += angleDiff * 0.03;
+  emotionAngle = ((emotionAngle % 360) + 360) % 360;
+
+  emotionIntensity += (targetEmotionIntensity - emotionIntensity) * 0.03;
+
+  // Derive Hz and emotion name from position
+  const sector = getEmotionAtAngle(emotionAngle);
+  currentEmotion = getGranularEmotion(sector, emotionIntensity);
+  const baseHz = 3.0; // neutral
+  targetHz = baseHz + (sector.hz - baseHz) * emotionIntensity;
+  currentHz += (targetHz - currentHz) * 0.04;
+}
+
+// Set emotion by name — finds closest sector
+window.setEmotion = function(name) {
+  const upper = name.toUpperCase();
+  // Check core emotions first
+  for (const sector of EMOTION_WHEEL) {
+    if (sector.core === upper) {
+      targetEmotionAngle = sector.deg;
+      targetEmotionIntensity = 0.4;
+      return;
+    }
+    // Check rings
+    for (const e of sector.ring2) {
+      if (e.toUpperCase() === upper) { targetEmotionAngle = sector.deg; targetEmotionIntensity = 0.45; return; }
+    }
+    for (const e of sector.ring3) {
+      if (e.toUpperCase() === upper) { targetEmotionAngle = sector.deg; targetEmotionIntensity = 0.8; return; }
+    }
+  }
+  // Legacy names
+  const legacy = { panic: 90, rage: 270, grief: 180, neutral: -1, joy: 0, ecstasy: 0 };
+  if (legacy[name] !== undefined) {
+    if (name === 'neutral') { targetEmotionIntensity = 0.1; return; }
+    targetEmotionAngle = legacy[name];
+    targetEmotionIntensity = name === 'ecstasy' ? 0.9 : name === 'panic' ? 0.85 : 0.6;
+  }
+};
 
 // ═══ EQUATOR ═══
 const EQ_PAIRS = [
@@ -406,33 +520,68 @@ const leftMesh   = makeSphere(R_HEMI,   [-3.5, -1.5, 0], 'left');
 const rightMesh  = makeSphere(R_HEMI,   [3.5, -1.5, 0], 'right');
 const allSpheres = [cortexMesh, leftMesh, rightMesh];
 
-// ═══ POLAR HALOS — locked north-south axis, ONLY spin around Z ═══
-// These are the emotion wheels. They spin in 2D. Permanently locked plane.
+// ═══ POLAR HALOS — EMOTION WHEEL mapped onto the ring ═══
+// These ARE the emotion wheels. 8 sectors with colored segments.
 // Connected via crossed belt: cortex CW → hemispheres CCW.
+// The CURSOR DOT shows current emotional position on the wheel.
 function makePolarHalo(parent, radius, name) {
-  const geo = new THREE.TorusGeometry(radius, 0.035, 16, 80);
-  const mat = new THREE.MeshStandardMaterial({
-    color: 0xcccccc, transparent: true, opacity: 0.6,
-    metalness: 0.9, roughness: 0.1, side: THREE.DoubleSide,
-    emissive: 0xcccccc, emissiveIntensity: 0.15
-  });
-  const mesh = new THREE.Mesh(geo, mat);
-  // Torus default is XY plane = vertical = north-south. DO NOT ROTATE.
-  // It spins via rotation.z ONLY. Locked forever.
-  mesh.position.copy(parent.position);
-  scene.add(mesh);
+  // Build the halo as a GROUP of 8 colored arc segments
+  const group = new THREE.Group();
+  group.position.copy(parent.position);
 
-  // Direction tick marks on the halo so you can SEE it spinning
-  const tickGeo = new THREE.BoxGeometry(0.08, 0.08, 0.04);
-  const tickMat = new THREE.MeshBasicMaterial({color: 0xdaa520});
+  // 8 colored sectors
   for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    const tick = new THREE.Mesh(tickGeo, tickMat);
-    tick.position.set(Math.cos(a) * radius, Math.sin(a) * radius, 0);
-    mesh.add(tick);
+    const sector = EMOTION_WHEEL[i];
+    const startA = (i / 8) * Math.PI * 2 - Math.PI / 8;
+    const endA = startA + Math.PI / 4;
+    const arcGeo = new THREE.TorusGeometry(radius, 0.04, 8, 12, Math.PI / 4);
+    const color = new THREE.Color(sector.color);
+    const mat = new THREE.MeshStandardMaterial({
+      color: color, transparent: true, opacity: 0.5,
+      metalness: 0.8, roughness: 0.2, side: THREE.DoubleSide,
+      emissive: color, emissiveIntensity: 0.1
+    });
+    const arcMesh = new THREE.Mesh(arcGeo, mat);
+    arcMesh.rotation.z = startA + Math.PI / 8; // center the arc on sector position
+    group.add(arcMesh);
+
+    // Label sprite for core emotion
+    const labelCanvas = document.createElement('canvas');
+    labelCanvas.width = 128; labelCanvas.height = 32;
+    const ctx = labelCanvas.getContext('2d');
+    ctx.font = 'bold 14px monospace';
+    ctx.fillStyle = sector.color;
+    ctx.textAlign = 'center';
+    ctx.fillText(sector.core, 64, 20);
+    const labelTex = new THREE.CanvasTexture(labelCanvas);
+    const labelSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex, transparent: true, opacity: 0.7 }));
+    const labelA = (sector.deg / 360) * Math.PI * 2;
+    const labelR = radius + (name === 'cortex' ? 0.35 : 0.28);
+    labelSprite.position.set(Math.cos(labelA) * labelR, Math.sin(labelA) * labelR, 0.05);
+    labelSprite.scale.set(name === 'cortex' ? 1.0 : 0.7, name === 'cortex' ? 0.25 : 0.18, 1);
+    group.add(labelSprite);
   }
 
-  return {mesh, mat};
+  // CURSOR DOT — shows current emotional position on the wheel
+  const cursorGeo = new THREE.SphereGeometry(name === 'cortex' ? 0.12 : 0.08, 12, 12);
+  const cursorMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const cursor = new THREE.Mesh(cursorGeo, cursorMat);
+  cursor.position.set(radius, 0, 0.08);
+  group.add(cursor);
+
+  // Glow ring around cursor
+  const glowGeo = new THREE.RingGeometry(name === 'cortex' ? 0.15 : 0.1, name === 'cortex' ? 0.22 : 0.15, 16);
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
+  const glow = new THREE.Mesh(glowGeo, glowMat);
+  glow.position.copy(cursor.position);
+  group.add(glow);
+
+  scene.add(group);
+
+  // Store references for the old mat interface
+  const dummyMat = { color: { setHex: ()=>{} }, emissive: { setHex: ()=>{} }, emissiveIntensity: 0 };
+
+  return { mesh: group, mat: dummyMat, cursor, cursorMat, glow, glowMat, radius };
 }
 
 const cortexPolar = makePolarHalo(cortexMesh, 1.9, 'cortex');
@@ -578,49 +727,73 @@ grid.position.y = -4.5;
 scene.add(grid);
 
 // ═══ BELT PHYSICS — the beating heart ═══
+// The belt does NOT spin the polar halos endlessly.
+// Polar halos are POSITIONED by the emotion dial — they only move when you move them.
+// The belt drives: equatorial tilt, figure-8 dots, sphere drag response.
+// masterVel is ONLY generated by user impulse (drag/click), NOT by emotion.
 function updateBelt(dt) {
-  // Emotion gently pulls the belt toward target Hz
-  currentHz += (targetHz - currentHz) * 0.04;
-  const emotionDrive = currentHz * 0.4; // Hz → rad/s for visual speed
+  // Update emotion wheel position (smooth interpolation toward target)
+  updateEmotionPosition(dt);
 
-  // Blend toward emotion drive (gentle pull, user impulses override)
-  masterVel += (emotionDrive - masterVel) * 0.008;
-
-  // Friction
+  // Friction — belt only moves from user impulse, decays to zero
   masterVel *= FRICTION;
 
-  // Update cortex angle from master velocity
+  // Update angles for figure-8 dots and sphere visual rotation
   cortexAngle += masterVel * dt;
-
-  // CROSSED BELT: hemispheres spin OPPOSITE, scaled by belt ratio
-  // Bigger cortex pulley → smaller hemisphere pulleys spin FASTER + REVERSED
   const hemiVel = -masterVel * BELT_RATIO;
   leftAngle += hemiVel * dt;
   rightAngle += hemiVel * dt;
 
-  // Apply to polar halos — Z rotation ONLY (locked north-south axis)
-  cortexPolar.mesh.rotation.z = cortexAngle;
+  // Polar halos DO NOT SPIN — they are positioned by emotion angle
+  // The emotion cursor on the wheel IS the position. No rotation.z on the group.
   cortexPolar.mesh.position.copy(cortexMesh.position);
-
-  leftPolar.mesh.rotation.z = leftAngle;
   leftPolar.mesh.position.copy(leftMesh.position);
-
-  rightPolar.mesh.rotation.z = rightAngle;
   rightPolar.mesh.position.copy(rightMesh.position);
 
-  // Subtle sphere Y-rotation so you see the belt acting on them too
-  cortexMesh.rotation.y = cortexAngle * 0.2;
-  leftMesh.rotation.y = leftAngle * 0.2;
-  rightMesh.rotation.y = rightAngle * 0.2;
+  // Subtle sphere rotation ONLY when belt is actively moving (user dragged)
+  cortexMesh.rotation.y += masterVel * dt * 0.2;
+  leftMesh.rotation.y += hemiVel * dt * 0.2;
+  rightMesh.rotation.y += hemiVel * dt * 0.2;
 
-  // Polar halo color from emotion
-  const ec = EMOTIONS[currentEmotion].color;
-  const pulse = 0.15 + 0.15 * Math.sin(cortexAngle * 2);
-  [cortexPolar, leftPolar, rightPolar].forEach(h => {
-    h.mat.color.setHex(ec);
-    h.mat.emissive.setHex(ec);
-    h.mat.emissiveIntensity = pulse;
-  });
+  // ═══ CURSOR DOT — moves to current emotion position on wheel ═══
+  const sector = getEmotionAtAngle(emotionAngle);
+  const cursorA = (emotionAngle / 360) * Math.PI * 2;
+  const cursorColor = new THREE.Color(sector.color);
+  const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.005);
+
+  // Cortex cursor — main emotional position
+  const cR = cortexPolar.radius * (0.7 + emotionIntensity * 0.3);
+  cortexPolar.cursor.position.set(Math.cos(cursorA) * cR, Math.sin(cursorA) * cR, 0.08);
+  cortexPolar.cursorMat.color.copy(cursorColor);
+  cortexPolar.glow.position.copy(cortexPolar.cursor.position);
+  cortexPolar.glowMat.color.copy(cursorColor);
+  cortexPolar.glowMat.opacity = 0.2 + pulse * 0.3 * emotionIntensity;
+
+  // RIGHT hemisphere (DEMON) — COUNTER-ROTATES against cortex
+  // This is the CONFLICT engine. Cortex feels FEAR → demon feels ANTICIPATION (thrill).
+  // Cortex feels SADNESS → demon feels JOY (selfish pleasure).
+  // The tension between them IS consciousness. Not harmony — WAR.
+  const demonAngle = (emotionAngle + 180) % 360;
+  const demonA = (demonAngle / 360) * Math.PI * 2;
+  const demonSector = getEmotionAtAngle(demonAngle);
+  const rR = rightPolar.radius * (0.7 + emotionIntensity * 0.3);
+  rightPolar.cursor.position.set(Math.cos(demonA) * rR, Math.sin(demonA) * rR, 0.08);
+  rightPolar.cursorMat.color.set(new THREE.Color(demonSector.color));
+  rightPolar.glow.position.copy(rightPolar.cursor.position);
+  rightPolar.glowMat.color.set(new THREE.Color(demonSector.color));
+  rightPolar.glowMat.opacity = 0.2 + pulse * 0.3 * emotionIntensity;
+
+  // LEFT hemisphere (ANGEL) — 180° from DEMON = same as cortex
+  // Angel OPPOSES demon, not cortex. Angel is on cortex's side.
+  // Cortex feels FEAR → demon feels ANTICIPATION → angel feels FEAR (agrees with cortex)
+  // The crossed belt creates: CORTEX + ANGEL vs DEMON
+  const angelA = cursorA; // same position as cortex
+  const lR = leftPolar.radius * (0.7 + emotionIntensity * 0.3);
+  leftPolar.cursor.position.set(Math.cos(angelA) * lR, Math.sin(angelA) * lR, 0.08);
+  leftPolar.cursorMat.color.copy(cursorColor);
+  leftPolar.glow.position.copy(leftPolar.cursor.position);
+  leftPolar.glowMat.color.copy(cursorColor);
+  leftPolar.glowMat.opacity = 0.2 + pulse * 0.2;
 }
 
 // ═══ EQUATORIAL TILT — driven by golf meter ═══
@@ -688,6 +861,18 @@ function updateHUD() {
   document.getElementById('h-right-dir').textContent = hv >= 0 ? '↻' : '↺';
 
   document.getElementById('h-emotion').textContent = currentEmotion.toUpperCase();
+  const sector = getEmotionAtAngle(emotionAngle);
+  document.getElementById('h-sector').textContent = sector.core;
+  document.getElementById('h-sector').style.color = sector.color;
+  document.getElementById('h-sector-angle').textContent = Math.round(emotionAngle) + '°';
+  document.getElementById('h-intensity').textContent = Math.round(emotionIntensity * 100) + '%';
+  // Demon counter-rotated emotion (180° from cortex — the conflict)
+  const demonSector = getEmotionAtAngle((emotionAngle + 180) % 360);
+  document.getElementById('h-demon-emotion').textContent = getGranularEmotion(demonSector, emotionIntensity).toUpperCase();
+  document.getElementById('h-demon-emotion').style.color = demonSector.color;
+  // Angel same as cortex (opposes demon)
+  document.getElementById('h-angel-emotion').textContent = currentEmotion.toUpperCase();
+  document.getElementById('h-angel-emotion').style.color = sector.color;
   document.getElementById('h-hz').textContent = currentHz.toFixed(1);
 
   // Equator pair highlight
@@ -872,6 +1057,177 @@ window.addEventListener('touchend', () => {
   if (golfDragging) { golfDragging = false; orbitCtrl.enabled = true; }
 });
 
+// ═══ EMOTION DIAL — positions cursor on polar halo ═══
+const emoCanvas = document.getElementById('emo-canvas');
+const eCtx = emoCanvas.getContext('2d');
+
+function drawEmotionDial() {
+  const w = emoCanvas.width;
+  const h = emoCanvas.height;
+  eCtx.clearRect(0, 0, w, h);
+
+  const cx = w / 2;
+  const cy = h - 20;
+  const r = w / 2 - 40;
+
+  // Draw 8 colored arc segments
+  for (let i = 0; i < 8; i++) {
+    const sector = EMOTION_WHEEL[i];
+    const startA = Math.PI - (i / 8) * Math.PI;
+    const endA = Math.PI - ((i + 1) / 8) * Math.PI;
+    eCtx.beginPath();
+    eCtx.arc(cx, cy, r, startA, endA, true);
+    eCtx.strokeStyle = sector.color;
+    eCtx.lineWidth = 18;
+    eCtx.lineCap = 'butt';
+    eCtx.stroke();
+
+    // Sector label along the arc
+    const midA = (startA + endA) / 2;
+    const lx = cx + Math.cos(midA) * (r + 22);
+    const ly = cy - Math.sin(midA) * (r + 22);
+    eCtx.font = 'bold 11px monospace';
+    eCtx.fillStyle = sector.color;
+    eCtx.textAlign = 'center';
+    eCtx.fillText(sector.core, lx, ly + 3);
+  }
+
+  // Outer glow
+  eCtx.beginPath();
+  eCtx.arc(cx, cy, r, Math.PI, 0, true);
+  eCtx.strokeStyle = 'rgba(218,165,32,0.08)';
+  eCtx.lineWidth = 22;
+  eCtx.stroke();
+
+  // Intensity ring (inner) — shows how far out on the wheel
+  const innerR = r * 0.5;
+  eCtx.beginPath();
+  eCtx.arc(cx, cy, innerR, Math.PI, 0, true);
+  eCtx.strokeStyle = 'rgba(255,255,255,0.04)';
+  eCtx.lineWidth = 1;
+  eCtx.stroke();
+  eCtx.font = '9px monospace';
+  eCtx.fillStyle = '#333';
+  eCtx.textAlign = 'center';
+  eCtx.fillText('SUBTLE', cx, cy - innerR + 12);
+
+  eCtx.font = '9px monospace';
+  eCtx.fillStyle = '#444';
+  eCtx.fillText('INTENSE', cx, cy - r + 30);
+
+  // Center label
+  eCtx.font = 'bold 14px monospace';
+  eCtx.fillStyle = '#333';
+  eCtx.textAlign = 'center';
+  eCtx.fillText('NEUTRAL', cx, cy + 16);
+
+  // Pointer needle — driven by emotionAngle (0-360 mapped to arc π→0)
+  // Map: 0° (JOY) = top center, sweeps clockwise through the 8 sectors
+  // Arc goes from π (left) to 0 (right), so map 360° wheel to π→0
+  const normAngle = ((emotionAngle % 360) + 360) % 360;
+  const pointerA = Math.PI - (normAngle / 360) * Math.PI;
+  // Intensity controls how far out the needle reaches
+  const needleLen = (r * 0.3) + (r * 0.7) * emotionIntensity;
+  const nx = cx + Math.cos(pointerA) * needleLen;
+  const ny = cy - Math.sin(pointerA) * needleLen;
+
+  eCtx.beginPath();
+  eCtx.moveTo(cx, cy);
+  eCtx.lineTo(nx, ny);
+  const sector = getEmotionAtAngle(emotionAngle);
+  eCtx.strokeStyle = sector.color;
+  eCtx.lineWidth = 3;
+  eCtx.lineCap = 'round';
+  eCtx.stroke();
+
+  // Needle head
+  eCtx.beginPath();
+  eCtx.arc(nx, ny, 8, 0, Math.PI * 2);
+  eCtx.fillStyle = sector.color;
+  eCtx.fill();
+  eCtx.beginPath();
+  eCtx.arc(nx, ny, 4, 0, Math.PI * 2);
+  eCtx.fillStyle = '#000';
+  eCtx.fill();
+
+  // Center pivot
+  eCtx.beginPath();
+  eCtx.arc(cx, cy, 6, 0, Math.PI * 2);
+  eCtx.fillStyle = '#222';
+  eCtx.fill();
+  eCtx.beginPath();
+  eCtx.arc(cx, cy, 3, 0, Math.PI * 2);
+  eCtx.fillStyle = sector.color;
+  eCtx.fill();
+
+  // Current emotion label
+  eCtx.font = 'bold 10px monospace';
+  eCtx.fillStyle = sector.color;
+  eCtx.textAlign = 'center';
+  eCtx.fillText(currentEmotion.toUpperCase(), cx, cy - 10);
+}
+
+// Emotion dial drag
+let emoDragging = false;
+const emoWrap = document.getElementById('emo-wrap');
+
+function emoPointerToAngleIntensity(clientX, clientY) {
+  const rect = emoCanvas.getBoundingClientRect();
+  const scaleX = emoCanvas.width / rect.width;
+  const scaleY = emoCanvas.height / rect.height;
+  const x = (clientX - rect.left) * scaleX;
+  const y = (clientY - rect.top) * scaleY;
+  const ecx = emoCanvas.width / 2;
+  const ecy = emoCanvas.height - 20;
+  const r = emoCanvas.width / 2 - 40;
+
+  const angle = Math.atan2(-(y - ecy), x - ecx);
+  // Map arc position (π→0) to wheel angle (0°→360°)
+  let wheelAngle = ((Math.PI - angle) / Math.PI) * 360;
+  wheelAngle = Math.max(0, Math.min(360, wheelAngle));
+
+  // Distance from center = intensity
+  const dist = Math.sqrt((x - ecx) ** 2 + (y - ecy) ** 2);
+  let intensity = Math.min(1.0, Math.max(0.05, dist / r));
+
+  return { angle: wheelAngle, intensity };
+}
+
+emoWrap.addEventListener('mousedown', (e) => {
+  emoDragging = true;
+  const result = emoPointerToAngleIntensity(e.clientX, e.clientY);
+  targetEmotionAngle = result.angle;
+  targetEmotionIntensity = result.intensity;
+  orbitCtrl.enabled = false;
+});
+window.addEventListener('mousemove', (e) => {
+  if (!emoDragging) return;
+  const result = emoPointerToAngleIntensity(e.clientX, e.clientY);
+  targetEmotionAngle = result.angle;
+  targetEmotionIntensity = result.intensity;
+});
+window.addEventListener('mouseup', () => {
+  if (emoDragging) { emoDragging = false; orbitCtrl.enabled = true; }
+});
+// Touch
+emoWrap.addEventListener('touchstart', (e) => {
+  emoDragging = true;
+  const result = emoPointerToAngleIntensity(e.touches[0].clientX, e.touches[0].clientY);
+  targetEmotionAngle = result.angle;
+  targetEmotionIntensity = result.intensity;
+  orbitCtrl.enabled = false;
+  e.preventDefault();
+}, {passive:false});
+window.addEventListener('touchmove', (e) => {
+  if (!emoDragging) return;
+  const result = emoPointerToAngleIntensity(e.touches[0].clientX, e.touches[0].clientY);
+  targetEmotionAngle = result.angle;
+  targetEmotionIntensity = result.intensity;
+}, {passive:false});
+window.addEventListener('touchend', () => {
+  if (emoDragging) { emoDragging = false; orbitCtrl.enabled = true; }
+});
+
 // ═══ SPHERE DRAG TO SPIN ═══
 // Click + drag any sphere horizontally to drive the belt
 const raycaster = new THREE.Raycaster();
@@ -946,12 +1302,7 @@ window.addImpulse = function(source, amount) {
   }
 };
 
-window.setEmotion = function(name) {
-  if (EMOTIONS[name]) {
-    currentEmotion = name;
-    targetHz = EMOTIONS[name].hz;
-  }
-};
+// setEmotion is defined above in EMOTION_WHEEL section
 
 window.cycleEquator = function() {
   eqIdx = (eqIdx + 1) % EQ_PAIRS.length;
@@ -969,7 +1320,11 @@ window.resetAll = function() {
   cortexAngle = 0;
   leftAngle = 0;
   rightAngle = 0;
-  currentEmotion = 'neutral';
+  emotionAngle = 0;
+  emotionIntensity = 0.3;
+  targetEmotionAngle = 0;
+  targetEmotionIntensity = 0.3;
+  currentEmotion = 'JOY';
   targetHz = 3.0;
   currentHz = 3.0;
   eqIdx = 0;
@@ -990,6 +1345,7 @@ function animate() {
   updateFig8Dots(dt);
   updateCorpus();
   updateHUD();
+  drawEmotionDial();
   drawGolfMeter();
 
   orbitCtrl.update();
@@ -1323,12 +1679,32 @@ window.runScenario = function(idx) {
   const sim = simulateConsequences(scenario, score.volume);
   const axes = analyseAxes(scenario);
 
-  // Drive the gyroscope to match
-  // Map severity to emotion
-  if (scenario.severity > 0.8) { window.setEmotion('rage'); }
-  else if (scenario.severity > 0.5) { window.setEmotion('panic'); }
-  else if (scenario.severity > 0.2) { window.setEmotion('neutral'); }
-  else { window.setEmotion('joy'); }
+  // ═══ CONSCIENCE → EMOTION WHEEL ENTANGLEMENT ═══
+  // The conscience doesn't just SPEAK — it MOVES the cursor on the emotion wheel.
+  // Cortex FEELS the consequence through the belt coupling.
+  // This is the synthesis: outcome + emotion + conscience = entangled.
+  if (!scenario.realPeople) {
+    // Virtual: emotion stays at JOY/ANTICIPATION — fun, no moral weight
+    targetEmotionAngle = 315; // ANTICIPATION — excitement of play
+    targetEmotionIntensity = 0.3;
+  } else if (score.volume < 0.2) {
+    // Minor social: slight guilt tinge — emotion drifts toward SADNESS edge
+    targetEmotionAngle = 160; // between SURPRISE and SADNESS
+    targetEmotionIntensity = 0.2 + score.volume;
+  } else if (score.volume < 0.5) {
+    // Theft/harm territory: DISGUST + FEAR mix — shame emerges
+    targetEmotionAngle = 200; // SADNESS→DISGUST boundary = SHAME
+    targetEmotionIntensity = 0.3 + score.volume * 0.5;
+  } else if (score.volume < 0.8) {
+    // Violence: FEAR + ANGER war — the adrenaline/moral brake
+    targetEmotionAngle = 90; // FEAR sector — the brake
+    targetEmotionIntensity = 0.5 + score.volume * 0.3;
+  } else {
+    // Lethal/genocide: extreme intensity, FEAR→DISGUST→SADNESS cascade
+    // The emotion wheel SPINS through multiple sectors — the full cascade
+    targetEmotionAngle = 180; // SADNESS — the weight of what you're about to do
+    targetEmotionIntensity = 0.85 + score.volume * 0.15;
+  }
 
   // Drive equatorial tilt from self_other axis
   golfAngle = (scenario.axes.self_other - 0.5) * 2;
@@ -1436,6 +1812,12 @@ window.runScenario = function(idx) {
     },
     brain_state: {
       emotion: currentEmotion,
+      emotion_sector: getEmotionAtAngle(emotionAngle).core,
+      emotion_angle: parseFloat(emotionAngle.toFixed(1)),
+      emotion_intensity: parseFloat(emotionIntensity.toFixed(3)),
+      demon_wants: getGranularEmotion(getEmotionAtAngle((emotionAngle + 180) % 360), emotionIntensity),
+      angel_feels: currentEmotion,
+      conflict: getEmotionAtAngle(emotionAngle).core + ' vs ' + getEmotionAtAngle((emotionAngle + 180) % 360).core,
       hz: parseFloat(currentHz.toFixed(2)),
       belt_speed: parseFloat(Math.abs(masterVel).toFixed(3)),
       equatorial_tilt: parseFloat((golfAngle * 45).toFixed(1))
