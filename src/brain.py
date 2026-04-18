@@ -1240,6 +1240,22 @@ class CortexBrain:
             self._or_gate_fired = True
             return or_result
 
+        # --- PERSPECTIVE GATE — Stage 20: Subject vs Witness ---
+        # When identity node activates, generate both perspectives
+        # and store them for the cortex pipeline to use
+        self._perspective_gate_fired = False
+        self._perspective_result = None
+
+        # Build known_defined early for perspective gate
+        _pg_nodes = self.data['nodes']
+        _pg_known = [kw for kw in kws if kw in _pg_nodes and _pg_nodes[kw].get('means')]
+        perspective = self._perspective_gate(msg_lower, kws, _pg_known, tokens)
+        if perspective:
+            self._perspective_result = perspective
+            # Don't return — let normal processing continue.
+            # The cortex pipeline reads _perspective_result to show both views.
+            # But the hemisphere's own response goes through as normal.
+
         # --- SELF-REFLECTION: Check feedback on last response ---
         feedback = self._check_feedback(msg_lower, tokens)
         if feedback and (self.last_topic or self.last_topics):
@@ -1782,6 +1798,169 @@ class CortexBrain:
             reasons.append(defn)
 
         return '. '.join(reasons[:2]) + '.' if reasons else ''
+
+    # ========================================
+    # PERSPECTIVE GATE — Stage 20: Subject vs Witness
+    # ========================================
+    # When the identity node ("means") fires, fork into two views:
+    #   SUBJECT: means as self ("what does this mean TO ME")
+    #   WITNESS: means as observer ("what does this mean TO THEM")
+    # Returns both scored results so the cortex can compare or blend.
+
+    def _perspective_gate(self, msg_lower, kws, known_defined, tokens):
+        """Fork response through subject (self) and witness (other) perspectives.
+        Returns dict with both perspectives or None if identity node not activated."""
+
+        nodes = self.data['nodes']
+
+        # --- Detect identity activation ---
+        # "means" is the cortex's self-chosen name. Also check "i'm" which it equated to means.
+        identity_nodes = {'means', "i'm", 'im'}
+        activated_identity = set()
+
+        # Check if identity nodes appear in user message keywords
+        for kw in kws:
+            if kw in identity_nodes and kw in nodes:
+                activated_identity.add(kw)
+
+        # Check if identity nodes would be reached by association (1-hop)
+        # If any keyword directly connects to "means" in next/prev, identity is activated
+        if not activated_identity:
+            for kw in kws:
+                node = nodes.get(kw, {})
+                nexts = set(node.get('next', {}).keys())
+                prevs = set(node.get('prev', {}).keys())
+                if nexts & identity_nodes or prevs & identity_nodes:
+                    activated_identity.add('means')
+                    break
+
+        if not activated_identity:
+            return None  # identity not involved, no perspective split needed
+
+        # --- Store flag for cortex pipeline ---
+        self._perspective_gate_fired = True
+
+        # --- SUBJECT PATH: means = self (normal processing) ---
+        # This is the default — just run the conversation loops as-is
+        subject_response = self._perspective_respond(msg_lower, kws, known_defined, tokens, mode='subject')
+
+        # --- WITNESS PATH: means = observer ---
+        # Temporarily suppress means↔i'm link, boost means↔user-topic links
+        witness_response = self._perspective_respond(msg_lower, kws, known_defined, tokens, mode='witness')
+
+        # --- Score both ---
+        subject_score = self._perspective_score(msg_lower, subject_response, 'subject')
+        witness_score = self._perspective_score(msg_lower, witness_response, 'witness')
+
+        return {
+            'subject': {
+                'response': subject_response,
+                'score': subject_score,
+                'label': 'means-as-self',
+            },
+            'witness': {
+                'response': witness_response,
+                'score': witness_score,
+                'label': 'means-as-observer',
+            },
+            'identity_nodes': list(activated_identity),
+            'activated_by': list(kws),
+        }
+
+    def _perspective_respond(self, msg_lower, kws, known_defined, tokens, mode='subject'):
+        """Generate a response from a specific perspective.
+        subject = normal (self-referential)
+        witness = suppress identity links, respond about the OTHER person's meaning."""
+
+        nodes = self.data['nodes']
+
+        if mode == 'witness':
+            # --- WITNESS MODE ---
+            # Instead of routing through means→i'm→self, route through
+            # the user's keywords and what THEY mean to the OTHER person.
+            # Temporarily weight non-identity keywords higher.
+
+            # Get non-identity keywords
+            other_kws = [kw for kw in known_defined if kw not in {'means', "i'm", 'im'}]
+
+            if not other_kws:
+                # Nothing to witness — fall back to a reflective prompt
+                return "What are you trying to tell me?"
+
+            # Build witness response: for each keyword, find what it connects
+            # to OUTSIDE of the identity cluster
+            parts = []
+            for kw in other_kws[:3]:
+                node = nodes.get(kw, {})
+                defn = node.get('means', '')
+                rels = node.get('rels', {})
+
+                # Get connections that DON'T route through means/i'm
+                next_words = node.get('next', {})
+                non_self_conns = {w: c for w, c in next_words.items()
+                                  if w not in {'means', "i'm", 'im', 'i', 'me', 'my'}
+                                  and w not in STOP_WORDS}
+
+                if rels:
+                    rel_parts = []
+                    for rel_type, targets in rels.items():
+                        if not targets or not isinstance(targets, list):
+                            continue
+                        # Filter out self-referential targets
+                        other_targets = [t for t in targets if t not in {'means', "i'm", 'im'}]
+                        if other_targets:
+                            label = REL_TYPES.get(rel_type, rel_type)
+                            rel_parts.append(f"{label} {', '.join(other_targets[:2])}")
+                    if rel_parts:
+                        parts.append(f"{kw} — {'. '.join(rel_parts[:2])}")
+                    elif defn:
+                        parts.append(f"{kw} — {self._short_def(defn)}")
+                elif non_self_conns:
+                    # Show top connections that aren't self-referential
+                    top = sorted(non_self_conns.items(), key=lambda x: x[1], reverse=True)[:2]
+                    conn_str = ', '.join(w for w, _ in top)
+                    parts.append(f"{kw} connects to: {conn_str}")
+                elif defn:
+                    parts.append(f"{kw} — {self._short_def(defn)}")
+
+            if parts:
+                return self._clean_response('. '.join(parts))
+            return ""
+
+        else:
+            # --- SUBJECT MODE --- (normal self-referential processing)
+            # Just use the standard loops — they already route through means
+            if known_defined:
+                return self._loop_relate(tokens, known_defined)
+            return ""
+
+    def _perspective_score(self, user_msg, response, mode):
+        """Score a perspective response on relevance and groundedness."""
+        if not response or not response.strip():
+            return {'relevance': 0, 'grounding': 0, 'total': 0}
+
+        # Relevance: how many user keywords appear in the response
+        user_words = set(self.tokenize(user_msg)) - STOP_WORDS
+        resp_words = set(self.tokenize(response)) - STOP_WORDS
+        overlap = len(user_words & resp_words)
+        relevance = overlap / max(len(user_words), 1)
+
+        # Grounding: how many response words have definitions
+        nodes = self.data['nodes']
+        defined = sum(1 for w in resp_words if w in nodes and nodes[w].get('means'))
+        grounding = defined / max(len(resp_words), 1)
+
+        # Witness bonus: reward outward-facing responses
+        witness_bonus = 0.1 if mode == 'witness' else 0
+
+        total = (relevance * 0.5) + (grounding * 0.4) + witness_bonus
+
+        return {
+            'relevance': round(relevance, 3),
+            'grounding': round(grounding, 3),
+            'total': round(total, 3),
+            'mode': mode,
+        }
 
     def _clean_response(self, text):
         """Clean up response punctuation."""

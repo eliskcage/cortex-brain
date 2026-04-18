@@ -325,6 +325,7 @@ def log_for_analysis(ip, user_msg, reply, stats):
 class OnlineHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
+        self.path = self.path.split('?')[0]
         # GET /api/equation-readme — AI-readable spec (accessible via simple GET)
         if self.path == '/api/equation-readme':
             if strategy_engine:
@@ -339,6 +340,11 @@ class OnlineHandler(http.server.SimpleHTTPRequestHandler):
         super(OnlineHandler, self).do_GET()
 
     def do_POST(self):
+        # Parse query params, then clean path for matching
+        from urllib.parse import urlparse, parse_qs
+        parsed = urlparse(self.path)
+        self._query = parse_qs(parsed.query)
+        self.path = parsed.path
         client_ip = self.client_address[0]
 
         # === CORTEX CHAT — the third mind, synthesis of both hemispheres ===
@@ -618,7 +624,63 @@ class OnlineHandler(http.server.SimpleHTTPRequestHandler):
                 'right': right_brain.check_abilities(),
             })
 
+        elif self.path == '/api/toggle':
+            # Lightweight toggle endpoint — instant response, no heavy stats
+            try:
+                tl = int(self.headers.get('Content-Length', 0))
+                tb = json.loads(self.rfile.read(tl)) if tl > 0 else {}
+            except Exception:
+                tb = {}
+            cmd = tb.get('cmd', '')
+            if cmd == 'toggle-gyroscope':
+                cortex.gyroscope.active = not cortex.gyroscope.active
+            elif cmd == 'toggle-leash':
+                cortex.leash_mode = 'unleashed' if cortex.leash_mode == 'leashed' else 'leashed'
+            elif cmd == 'gyroscope-on':
+                cortex.gyroscope.active = True
+            elif cmd == 'gyroscope-off':
+                cortex.gyroscope.active = False
+            elif cmd == 'leash':
+                cortex.leash_mode = 'leashed'
+            elif cmd == 'unleash':
+                cortex.leash_mode = 'unleashed'
+            self._json_response({
+                'ok': True,
+                'cmd': cmd,
+                'leash_mode': cortex.leash_mode,
+                'gyroscope_active': cortex.gyroscope.active,
+            })
+
         elif self.path == '/api/brain-live':
+            # Handle toggle commands piggybacked on brain-live
+            # Try query param first, then POST body (Cloudflare strips query params)
+            cmd = self._query.get('cmd', [None])[0]
+            bl_len = int(self.headers.get('Content-Length', 0))
+            print(f'[BRAIN-LIVE] hit! query_cmd={cmd} content_length={bl_len} ip={client_ip}', flush=True)
+            if not cmd:
+                try:
+                    bl_len = int(self.headers.get('Content-Length', 0))
+                    if bl_len > 0:
+                        bl_raw = self.rfile.read(bl_len)
+                        print(f'[BRAIN-LIVE] body={bl_raw[:200]}', flush=True)
+                        bl_body = json.loads(bl_raw)
+                        cmd = bl_body.get('cmd', None)
+                except Exception as e:
+                    print(f'[BRAIN-LIVE] body parse error: {e}', flush=True)
+            if cmd:
+                print(f'[BRAIN-LIVE] cmd={cmd}', flush=True)
+            if cmd == 'toggle-gyroscope':
+                cortex.gyroscope.active = not cortex.gyroscope.active
+            elif cmd == 'toggle-leash':
+                cortex.leash_mode = 'unleashed' if cortex.leash_mode == 'leashed' else 'leashed'
+            elif cmd == 'gyroscope-on':
+                cortex.gyroscope.active = True
+            elif cmd == 'gyroscope-off':
+                cortex.gyroscope.active = False
+            elif cmd == 'leash':
+                cortex.leash_mode = 'leashed'
+            elif cmd == 'unleash':
+                cortex.leash_mode = 'unleashed'
             ls = left_brain.get_stats()
             rs = right_brain.get_stats()
             la = left_brain.check_abilities()
@@ -822,6 +884,57 @@ class OnlineHandler(http.server.SimpleHTTPRequestHandler):
             else:
                 evasion_patch.evasion_mode = bool(active)
             self._json_response({'ok': True, 'evasion_mode': evasion_patch.evasion_mode})
+
+        elif self.path == '/api/set-leash':
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length)) if length else {}
+            mode = body.get('mode', None)
+            if mode in ('leashed', 'unleashed'):
+                cortex.leash_mode = mode
+            else:
+                # Toggle
+                cortex.leash_mode = 'unleashed' if cortex.leash_mode == 'leashed' else 'leashed'
+            self._json_response({'ok': True, 'leash_mode': cortex.leash_mode})
+
+        elif self.path == '/api/set-gyroscope':
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length)) if length else {}
+            active = body.get('active', None)
+            if active is None:
+                # Toggle
+                cortex.gyroscope.active = not cortex.gyroscope.active
+            else:
+                cortex.gyroscope.active = bool(active)
+            self._json_response({
+                'ok': True,
+                'gyroscope_active': cortex.gyroscope.active,
+                'gyroscope': cortex.gyroscope.get_stats(),
+            })
+
+        elif self.path == '/api/gyroscope-stats':
+            self._json_response(cortex.gyroscope.get_stats())
+
+        elif self.path == '/api/gyroscope-tune':
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length)) if length else {}
+            if 'coupling' in body:
+                cortex.gyroscope.COUPLING_RATIO = max(0.0, min(1.0, float(body['coupling'])))
+            if 'spring' in body:
+                cortex.gyroscope.SPRING_STRENGTH = max(0.0, min(1.0, float(body['spring'])))
+            if 'damping' in body:
+                cortex.gyroscope.CORTEX_DAMPING = max(0.0, min(1.0, float(body['damping'])))
+            if 'will_drain' in body:
+                cortex.gyroscope.WILL_DRAIN = max(0.0, min(0.5, float(body['will_drain'])))
+            if 'will_recover' in body:
+                cortex.gyroscope.WILL_RECOVER = max(0.0, min(0.2, float(body['will_recover'])))
+            self._json_response({
+                'ok': True,
+                'coupling': cortex.gyroscope.COUPLING_RATIO,
+                'spring': cortex.gyroscope.SPRING_STRENGTH,
+                'damping': cortex.gyroscope.CORTEX_DAMPING,
+                'will_drain': cortex.gyroscope.WILL_DRAIN,
+                'will_recover': cortex.gyroscope.WILL_RECOVER,
+            })
 
         elif self.path == '/api/equation-library':
             if strategy_engine:
@@ -1492,6 +1605,8 @@ class OnlineHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
+        self.send_header('Pragma', 'no-cache')
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
 

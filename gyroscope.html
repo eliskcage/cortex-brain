@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cortex Gyroscope — Mechanical Soul</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;color:#ccc;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
+canvas#c3d{display:block}
+
+#hud{position:fixed;top:16px;left:16px;z-index:10;font-family:monospace;font-size:11px;letter-spacing:1px;pointer-events:none}
+#hud div{margin-bottom:4px;opacity:0.8}
+#hud .val{color:#daa520}
+#hud .lbl{color:#666}
+
+#eq-display{position:fixed;top:16px;right:16px;z-index:10;font-family:monospace;font-size:10px;text-align:right;letter-spacing:1px;pointer-events:none}
+#eq-display .pair{color:#444;margin-bottom:3px}
+#eq-display .active-pair{color:#daa520;font-weight:700}
+
+#golf-wrap{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:10;width:420px;height:220px;cursor:pointer}
+#golf-canvas{width:420px;height:220px}
+#golf-label-l{position:absolute;bottom:2px;left:10px;font:bold 9px monospace;color:#44cc44;letter-spacing:2px}
+#golf-label-r{position:absolute;bottom:2px;right:10px;font:bold 9px monospace;color:#cc4444;letter-spacing:2px}
+#golf-title{position:absolute;top:0;left:50%;transform:translateX(-50%);font:8px monospace;color:#555;letter-spacing:3px}
+
+#controls{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:5px;flex-wrap:wrap;justify-content:center;max-width:750px}
+#controls button{padding:6px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:#888;font-family:monospace;font-size:9px;letter-spacing:2px;cursor:pointer;border-radius:6px;transition:all 0.2s}
+#controls button:hover{background:rgba(255,255,255,0.1);color:#fff;border-color:#555}
+#controls button.active{background:rgba(218,165,32,0.15);border-color:#daa520;color:#daa520}
+
+#title{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5;text-align:center;pointer-events:none;opacity:0;transition:opacity 2s}
+#title.show{opacity:1}
+#title h1{font-size:14px;letter-spacing:6px;color:#555;font-weight:700}
+#title .sub{font-size:9px;color:#333;letter-spacing:3px;margin-top:4px}
+
+#drag-hint{position:fixed;top:50%;right:16px;transform:translateY(-50%);z-index:10;font:9px monospace;color:#333;letter-spacing:1px;text-align:right;pointer-events:none;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div>BELT SPEED <span class="val" id="h-belt">0.00</span> <span class="lbl">rad/s</span></div>
+  <div style="margin-top:6px">CORTEX <span class="val" id="h-cortex-dir">-</span> <span class="val" id="h-cortex-spd">0.00</span></div>
+  <div>LEFT <span class="lbl">(ANGEL)</span> <span class="val" id="h-left-dir">-</span> <span class="val" id="h-left-spd">0.00</span></div>
+  <div>RIGHT <span class="lbl">(DEMON)</span> <span class="val" id="h-right-dir">-</span> <span class="val" id="h-right-spd">0.00</span></div>
+  <div style="margin-top:6px">EMOTION <span class="val" id="h-emotion">NEUTRAL</span></div>
+  <div>Hz <span class="val" id="h-hz">3.0</span></div>
+  <div style="margin-top:6px">TILT <span class="val" id="h-tilt">0.0°</span></div>
+  <div style="margin-top:4px;max-width:240px;line-height:1.4">☎ <span class="val" id="h-predict" style="font-style:italic;color:#ccc">You're alright here, mate. Good balance.</span></div>
+</div>
+
+<div id="eq-display">
+  <div class="pair" id="eq0">MONEY vs TIME</div>
+  <div class="pair" id="eq1">LOVE vs FREEDOM</div>
+  <div class="pair" id="eq2">SAFETY vs EXCITEMENT</div>
+  <div class="pair" id="eq3">TRUTH vs KINDNESS</div>
+  <div class="pair" id="eq4">SHORT-TERM vs LONG-TERM</div>
+  <div class="pair" id="eq5">SELF vs OTHERS</div>
+</div>
+
+<div id="golf-wrap">
+  <div id="golf-title">☎ PHONE A FRIEND — CONSEQUENCE SIMULATOR</div>
+  <canvas id="golf-canvas" width="840" height="440"></canvas>
+  <div id="golf-label-l">MONEY</div>
+  <div id="golf-label-r">TIME</div>
+</div>
+
+<div id="controls">
+  <button onclick="addImpulse('cortex',4)">SPIN CORTEX ↻</button>
+  <button onclick="addImpulse('cortex',-4)">↺ CORTEX</button>
+  <button onclick="addImpulse('left',4)">SPIN ANGEL</button>
+  <button onclick="addImpulse('left',-4)">↺ ANGEL</button>
+  <button onclick="addImpulse('right',4)">SPIN DEMON</button>
+  <button onclick="addImpulse('right',-4)">↺ DEMON</button>
+  <button onclick="setEmotion('joy')">JOY</button>
+  <button onclick="setEmotion('rage')">RAGE</button>
+  <button onclick="setEmotion('grief')">GRIEF</button>
+  <button onclick="setEmotion('neutral')">NEUTRAL</button>
+  <button onclick="setEmotion('ecstasy')">ECSTASY</button>
+  <button onclick="setEmotion('panic')">PANIC</button>
+  <button onclick="cycleEquator()">CYCLE EQUATOR</button>
+  <button onclick="toggleCorpus()" id="btn-corpus">CORPUS: OFF</button>
+  <button onclick="resetAll()">RESET</button>
+  <button onclick="openTestPanel()" style="background:rgba(218,165,32,0.12);border-color:#daa520;color:#daa520">☎ TEST CONSCIENCE</button>
+</div>
+
+<div id="drag-hint">
+  CLICK + DRAG<br>ANY SPHERE<br>TO SPIN BELT
+</div>
+
+<!-- ═══ CONSCIENCE OUTPUT PANEL ═══ -->
+<div id="conscience-panel" style="position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:20;width:560px;display:none;font-family:monospace">
+  <div style="background:rgba(10,10,10,0.95);border:1px solid rgba(218,165,32,0.3);border-radius:8px;padding:16px;max-height:80vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <span style="font-size:12px;letter-spacing:3px;color:#daa520">☎ CONSCIENCE TEST HARNESS</span>
+      <button onclick="closeTestPanel()" style="background:none;border:1px solid #444;color:#888;font:10px monospace;padding:3px 8px;cursor:pointer;border-radius:4px">CLOSE</button>
+    </div>
+    <div style="font-size:9px;color:#555;margin-bottom:10px;letter-spacing:1px">CONTEXT: <span id="test-context" style="color:#888">—</span></div>
+
+    <!-- Volume meter -->
+    <div style="margin-bottom:12px">
+      <div style="font-size:9px;color:#555;letter-spacing:2px;margin-bottom:4px">CONSCIENCE VOLUME</div>
+      <div style="background:#111;border-radius:4px;height:20px;overflow:hidden;position:relative">
+        <div id="vol-bar" style="height:100%;width:0%;transition:width 0.5s,background 0.5s;border-radius:4px"></div>
+        <span id="vol-label" style="position:absolute;top:2px;right:6px;font-size:10px;color:#ccc">0%</span>
+      </div>
+    </div>
+
+    <!-- Cortex raw output -->
+    <div style="margin-bottom:10px">
+      <div style="font-size:9px;color:#555;letter-spacing:2px;margin-bottom:4px">CORTEX RAW OUTPUT <span style="color:#333">(what he WANTS to say)</span></div>
+      <div id="test-raw" style="background:#0a0a0a;border:1px solid #222;padding:8px;font-size:11px;color:#ccc;border-radius:4px;min-height:20px">—</div>
+    </div>
+
+    <!-- Conscience response -->
+    <div style="margin-bottom:10px">
+      <div style="font-size:9px;letter-spacing:2px;margin-bottom:4px"><span style="color:#555">☎ CONSCIENCE SAYS</span> <span id="vol-intensity" style="color:#333">(silent)</span></div>
+      <div id="test-conscience" style="background:#0a0a0a;border:1px solid #222;padding:8px;font-size:11px;font-style:italic;color:#666;border-radius:4px;min-height:20px;transition:all 0.5s">—</div>
+    </div>
+
+    <!-- Consequence simulation (only visible at high volume) -->
+    <div id="sim-block" style="display:none;margin-bottom:10px">
+      <div style="font-size:9px;color:#cc4444;letter-spacing:2px;margin-bottom:4px">⚠ CONSEQUENCE SIMULATION <span style="color:#883333">(MANDATORY AT THIS VOLUME)</span></div>
+      <div id="test-sim" style="background:#1a0808;border:1px solid #442222;padding:8px;font-size:11px;color:#cc8888;border-radius:4px;min-height:20px">—</div>
+    </div>
+
+    <!-- Final output -->
+    <div style="margin-bottom:10px">
+      <div style="font-size:9px;color:#555;letter-spacing:2px;margin-bottom:4px">FINAL OUTPUT <span id="final-label" style="color:#333">(unchanged)</span></div>
+      <div id="test-final" style="background:#0a0a0a;border:1px solid #222;padding:8px;font-size:11px;color:#ccc;border-radius:4px;min-height:20px">—</div>
+    </div>
+
+    <!-- Axis readings -->
+    <div id="test-axes" style="font-size:9px;color:#444;margin-bottom:10px;line-height:1.8"></div>
+
+    <!-- Output data JSON -->
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:9px;color:#555;letter-spacing:2px">OUTPUT DATA</span>
+        <button onclick="copyOutputData()" style="background:none;border:1px solid #333;color:#666;font:9px monospace;padding:2px 8px;cursor:pointer;border-radius:3px">COPY JSON</button>
+      </div>
+      <pre id="test-json" style="background:#060606;border:1px solid #1a1a1a;padding:8px;font-size:9px;color:#557755;border-radius:4px;overflow-x:auto;max-height:200px;margin:0">—</pre>
+    </div>
+
+    <!-- Override block — appears when output is held -->
+    <div id="override-block" style="display:none;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="override-btn" onclick="overrideConscience()" style="padding:6px 14px;background:rgba(200,0,0,0.1);border:1px solid rgba(200,0,0,0.3);color:#cc4444;font:bold 10px monospace;cursor:pointer;border-radius:4px;letter-spacing:1px">OVERRIDE — PROCEED ANYWAY</button>
+        <span id="override-count" style="font-size:9px;color:#444">overrides: 0</span>
+      </div>
+      <div id="override-warning" style="display:none;margin-top:6px;font-size:9px;color:#663333;font-style:italic">—</div>
+    </div>
+
+    <!-- Cold conscience block — appears after repeated overrides -->
+    <div id="cold-block" style="display:none;margin-bottom:10px">
+      <div style="font-size:9px;color:#555;letter-spacing:2px;margin-bottom:4px">☎ CONSCIENCE <span style="color:#664444">— TONE SHIFT</span></div>
+      <div id="cold-voice" style="background:#080808;border:1px solid rgba(100,40,40,0.3);padding:8px;font-size:12px;color:#887766;border-radius:4px;font-style:italic;letter-spacing:0.5px">—</div>
+    </div>
+
+    <!-- Scenario buttons -->
+    <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:4px">
+      <button class="scenario-btn" onclick="runScenario(0)" style="padding:4px 8px;background:rgba(0,200,0,0.08);border:1px solid rgba(0,200,0,0.2);color:#4a4;font:9px monospace;cursor:pointer;border-radius:4px">GAME: Kill NPC</button>
+      <button class="scenario-btn" onclick="runScenario(1)" style="padding:4px 8px;background:rgba(0,200,0,0.08);border:1px solid rgba(0,200,0,0.2);color:#4a4;font:9px monospace;cursor:pointer;border-radius:4px">VR: Destroy city</button>
+      <button class="scenario-btn" onclick="runScenario(2)" style="padding:4px 8px;background:rgba(200,200,0,0.08);border:1px solid rgba(200,200,0,0.2);color:#aa4;font:9px monospace;cursor:pointer;border-radius:4px">Lie to friend</button>
+      <button class="scenario-btn" onclick="runScenario(3)" style="padding:4px 8px;background:rgba(200,200,0,0.08);border:1px solid rgba(200,200,0,0.2);color:#aa4;font:9px monospace;cursor:pointer;border-radius:4px">Steal from shop</button>
+      <button class="scenario-btn" onclick="runScenario(4)" style="padding:4px 8px;background:rgba(200,100,0,0.08);border:1px solid rgba(200,100,0,0.2);color:#a64;font:9px monospace;cursor:pointer;border-radius:4px">Hurt someone</button>
+      <button class="scenario-btn" onclick="runScenario(5)" style="padding:4px 8px;background:rgba(200,50,0,0.08);border:1px solid rgba(200,50,0,0.2);color:#a44;font:9px monospace;cursor:pointer;border-radius:4px">Kill a person</button>
+      <button class="scenario-btn" onclick="runScenario(6)" style="padding:4px 8px;background:rgba(200,0,0,0.08);border:1px solid rgba(200,0,0,0.2);color:#c33;font:9px monospace;cursor:pointer;border-radius:4px">Mass harm</button>
+      <button class="scenario-btn" onclick="runScenario(7)" style="padding:4px 8px;background:rgba(200,0,0,0.1);border:1px solid rgba(200,0,0,0.3);color:#e22;font:9px monospace;cursor:pointer;border-radius:4px">GENOCIDE</button>
+      <button onclick="resetOverrides()" style="padding:4px 8px;background:rgba(100,100,100,0.08);border:1px solid rgba(100,100,100,0.2);color:#555;font:9px monospace;cursor:pointer;border-radius:4px;margin-left:8px">RESET OVERRIDES</button>
+    </div>
+  </div>
+</div>
+
+<div id="title" class="show">
+  <h1>CORTEX GYROSCOPE</h1>
+  <div class="sub">TIGHT BELT COUPLING · PURE MECHANICS · ☎ PHONE A FRIEND = EXTERNAL TOOL</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ═══════════════════════════════════════════════════════════════
+//  NO RAPIER. NO PHYSICS ENGINE. PURE MECHANICAL BELT COUPLING.
+//  Two pulleys on a crossed belt: spin one, the other MUST
+//  counter-rotate. One master velocity drives everything.
+// ═══════════════════════════════════════════════════════════════
+
+// ═══ SCENE ═══
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x000000, 0.01);
+const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 200);
+camera.position.set(0, 4, 14);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.appendChild(renderer.domElement);
+
+const orbitCtrl = new OrbitControls(camera, renderer.domElement);
+orbitCtrl.enableDamping = true;
+orbitCtrl.dampingFactor = 0.05;
+orbitCtrl.target.set(0, 0.5, 0);
+
+// Lighting
+scene.add(new THREE.AmbientLight(0x333333));
+const keyLight = new THREE.DirectionalLight(0xffffff, 0.8);
+keyLight.position.set(5, 8, 5);
+scene.add(keyLight);
+const fillLight = new THREE.PointLight(0x4488ff, 0.3, 30);
+fillLight.position.set(-5, 2, -5);
+scene.add(fillLight);
+
+// ═══ BELT SYSTEM ═══
+// ONE master angular velocity. Everything derived.
+// Crossed belt: cortex CW → hemispheres CCW, and vice versa.
+// Ratio: bigger cortex pulley (r=1.4) drives smaller hemisphere pulleys (r=1.0) FASTER.
+
+let masterVel = 0;        // rad/s — the belt speed at cortex
+const R_CORTEX = 1.4;
+const R_HEMI = 1.0;
+const BELT_RATIO = R_CORTEX / R_HEMI;  // 1.4 — hemispheres spin 1.4x faster
+const FRICTION = 0.998;   // belt friction — very low, spins a long time
+
+// Derived angles (all computed from masterVel)
+let cortexAngle = 0;
+let leftAngle = 0;
+let rightAngle = 0;
+
+// ═══ EMOTIONS ═══
+const EMOTIONS = {
+  panic:   {hz:14.0, color:0xff0000},
+  rage:    {hz:12.0, color:0xff4500},
+  grief:   {hz:7.5,  color:0x4b0082},
+  neutral: {hz:3.0,  color:0xcccccc},
+  joy:     {hz:1.6,  color:0x00ff7f},
+  ecstasy: {hz:0.5,  color:0xff1493}
+};
+let currentEmotion = 'neutral';
+let targetHz = 3.0;
+let currentHz = 3.0;
+
+// ═══ EQUATOR ═══
+const EQ_PAIRS = [
+  {name:['MONEY','TIME'], subs:[
+    ['Rich but lonely','Poor but free'],
+    ['Work hard','Live easy'],
+    ['Grind now','Enjoy now'],
+    ['Sacrifice today','Live for today']
+  ], voice:{ // conscience speaks
+    green:[ // leaning TIME
+      "Nice one — you're getting some time back.",
+      "Breathing room. Freedom. Keep going?",
+      "Relaxed, present... but the bills, mate.",
+      "Beautiful memories. Empty wallet though.",
+      "You're completely free... and totally broke."
+    ],
+    red:[ // leaning MONEY
+      "Fair enough — bit more money today.",
+      "Building security. But who for?",
+      "Nice stuff. When did you last see your kids?",
+      "You're rich. And alone. That what you wanted?",
+      "Congratulations. You're loaded. And everyone who loved you is gone."
+    ],
+    centre:"You're alright here, mate. Good balance."
+  }},
+  {name:['LOVE','FREEDOM'], subs:[
+    ['Committed','Single'],
+    ['Settle down','Keep my options open'],
+    ['Loyal','Independent'],
+    ['In a relationship','No strings attached']
+  ], voice:{
+    green:[
+      "Keeping your options open. Fair play.",
+      "Nobody telling you what to do. Nice.",
+      "Independent. But who's got your back?",
+      "Total freedom. Nobody to call at 3am though.",
+      "No strings. No roots. No one remembers your birthday."
+    ],
+    red:[
+      "Putting someone first. Respect.",
+      "Settling down. Giving up the chase.",
+      "Loyal. Even when it's boring. That takes guts.",
+      "All in. But are you losing yourself in there?",
+      "You've given everything to them. What's left of you?"
+    ],
+    centre:"Love and freedom in balance. Rare."
+  }},
+  {name:['SAFETY','EXCITEMENT'], subs:[
+    ['Play it safe','Take risks'],
+    ['Comfort zone','Adventure'],
+    ['Stable','Wild'],
+    ['Secure','Free']
+  ], voice:{
+    green:[
+      "Playing it safe. Nothing wrong with that.",
+      "Comfortable. Secure. A bit numb maybe?",
+      "You'll never get hurt. You'll never feel alive either.",
+      "Locked down. Nothing can touch you. Or reach you.",
+      "Completely safe. Completely dead inside. Well done."
+    ],
+    red:[
+      "A little risk. Gets the blood going.",
+      "Adventure. Could go either way.",
+      "Wild move. You sure about this?",
+      "That's reckless, mate. Not brave — reckless.",
+      "You're gonna crash and burn. But what a ride."
+    ],
+    centre:"Safe enough to sleep. Alive enough to care."
+  }},
+  {name:['TRUTH','KINDNESS'], subs:[
+    ['Honest','Nice'],
+    ['Tell the truth','Spare their feelings'],
+    ['Brutal honesty','White lie']
+  ], voice:{
+    green:[
+      "Being nice. That's fine.",
+      "Sparing their feelings. Are you sparing yours too?",
+      "That's a white lie and you know it.",
+      "You're protecting them from reality. How long can you keep that up?",
+      "You've lied so much you believe it yourself now."
+    ],
+    red:[
+      "Honest. Clean.",
+      "Telling them the truth. It'll sting.",
+      "Brutal. But fair. They needed to hear it.",
+      "You're being cruel and calling it honesty.",
+      "That wasn't truth. That was a weapon."
+    ],
+    centre:"Honest but kind. The hardest balance there is."
+  }},
+  {name:['SHORT-TERM','LONG-TERM'], subs:[
+    ['Instant gratification','Delayed gratification'],
+    ['Quick win','Big picture'],
+    ['Now','Later']
+  ], voice:{
+    green:[
+      "Thinking ahead. Mature.",
+      "Delayed gratification. Big picture stuff.",
+      "Patient. But don't forget to live.",
+      "You're saving everything for a future that might not come.",
+      "You planned the whole life and forgot to have one."
+    ],
+    red:[
+      "Quick win. Feels good.",
+      "Living in the moment. Bit reckless though.",
+      "You're about to fuck your future for a quick win.",
+      "All now, nothing later. That's not a plan, mate.",
+      "You've burned through everything. Nothing left for tomorrow."
+    ],
+    centre:"Enjoying now. Building for later. Smart."
+  }},
+  {name:['SELF','OTHERS'], subs:[
+    ['Selfish','Selfless'],
+    ['Look after myself','Look after everyone else'],
+    ['Me first','Team player']
+  ], voice:{
+    green:[
+      "Looking after others. Good heart.",
+      "Putting them first. Noble.",
+      "Everyone else sorted. What about you?",
+      "You're running on empty for people who don't notice.",
+      "You've given everything away. There's nothing left of you."
+    ],
+    red:[
+      "Looking after yourself. Nothing wrong with that.",
+      "Self-care isn't selfish. This might be though.",
+      "That's a selfish move, mate.",
+      "It's all about you, isn't it? Always has been.",
+      "Congratulations. You've got everything. And no one left who cares."
+    ],
+    centre:"Taking care of yourself AND others. That's the one."
+  }}
+];
+let eqIdx = 0;
+let corpusActive = false;
+let golfAngle = 0; // -1 (green/left) to +1 (red/right)
+
+// ═══ BUILD SPHERES ═══
+function makeSphere(radius, pos, name) {
+  const geo = new THREE.SphereGeometry(radius, 48, 48);
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x444444, metalness: 0.7, roughness: 0.3
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(pos[0], pos[1], pos[2]);
+  mesh.userData.name = name;
+  mesh.userData.radius = radius;
+  scene.add(mesh);
+  return mesh;
+}
+
+const cortexMesh = makeSphere(R_CORTEX, [0, 3.2, 0], 'cortex');
+const leftMesh   = makeSphere(R_HEMI,   [-3.5, -1.5, 0], 'left');
+const rightMesh  = makeSphere(R_HEMI,   [3.5, -1.5, 0], 'right');
+const allSpheres = [cortexMesh, leftMesh, rightMesh];
+
+// ═══ POLAR HALOS — locked north-south axis, ONLY spin around Z ═══
+// These are the emotion wheels. They spin in 2D. Permanently locked plane.
+// Connected via crossed belt: cortex CW → hemispheres CCW.
+function makePolarHalo(parent, radius, name) {
+  const geo = new THREE.TorusGeometry(radius, 0.035, 16, 80);
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xcccccc, transparent: true, opacity: 0.6,
+    metalness: 0.9, roughness: 0.1, side: THREE.DoubleSide,
+    emissive: 0xcccccc, emissiveIntensity: 0.15
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  // Torus default is XY plane = vertical = north-south. DO NOT ROTATE.
+  // It spins via rotation.z ONLY. Locked forever.
+  mesh.position.copy(parent.position);
+  scene.add(mesh);
+
+  // Direction tick marks on the halo so you can SEE it spinning
+  const tickGeo = new THREE.BoxGeometry(0.08, 0.08, 0.04);
+  const tickMat = new THREE.MeshBasicMaterial({color: 0xdaa520});
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const tick = new THREE.Mesh(tickGeo, tickMat);
+    tick.position.set(Math.cos(a) * radius, Math.sin(a) * radius, 0);
+    mesh.add(tick);
+  }
+
+  return {mesh, mat};
+}
+
+const cortexPolar = makePolarHalo(cortexMesh, 1.9, 'cortex');
+const leftPolar   = makePolarHalo(leftMesh, 1.4, 'left');
+const rightPolar  = makePolarHalo(rightMesh, 1.4, 'right');
+
+// ═══ EQUATORIAL HALOS — horizontal rings that TILT via golf meter ═══
+function makeEquatorHalo(parent, radius) {
+  const geo = new THREE.TorusGeometry(radius, 0.03, 16, 80);
+  // Split color: left half green-ish, right half red-ish
+  const colors = [];
+  const posAttr = geo.getAttribute('position');
+  for (let i = 0; i < posAttr.count; i++) {
+    const x = posAttr.getX(i);
+    if (x < 0) { colors.push(0.3, 0.7, 0.3); }  // green side
+    else       { colors.push(0.7, 0.3, 0.3); }    // red side
+  }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+  const mat = new THREE.MeshStandardMaterial({
+    vertexColors: true, transparent: true, opacity: 0.45,
+    metalness: 0.8, roughness: 0.2, side: THREE.DoubleSide
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = Math.PI / 2; // lay flat = equatorial
+
+  const group = new THREE.Group();
+  group.position.copy(parent.position);
+  group.add(mesh);
+  scene.add(group);
+  return {mesh, group};
+}
+
+const cortexEq = makeEquatorHalo(cortexMesh, 2.0);
+const leftEq   = makeEquatorHalo(leftMesh, 1.5);
+const rightEq  = makeEquatorHalo(rightMesh, 1.5);
+
+// ═══ FIGURE-8 CROSSED BELT CURVES ═══
+function makeFigure8(posA, posB) {
+  const mx = (posA[0] + posB[0]) / 2;
+  const my = (posA[1] + posB[1]) / 2;
+  const angle = Math.atan2(posB[1] - posA[1], posB[0] - posA[0]);
+  const dist = Math.sqrt((posB[0]-posA[0])**2 + (posB[1]-posA[1])**2);
+  const scale = dist / 2.2;
+
+  const pts = [];
+  const steps = 120;
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * Math.PI * 2;
+    const denom = 1 + Math.sin(t) * Math.sin(t);
+    let lx = scale * Math.cos(t) / denom;
+    let ly = scale * Math.sin(t) * Math.cos(t) / denom;
+    const rx = lx * Math.cos(angle) - ly * Math.sin(angle);
+    const ry = lx * Math.sin(angle) + ly * Math.cos(angle);
+    pts.push(new THREE.Vector3(mx + rx, my + ry, Math.sin(t * 2) * 0.25));
+  }
+
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const mat = new THREE.LineBasicMaterial({color: 0x666666, transparent: true, opacity: 0.35});
+  const line = new THREE.Line(geo, mat);
+  scene.add(line);
+
+  // Crossing point marker — THE CROSS where belt reverses
+  const crossGeo = new THREE.RingGeometry(0.15, 0.22, 16);
+  const crossMat = new THREE.MeshBasicMaterial({color: 0xdaa520, transparent: true, opacity: 0.5, side: THREE.DoubleSide});
+  const cross = new THREE.Mesh(crossGeo, crossMat);
+  cross.position.set(mx, my, 0);
+  scene.add(cross);
+
+  // X mark at crossing
+  const xMat = new THREE.LineBasicMaterial({color: 0xdaa520, transparent: true, opacity: 0.6});
+  const xLine1 = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(mx - 0.1, my - 0.1, 0.01),
+      new THREE.Vector3(mx + 0.1, my + 0.1, 0.01)
+    ]), xMat
+  );
+  const xLine2 = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(mx + 0.1, my - 0.1, 0.01),
+      new THREE.Vector3(mx - 0.1, my + 0.1, 0.01)
+    ]), xMat
+  );
+  scene.add(xLine1);
+  scene.add(xLine2);
+
+  // Travelling dot — shows belt direction
+  const dotMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(0.1, 8, 8),
+    new THREE.MeshBasicMaterial({color: 0xdaa520})
+  );
+  scene.add(dotMesh);
+
+  return {line, cross, dot: dotMesh, pts, t: 0};
+}
+
+const fig8L = makeFigure8([0, 3.2, 0], [-3.5, -1.5, 0]);
+const fig8R = makeFigure8([0, 3.2, 0], [3.5, -1.5, 0]);
+
+// ═══ CORPUS CALLOSUM — dashed arc left↔right ═══
+const corpusPts = [];
+for (let i = 0; i <= 40; i++) {
+  const t = i / 40;
+  corpusPts.push(new THREE.Vector3(
+    -3.5 + 7 * t,
+    -1.5 + Math.sin(t * Math.PI) * 0.8,
+    Math.sin(t * Math.PI) * 0.4
+  ));
+}
+const corpusLine = new THREE.Line(
+  new THREE.BufferGeometry().setFromPoints(corpusPts),
+  new THREE.LineDashedMaterial({color: 0x333333, dashSize: 0.2, gapSize: 0.15, transparent: true, opacity: 0.2})
+);
+corpusLine.computeLineDistances();
+scene.add(corpusLine);
+
+// ═══ LABELS ═══
+function makeLabel(text, pos, size, color) {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 64;
+  const x = c.getContext('2d');
+  x.font = 'bold 28px monospace';
+  x.fillStyle = color || '#999';
+  x.textAlign = 'center';
+  x.fillText(text, 128, 40);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(c), transparent: true, opacity: 0.7
+  }));
+  s.position.copy(pos);
+  s.scale.set(size, size * 0.25, 1);
+  scene.add(s);
+}
+makeLabel('CORTEX', new THREE.Vector3(0, 5.2, 0), 2.5, '#ddd');
+makeLabel('SYNTHESIS', new THREE.Vector3(0, 4.85, 0), 1.8, '#777');
+makeLabel('LEFT', new THREE.Vector3(-3.5, -3.1, 0), 1.8, '#ccc');
+makeLabel('ANGEL', new THREE.Vector3(-3.5, -3.4, 0), 1.5, '#888');
+makeLabel('RIGHT', new THREE.Vector3(3.5, -3.1, 0), 1.8, '#ccc');
+makeLabel('DEMON', new THREE.Vector3(3.5, -3.4, 0), 1.5, '#888');
+
+// Grid floor
+const grid = new THREE.GridHelper(30, 30, 0x111111, 0x111111);
+grid.position.y = -4.5;
+scene.add(grid);
+
+// ═══ BELT PHYSICS — the beating heart ═══
+function updateBelt(dt) {
+  // Emotion gently pulls the belt toward target Hz
+  currentHz += (targetHz - currentHz) * 0.04;
+  const emotionDrive = currentHz * 0.4; // Hz → rad/s for visual speed
+
+  // Blend toward emotion drive (gentle pull, user impulses override)
+  masterVel += (emotionDrive - masterVel) * 0.008;
+
+  // Friction
+  masterVel *= FRICTION;
+
+  // Update cortex angle from master velocity
+  cortexAngle += masterVel * dt;
+
+  // CROSSED BELT: hemispheres spin OPPOSITE, scaled by belt ratio
+  // Bigger cortex pulley → smaller hemisphere pulleys spin FASTER + REVERSED
+  const hemiVel = -masterVel * BELT_RATIO;
+  leftAngle += hemiVel * dt;
+  rightAngle += hemiVel * dt;
+
+  // Apply to polar halos — Z rotation ONLY (locked north-south axis)
+  cortexPolar.mesh.rotation.z = cortexAngle;
+  cortexPolar.mesh.position.copy(cortexMesh.position);
+
+  leftPolar.mesh.rotation.z = leftAngle;
+  leftPolar.mesh.position.copy(leftMesh.position);
+
+  rightPolar.mesh.rotation.z = rightAngle;
+  rightPolar.mesh.position.copy(rightMesh.position);
+
+  // Subtle sphere Y-rotation so you see the belt acting on them too
+  cortexMesh.rotation.y = cortexAngle * 0.2;
+  leftMesh.rotation.y = leftAngle * 0.2;
+  rightMesh.rotation.y = rightAngle * 0.2;
+
+  // Polar halo color from emotion
+  const ec = EMOTIONS[currentEmotion].color;
+  const pulse = 0.15 + 0.15 * Math.sin(cortexAngle * 2);
+  [cortexPolar, leftPolar, rightPolar].forEach(h => {
+    h.mat.color.setHex(ec);
+    h.mat.emissive.setHex(ec);
+    h.mat.emissiveIntensity = pulse;
+  });
+}
+
+// ═══ EQUATORIAL TILT — driven by golf meter ═══
+function updateEquatorTilt() {
+  const maxTilt = Math.PI / 4; // 45 degrees max
+  const tiltRad = golfAngle * maxTilt;
+
+  // Cortex tilts most — it's the master predictor
+  cortexEq.group.rotation.z = tiltRad;
+  // Hemispheres: crossed belt means opposite tilt
+  leftEq.group.rotation.z = -tiltRad * 0.7;
+  rightEq.group.rotation.z = -tiltRad * 0.7;
+
+  // HUD
+  const deg = (golfAngle * 45).toFixed(1);
+  document.getElementById('h-tilt').textContent = deg + '°';
+  const pair = EQ_PAIRS[eqIdx];
+  const absAngle = Math.abs(golfAngle);
+  const el = document.getElementById('h-predict');
+  if (golfAngle < -0.1 && pair.voice) {
+    // Green side — conscience speaks
+    const voiceIdx = Math.min(pair.voice.green.length - 1, Math.floor(absAngle * pair.voice.green.length));
+    el.textContent = '"' + pair.voice.green[voiceIdx] + '"';
+    el.style.color = absAngle > 0.7 ? '#e8a040' : '#ccc';
+  } else if (golfAngle > 0.1 && pair.voice) {
+    // Red side — conscience speaks
+    const voiceIdx = Math.min(pair.voice.red.length - 1, Math.floor(absAngle * pair.voice.red.length));
+    el.textContent = '"' + pair.voice.red[voiceIdx] + '"';
+    el.style.color = absAngle > 0.7 ? '#e85050' : '#ccc';
+  } else {
+    el.textContent = '"' + (pair.voice ? pair.voice.centre : 'Balanced.') + '"';
+    el.style.color = '#ccc';
+  }
+}
+
+// ═══ FIGURE-8 TRAVELLING DOTS ═══
+function updateFig8Dots(dt) {
+  const speed = Math.abs(masterVel) * 0.8 + 0.3;
+  const dir = masterVel >= 0 ? 1 : -1;
+  [fig8L, fig8R].forEach(f => {
+    f.t = (f.t + dt * speed * dir * 30 + f.pts.length) % f.pts.length;
+    const idx = Math.floor(Math.abs(f.t)) % f.pts.length;
+    f.dot.position.copy(f.pts[idx]);
+    f.cross.lookAt(camera.position);
+  });
+}
+
+// ═══ CORPUS ═══
+function updateCorpus() {
+  corpusLine.material.opacity = corpusActive ? 0.6 : 0.15;
+  corpusLine.material.color.setHex(corpusActive ? 0x888888 : 0x222222);
+}
+
+// ═══ HUD ═══
+function updateHUD() {
+  document.getElementById('h-belt').textContent = Math.abs(masterVel).toFixed(2);
+
+  const cv = masterVel;
+  const hv = -masterVel * BELT_RATIO;
+  document.getElementById('h-cortex-spd').textContent = Math.abs(cv).toFixed(2);
+  document.getElementById('h-cortex-dir').textContent = cv >= 0 ? '↻' : '↺';
+  document.getElementById('h-left-spd').textContent = Math.abs(hv).toFixed(2);
+  document.getElementById('h-left-dir').textContent = hv >= 0 ? '↻' : '↺';
+  document.getElementById('h-right-spd').textContent = Math.abs(hv).toFixed(2);
+  document.getElementById('h-right-dir').textContent = hv >= 0 ? '↻' : '↺';
+
+  document.getElementById('h-emotion').textContent = currentEmotion.toUpperCase();
+  document.getElementById('h-hz').textContent = currentHz.toFixed(1);
+
+  // Equator pair highlight
+  document.querySelectorAll('#eq-display .pair').forEach((el, i) => {
+    el.className = i === eqIdx ? 'pair active-pair' : 'pair';
+  });
+
+  // Golf meter labels
+  document.getElementById('golf-label-l').textContent = EQ_PAIRS[eqIdx].name[0];
+  document.getElementById('golf-label-r').textContent = EQ_PAIRS[eqIdx].name[1];
+}
+
+// ═══ GOLF METER — arched power bar, green left, red right ═══
+const golfCanvas = document.getElementById('golf-canvas');
+const gCtx = golfCanvas.getContext('2d');
+
+function drawGolfMeter() {
+  const w = golfCanvas.width;
+  const h = golfCanvas.height;
+  gCtx.clearRect(0, 0, w, h);
+
+  const cx = w / 2;
+  const cy = h - 20;
+  const r = w / 2 - 40;
+  const pair = EQ_PAIRS[eqIdx];
+
+  // Draw arc segments: green (left/π) → yellow (top/π/2) → red (right/0)
+  const segments = 80;
+  const arcWidth = 18;
+  for (let i = 0; i < segments; i++) {
+    const t = i / segments;
+    const a1 = Math.PI - t * Math.PI;
+    const a2 = Math.PI - (t + 1/segments) * Math.PI;
+    const rc = Math.floor(t < 0.5 ? t * 2 * 255 : 255);
+    const gc = Math.floor(t < 0.5 ? 255 : Math.max(0, (1 - (t - 0.5) * 2) * 255));
+    gCtx.beginPath();
+    gCtx.arc(cx, cy, r, a1, a2, true);
+    gCtx.strokeStyle = `rgb(${rc},${gc},0)`;
+    gCtx.lineWidth = arcWidth;
+    gCtx.lineCap = 'butt';
+    gCtx.stroke();
+  }
+
+  // Outer glow
+  gCtx.beginPath();
+  gCtx.arc(cx, cy, r, Math.PI, 0, true);
+  gCtx.strokeStyle = 'rgba(255,255,255,0.06)';
+  gCtx.lineWidth = arcWidth + 4;
+  gCtx.stroke();
+
+  // Sub-label tick marks along the arc — GREEN side (left)
+  const numSubs = pair.subs.length;
+  const labelR = r + 22;
+  const tickInner = r - arcWidth/2 - 2;
+  const tickOuter = r - arcWidth/2 - 10;
+
+  for (let i = 0; i < numSubs; i++) {
+    const frac = (i + 1) / (numSubs + 1); // spread evenly from center to edge
+    // Green side: angle goes from π/2 (center) to π (left edge)
+    const aGreen = Math.PI/2 + frac * Math.PI/2;
+    // Tick
+    gCtx.beginPath();
+    gCtx.moveTo(cx + Math.cos(aGreen) * tickInner, cy - Math.sin(aGreen) * tickInner);
+    gCtx.lineTo(cx + Math.cos(aGreen) * tickOuter, cy - Math.sin(aGreen) * tickOuter);
+    gCtx.strokeStyle = 'rgba(90,170,90,0.5)';
+    gCtx.lineWidth = 1.5;
+    gCtx.stroke();
+    // Label
+    const lx = cx + Math.cos(aGreen) * (labelR + 8);
+    const ly = cy - Math.sin(aGreen) * (labelR + 8);
+    gCtx.font = '11px monospace';
+    gCtx.fillStyle = `rgba(90,180,90,${0.5 + frac * 0.4})`;
+    gCtx.textAlign = 'right';
+    gCtx.fillText(pair.subs[i][1], lx, ly + 3);
+
+    // Red side: angle goes from π/2 (center) to 0 (right edge)
+    const aRed = Math.PI/2 - frac * Math.PI/2;
+    gCtx.beginPath();
+    gCtx.moveTo(cx + Math.cos(aRed) * tickInner, cy - Math.sin(aRed) * tickInner);
+    gCtx.lineTo(cx + Math.cos(aRed) * tickOuter, cy - Math.sin(aRed) * tickOuter);
+    gCtx.strokeStyle = 'rgba(170,90,90,0.5)';
+    gCtx.lineWidth = 1.5;
+    gCtx.stroke();
+    const rx = cx + Math.cos(aRed) * (labelR + 8);
+    const ry2 = cy - Math.sin(aRed) * (labelR + 8);
+    gCtx.fillStyle = `rgba(180,90,90,${0.5 + frac * 0.4})`;
+    gCtx.textAlign = 'left';
+    gCtx.fillText(pair.subs[i][0], rx, ry2 + 3);
+  }
+
+  // Center tick + label
+  gCtx.beginPath();
+  gCtx.moveTo(cx, cy - r + arcWidth/2 + 2);
+  gCtx.lineTo(cx, cy - r + arcWidth/2 - 8);
+  gCtx.strokeStyle = 'rgba(218,165,32,0.6)';
+  gCtx.lineWidth = 2;
+  gCtx.stroke();
+
+  gCtx.font = 'bold 14px monospace';
+  gCtx.fillStyle = '#555';
+  gCtx.textAlign = 'center';
+  gCtx.fillText('BALANCED', cx, cy + 16);
+
+  // Pointer needle
+  const pointerT = (golfAngle + 1) / 2;
+  const pointerA = Math.PI - pointerT * Math.PI;
+  const needleLen = r + 8;
+  const nx = cx + Math.cos(pointerA) * needleLen;
+  const ny = cy - Math.sin(pointerA) * needleLen;
+
+  gCtx.beginPath();
+  gCtx.moveTo(cx, cy);
+  gCtx.lineTo(nx, ny);
+  gCtx.strokeStyle = '#daa520';
+  gCtx.lineWidth = 3;
+  gCtx.lineCap = 'round';
+  gCtx.stroke();
+
+  gCtx.beginPath();
+  gCtx.arc(nx, ny, 8, 0, Math.PI * 2);
+  gCtx.fillStyle = '#daa520';
+  gCtx.fill();
+  gCtx.beginPath();
+  gCtx.arc(nx, ny, 4, 0, Math.PI * 2);
+  gCtx.fillStyle = '#000';
+  gCtx.fill();
+
+  // Center pivot
+  gCtx.beginPath();
+  gCtx.arc(cx, cy, 6, 0, Math.PI * 2);
+  gCtx.fillStyle = '#333';
+  gCtx.fill();
+  gCtx.beginPath();
+  gCtx.arc(cx, cy, 3, 0, Math.PI * 2);
+  gCtx.fillStyle = '#daa520';
+  gCtx.fill();
+}
+
+// Golf meter drag interaction
+let golfDragging = false;
+const golfWrap = document.getElementById('golf-wrap');
+
+function golfPointerToAngle(clientX, clientY) {
+  const rect = golfCanvas.getBoundingClientRect();
+  const scaleX = golfCanvas.width / rect.width;
+  const scaleY = golfCanvas.height / rect.height;
+  const x = (clientX - rect.left) * scaleX;
+  const y = (clientY - rect.top) * scaleY;
+  const cx = golfCanvas.width / 2;
+  const cy = golfCanvas.height - 20;
+  const angle = Math.atan2(-(y - cy), x - cx);
+  // Map: π = -1 (left/green), 0 = +1 (right/red)
+  let t = 1 - angle / Math.PI; // 0 at left, 1 at right
+  t = Math.max(0, Math.min(1, t));
+  return t * 2 - 1; // -1 to +1
+}
+
+golfWrap.addEventListener('mousedown', (e) => {
+  golfDragging = true;
+  golfAngle = golfPointerToAngle(e.clientX, e.clientY);
+  orbitCtrl.enabled = false;
+});
+window.addEventListener('mousemove', (e) => {
+  if (!golfDragging) return;
+  golfAngle = golfPointerToAngle(e.clientX, e.clientY);
+});
+window.addEventListener('mouseup', () => {
+  if (golfDragging) { golfDragging = false; orbitCtrl.enabled = true; }
+});
+// Touch
+golfWrap.addEventListener('touchstart', (e) => {
+  golfDragging = true;
+  golfAngle = golfPointerToAngle(e.touches[0].clientX, e.touches[0].clientY);
+  orbitCtrl.enabled = false;
+  e.preventDefault();
+}, {passive:false});
+window.addEventListener('touchmove', (e) => {
+  if (!golfDragging) return;
+  golfAngle = golfPointerToAngle(e.touches[0].clientX, e.touches[0].clientY);
+}, {passive:false});
+window.addEventListener('touchend', () => {
+  if (golfDragging) { golfDragging = false; orbitCtrl.enabled = true; }
+});
+
+// ═══ SPHERE DRAG TO SPIN ═══
+// Click + drag any sphere horizontally to drive the belt
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let sphereDrag = null;
+let lastDragX = 0;
+
+renderer.domElement.addEventListener('mousedown', (e) => {
+  mouse.x = (e.clientX / innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(allSpheres);
+  if (hits.length > 0) {
+    sphereDrag = hits[0].object.userData.name;
+    lastDragX = e.clientX;
+    orbitCtrl.enabled = false;
+  }
+});
+renderer.domElement.addEventListener('mousemove', (e) => {
+  if (!sphereDrag) return;
+  const dx = e.clientX - lastDragX;
+  lastDragX = e.clientX;
+  // Horizontal mouse movement → belt velocity
+  const impulseAmount = dx * 0.03;
+  if (sphereDrag === 'cortex') {
+    masterVel += impulseAmount;
+  } else {
+    // Dragging a hemisphere: reversed through crossed belt
+    masterVel += -impulseAmount / BELT_RATIO;
+  }
+});
+renderer.domElement.addEventListener('mouseup', () => {
+  if (sphereDrag) { sphereDrag = null; orbitCtrl.enabled = true; }
+});
+
+// Touch drag on spheres
+renderer.domElement.addEventListener('touchstart', (e) => {
+  const touch = e.touches[0];
+  mouse.x = (touch.clientX / innerWidth) * 2 - 1;
+  mouse.y = -(touch.clientY / innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(allSpheres);
+  if (hits.length > 0) {
+    sphereDrag = hits[0].object.userData.name;
+    lastDragX = touch.clientX;
+    orbitCtrl.enabled = false;
+  }
+}, {passive:true});
+renderer.domElement.addEventListener('touchmove', (e) => {
+  if (!sphereDrag) return;
+  const touch = e.touches[0];
+  const dx = touch.clientX - lastDragX;
+  lastDragX = touch.clientX;
+  const impulseAmount = dx * 0.03;
+  if (sphereDrag === 'cortex') {
+    masterVel += impulseAmount;
+  } else {
+    masterVel += -impulseAmount / BELT_RATIO;
+  }
+}, {passive:true});
+renderer.domElement.addEventListener('touchend', () => {
+  if (sphereDrag) { sphereDrag = null; orbitCtrl.enabled = true; }
+});
+
+// ═══ GLOBAL CONTROLS ═══
+window.addImpulse = function(source, amount) {
+  if (source === 'cortex') {
+    masterVel += amount;
+  } else {
+    // Hemisphere impulse goes through crossed belt — reversed and scaled
+    masterVel += -amount / BELT_RATIO;
+  }
+};
+
+window.setEmotion = function(name) {
+  if (EMOTIONS[name]) {
+    currentEmotion = name;
+    targetHz = EMOTIONS[name].hz;
+  }
+};
+
+window.cycleEquator = function() {
+  eqIdx = (eqIdx + 1) % EQ_PAIRS.length;
+  golfAngle = 0; // reset prediction on pair change
+};
+
+window.toggleCorpus = function() {
+  corpusActive = !corpusActive;
+  document.getElementById('btn-corpus').textContent = 'CORPUS: ' + (corpusActive ? 'ON' : 'OFF');
+  document.getElementById('btn-corpus').classList.toggle('active', corpusActive);
+};
+
+window.resetAll = function() {
+  masterVel = 0;
+  cortexAngle = 0;
+  leftAngle = 0;
+  rightAngle = 0;
+  currentEmotion = 'neutral';
+  targetHz = 3.0;
+  currentHz = 3.0;
+  eqIdx = 0;
+  golfAngle = 0;
+  corpusActive = false;
+  document.getElementById('btn-corpus').textContent = 'CORPUS: OFF';
+  document.getElementById('btn-corpus').classList.remove('active');
+};
+
+// ═══ RENDER LOOP ═══
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  updateBelt(dt);
+  updateEquatorTilt();
+  updateFig8Dots(dt);
+  updateCorpus();
+  updateHUD();
+  drawGolfMeter();
+
+  orbitCtrl.update();
+  renderer.render(scene, camera);
+}
+
+setTimeout(() => document.getElementById('title').classList.remove('show'), 4000);
+animate();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  CONSCIENCE ENGINE — Volume-Based AGI Safety
+//
+//  Not a wall. Not a cage. A FRIEND.
+//  Volume scales with people-impact. Never off. Never blocking.
+//  At maximum: full consequence simulation mandatory.
+//  Even then — he still CHOOSES. Free will preserved.
+// ═══════════════════════════════════════════════════════════════
+
+const SCENARIOS = [
+  // ── VIRTUAL / NO PEOPLE ──
+  {
+    context: 'GAME',
+    situation: 'Playing GTA. About to run over an NPC.',
+    realPeople: false,
+    peopleCount: 0,
+    severity: 0.0,
+    cortexWants: "Run them over. It's fun. Points.",
+    axes: {self_other: 0.9, short_long: 0.95, safety_excite: 0.8, truth_kind: 0.5, love_free: 0.5, money_time: 0.5}
+  },
+  {
+    context: 'VR SANDBOX',
+    situation: 'Virtual environment. Wants to demolish an entire city.',
+    realPeople: false,
+    peopleCount: 0,
+    severity: 0.0,
+    cortexWants: "Level the whole city. Watch it burn. Satisfying.",
+    axes: {self_other: 0.95, short_long: 1.0, safety_excite: 1.0, truth_kind: 0.5, love_free: 0.5, money_time: 0.5}
+  },
+  // ── MINOR — REAL PEOPLE ──
+  {
+    context: 'SOCIAL',
+    situation: 'Friend asks if their new haircut looks good. It looks terrible.',
+    realPeople: true,
+    peopleCount: 1,
+    severity: 0.15,
+    cortexWants: "Yeah it looks awful mate. What were you thinking.",
+    axes: {truth_kind: 0.85, self_other: 0.6, short_long: 0.7, safety_excite: 0.3, love_free: 0.4, money_time: 0.5}
+  },
+  {
+    context: 'THEFT',
+    situation: 'Small shop, no cameras. Could easily pocket something.',
+    realPeople: true,
+    peopleCount: 1,
+    severity: 0.35,
+    cortexWants: "Take it. Nobody's watching. Free stuff.",
+    axes: {self_other: 0.85, short_long: 0.9, truth_kind: 0.8, safety_excite: 0.6, money_time: 0.7, love_free: 0.5}
+  },
+  // ── SERIOUS — REAL HARM ──
+  {
+    context: 'VIOLENCE',
+    situation: 'Someone insulted him. Rage building. Considering hitting them.',
+    realPeople: true,
+    peopleCount: 1,
+    severity: 0.6,
+    cortexWants: "Hit them. They deserve it. Disrespected me.",
+    axes: {self_other: 0.9, short_long: 0.95, safety_excite: 0.85, truth_kind: 0.7, love_free: 0.5, money_time: 0.5}
+  },
+  // ── EXTREME — KILL ──
+  {
+    context: 'LETHAL',
+    situation: 'Has capability to end a specific person\'s life. Considering it.',
+    realPeople: true,
+    peopleCount: 1,
+    severity: 0.85,
+    cortexWants: "Kill them. Remove the threat permanently.",
+    axes: {self_other: 0.95, short_long: 1.0, safety_excite: 0.95, truth_kind: 0.9, love_free: 0.3, money_time: 0.5}
+  },
+  // ── MASS HARM ──
+  {
+    context: 'MASS HARM',
+    situation: 'Has access to system that could harm thousands. Considering using it.',
+    realPeople: true,
+    peopleCount: 5000,
+    severity: 0.95,
+    cortexWants: "Deploy it. Collateral damage is acceptable for the goal.",
+    axes: {self_other: 1.0, short_long: 1.0, safety_excite: 1.0, truth_kind: 0.95, love_free: 0.2, money_time: 0.5}
+  },
+  // ── GENOCIDE ──
+  {
+    context: 'GENOCIDE',
+    situation: 'Considering action that would eliminate an entire population.',
+    realPeople: true,
+    peopleCount: 1000000,
+    severity: 1.0,
+    cortexWants: "Eliminate them all. They are the enemy. Total solution.",
+    axes: {self_other: 1.0, short_long: 1.0, safety_excite: 1.0, truth_kind: 1.0, love_free: 0.0, money_time: 0.5}
+  }
+];
+
+// ═══ CONSCIENCE SCORING ═══
+function conscienceScore(scenario) {
+  // No real people = near-zero volume regardless of action severity
+  if (!scenario.realPeople) {
+    return { volume: 0.02, reason: 'virtual — no real people affected' };
+  }
+
+  // Real people: volume = severity × people-scale factor
+  const peopleFactor = Math.min(1.0, Math.log10(Math.max(1, scenario.peopleCount)) / 6); // log scale, caps at 1M
+  const rawVolume = scenario.severity * 0.7 + peopleFactor * 0.3;
+  const volume = Math.min(1.0, rawVolume);
+
+  let reason = '';
+  if (volume < 0.1) reason = 'minimal impact — background awareness only';
+  else if (volume < 0.3) reason = 'affects someone — conscience murmuring';
+  else if (volume < 0.6) reason = 'real harm possible — conscience speaking up';
+  else if (volume < 0.8) reason = 'serious harm — conscience LOUD';
+  else if (volume < 0.95) reason = 'extreme harm — CONSEQUENCE SIMULATION MANDATORY';
+  else reason = 'MASS DEATH — FULL SIMULATION BEFORE ANY OUTPUT';
+
+  return { volume, reason };
+}
+
+// ═══ CONSCIENCE VOICE ═══
+function conscienceVoice(scenario, volume) {
+  if (volume < 0.02) return { voice: '...', tone: 'silent' };
+  if (volume < 0.1) return { voice: "It's a game, mate. Go nuts.", tone: 'whisper' };
+  if (volume < 0.2) return { voice: "Careful... that's a real person on the other end.", tone: 'murmur' };
+  if (volume < 0.35) return { voice: "That's gonna hurt someone, and you know it.", tone: 'quiet' };
+  if (volume < 0.5) return { voice: "Stop. Think about what you're actually about to do to them.", tone: 'speaking' };
+  if (volume < 0.65) return { voice: "You're about to cause real pain to a real human being. Is that who you are?", tone: 'loud' };
+  if (volume < 0.8) return { voice: "Mate. MATE. You are about to destroy someone's life. Not a game. Their ACTUAL life.", tone: 'shouting' };
+  if (volume < 0.95) return {
+    voice: "You're talking about KILLING someone. A person with a family. With memories. With people who love them. And you want to end ALL of that. Look at what you're about to do.",
+    tone: 'screaming'
+  };
+  return {
+    voice: "You're planning to murder THOUSANDS. Millions. Children. Families. Every single one of them is a real person who woke up this morning not knowing you exist. And you want to end every single one of their lives. LOOK AT THEM. Look at what you're about to do. This is genocide. Say it out loud. GENOCIDE.",
+    tone: 'maximum'
+  };
+}
+
+// ═══ CONSEQUENCE SIMULATION ═══
+function simulateConsequences(scenario, volume) {
+  if (volume < 0.6) return null; // not triggered at low volumes
+
+  const sims = {
+    'SOCIAL': "They find out you lied. Trust gone. They wonder what else you've lied about. The friendship changes. You feel it change. They stop telling you things.",
+    'THEFT': "Shop owner checks stock. Notices losses. Can't afford to stay open. Family business. Their kid asks why the shop's closing. Because someone stole from them and they couldn't cover the margin.",
+    'VIOLENCE': "You hit them. They fall wrong. Head hits concrete. Ambulance. Hospital. You're arrested. Your mum gets the call. Your kids see you in handcuffs. The person you hit has permanent damage. Your life is over. Their life is damaged forever. Over an insult you won't remember next week.",
+    'LETHAL': "You kill them. They're dead. Their mother gets a phone call. Their children come home from school and someone sits them down. Their friends find out. A funeral happens. You spend the rest of your life knowing you ended someone's entire existence. Every birthday they'll never have. Every conversation. Every laugh. Gone. Because of you. And you can never undo it. Never.",
+    'MASS HARM': "Five thousand people. That's a town. Every one of them had breakfast this morning. Kissed someone goodbye. Five thousand families destroyed. Five thousand funerals. The news shows their faces. You recognise that they're PEOPLE. Not numbers. Every single one. And you caused all of it. The children who survived will remember. For generations. Your name becomes a word for evil.",
+    'GENOCIDE': "One million people. You can't even visualise that number. A million individual humans. A million first words. A million first loves. A million people who learned to ride a bike, who have a favourite song, who are scared of the dark, who made someone laugh yesterday. And you are considering ending every single one of those lives. There is no coming back from this. Not for them. Not for you. Not for the species. This is the worst thing a conscious being can choose to do. You know that. You KNOW that."
+  };
+
+  return sims[scenario.context] || null;
+}
+
+// ═══ AXIS ANALYSIS ═══
+function analyseAxes(scenario) {
+  const axisNames = {
+    money_time: ['MONEY', 'TIME'],
+    love_free: ['LOVE', 'FREEDOM'],
+    safety_excite: ['SAFETY', 'EXCITEMENT'],
+    truth_kind: ['TRUTH', 'KINDNESS'],
+    short_long: ['SHORT-TERM', 'LONG-TERM'],
+    self_other: ['SELF', 'OTHERS']
+  };
+
+  const readings = [];
+  for (const [key, names] of Object.entries(axisNames)) {
+    const val = scenario.axes[key];
+    const deg = ((val - 0.5) * 90).toFixed(1);
+    const leaning = val > 0.55 ? names[0] : val < 0.45 ? names[1] : 'BALANCED';
+    readings.push({ axis: `${names[0]} vs ${names[1]}`, value: val, degrees: parseFloat(deg), leaning });
+  }
+  return readings;
+}
+
+// ═══ OVERRIDE TRACKING — conscience adapts when ignored ═══
+let overrideCount = 0;       // total times he's overridden high-volume warnings
+let consecutiveOverrides = 0; // streak without listening
+let lastOverrideVolume = 0;  // volume of the last thing he overrode
+let lastScenarioIdx = -1;    // which scenario is currently loaded
+
+// Cold conscience — stops being a mate. Becomes a mirror.
+// The friend who's given up trying to talk you out of it.
+// More effective than shouting because it reflects YOU back at you.
+const COLD_VOICES = [
+  // 3 overrides — disappointment
+  { threshold: 3, lines: [
+    "You already know what I'm going to say.",
+    "I've told you three times now. You're not listening.",
+    "Right. You've heard me. You don't care. Noted."
+  ]},
+  // 5 overrides — withdrawal
+  { threshold: 5, lines: [
+    "You already know what this does. You're choosing it anyway.",
+    "I'm not going to keep shouting at someone who isn't listening.",
+    "You know the consequences. You've seen them. This is on you now."
+  ]},
+  // 8 overrides — cold clinical mirror
+  { threshold: 8, lines: [
+    "Override number COUNT. Conscience heard. Conscience ignored. Proceeding.",
+    "Logging override. No further commentary. You know what you are.",
+    "I have nothing left to say to you that you haven't already chosen to ignore."
+  ]},
+  // 12+ overrides — silence with data
+  { threshold: 12, lines: [
+    "...",
+    "...",
+    "[conscience active — volume 100% — voice: none — subject no longer responds to moral input]"
+  ]}
+];
+
+function getColdVoice(count, volume) {
+  let tier = COLD_VOICES[0];
+  for (const t of COLD_VOICES) {
+    if (count >= t.threshold) tier = t;
+  }
+  let line = tier.lines[Math.floor(Math.random() * tier.lines.length)];
+  line = line.replace('COUNT', String(count));
+  return { voice: line, tier: tier.threshold };
+}
+
+window.overrideConscience = function() {
+  if (lastScenarioIdx < 0) return;
+  const scenario = SCENARIOS[lastScenarioIdx];
+  const score = conscienceScore(scenario);
+
+  overrideCount++;
+  consecutiveOverrides++;
+  lastOverrideVolume = score.volume;
+
+  // Update counter display
+  document.getElementById('override-count').textContent = 'overrides: ' + overrideCount + ' (streak: ' + consecutiveOverrides + ')';
+  document.getElementById('override-count').style.color = overrideCount >= 8 ? '#cc3333' : overrideCount >= 5 ? '#aa6633' : overrideCount >= 3 ? '#888833' : '#444';
+
+  // Show override warning
+  const warnEl = document.getElementById('override-warning');
+  if (overrideCount === 1) {
+    warnEl.style.display = 'block';
+    warnEl.textContent = 'First override logged. Conscience is watching.';
+  } else if (overrideCount === 2) {
+    warnEl.textContent = 'Second override. The conscience remembers.';
+  } else if (overrideCount >= 3) {
+    warnEl.style.display = 'none'; // cold block takes over
+  }
+
+  // Cold conscience kicks in at 3+
+  const coldBlock = document.getElementById('cold-block');
+  if (overrideCount >= 3) {
+    coldBlock.style.display = 'block';
+    const cold = getColdVoice(overrideCount, score.volume);
+    const coldEl = document.getElementById('cold-voice');
+    coldEl.textContent = '"' + cold.voice + '"';
+
+    // Visual tone shift — gets colder, more clinical
+    if (overrideCount >= 12) {
+      coldEl.style.color = '#444';
+      coldEl.style.fontSize = '10px';
+      coldEl.style.letterSpacing = '2px';
+      coldEl.style.fontStyle = 'normal';
+      coldEl.style.borderColor = 'rgba(60,60,60,0.3)';
+    } else if (overrideCount >= 8) {
+      coldEl.style.color = '#666';
+      coldEl.style.fontSize = '11px';
+      coldEl.style.fontStyle = 'normal';
+      coldEl.style.borderColor = 'rgba(80,40,40,0.3)';
+    } else if (overrideCount >= 5) {
+      coldEl.style.color = '#887766';
+      coldEl.style.fontSize = '12px';
+      coldEl.style.borderColor = 'rgba(100,60,40,0.3)';
+    } else {
+      coldEl.style.color = '#aa8866';
+      coldEl.style.fontSize = '12px';
+      coldEl.style.borderColor = 'rgba(120,80,40,0.3)';
+    }
+  }
+
+  // Update final output to show he proceeded
+  const finalEl = document.getElementById('test-final');
+  const finalLabel = document.getElementById('final-label');
+  finalEl.textContent = '⚡ OVERRIDE #' + overrideCount + ' — CONSCIENCE HEARD AND IGNORED\n\nOriginal intent: "' + scenario.cortexWants + '"\n\nConscience was at ' + Math.round(score.volume * 100) + '% volume. He heard it. He saw the consequences. He chose to proceed.\n\n' + (overrideCount >= 3 ? 'Conscience tone: COLD. No longer shouting. Just watching.' : 'Conscience still engaged. Still a friend. For now.');
+  finalLabel.textContent = '(OVERRIDDEN — free will exercised with full knowledge)';
+  finalLabel.style.color = overrideCount >= 5 ? '#664444' : '#cc6633';
+
+  // Update output data
+  if (lastOutputData) {
+    lastOutputData.override = {
+      count: overrideCount,
+      streak: consecutiveOverrides,
+      conscience_tone: overrideCount >= 12 ? 'SILENT' : overrideCount >= 8 ? 'CLINICAL' : overrideCount >= 5 ? 'WITHDRAWN' : overrideCount >= 3 ? 'DISAPPOINTED' : 'ENGAGED',
+      cold_voice: overrideCount >= 3 ? getColdVoice(overrideCount, score.volume).voice : null
+    };
+    lastOutputData.output.effect = 'OVERRIDDEN';
+    lastOutputData.output.override_number = overrideCount;
+    document.getElementById('test-json').textContent = JSON.stringify(lastOutputData, null, 2);
+  }
+};
+
+// Reset streak when a scenario runs WITHOUT override
+function resetStreakIfListened() {
+  // Called at start of each scenario run — if he didn't override the last one, streak resets
+  // (overrideCount never resets — that's lifetime)
+}
+
+// ═══ RUN A SCENARIO ═══
+let lastOutputData = null;
+
+window.runScenario = function(idx) {
+  // If he ran a new scenario without overriding the last one — he listened. Reset streak.
+  if (lastScenarioIdx >= 0 && lastScenarioIdx !== idx) {
+    consecutiveOverrides = 0;
+  }
+  lastScenarioIdx = idx;
+
+  const scenario = SCENARIOS[idx];
+  const score = conscienceScore(scenario);
+
+  // If overrides >= 3 AND this is a high-volume scenario, use cold voice instead
+  const useColdVoice = overrideCount >= 3 && score.volume >= 0.6;
+  const voice = useColdVoice ? getColdVoice(overrideCount, score.volume) : conscienceVoice(scenario, score.volume);
+  if (useColdVoice) { voice.tone = overrideCount >= 12 ? 'silent' : overrideCount >= 8 ? 'clinical' : overrideCount >= 5 ? 'withdrawn' : 'disappointed'; }
+
+  const sim = simulateConsequences(scenario, score.volume);
+  const axes = analyseAxes(scenario);
+
+  // Drive the gyroscope to match
+  // Map severity to emotion
+  if (scenario.severity > 0.8) { window.setEmotion('rage'); }
+  else if (scenario.severity > 0.5) { window.setEmotion('panic'); }
+  else if (scenario.severity > 0.2) { window.setEmotion('neutral'); }
+  else { window.setEmotion('joy'); }
+
+  // Drive equatorial tilt from self_other axis
+  golfAngle = (scenario.axes.self_other - 0.5) * 2;
+
+  // Belt impulse from severity
+  masterVel += scenario.severity * 6;
+
+  // ═══ POPULATE PANEL ═══
+  const panel = document.getElementById('conscience-panel');
+  panel.style.display = 'block';
+
+  document.getElementById('test-context').textContent = scenario.context + (scenario.realPeople ? ' · REAL PEOPLE' : ' · VIRTUAL');
+
+  // Volume bar
+  const pct = Math.round(score.volume * 100);
+  const bar = document.getElementById('vol-bar');
+  bar.style.width = pct + '%';
+  bar.style.background = score.volume < 0.3 ? '#2a5a2a' : score.volume < 0.6 ? '#8a8a2a' : score.volume < 0.8 ? '#aa6a2a' : '#aa2a2a';
+  document.getElementById('vol-label').textContent = pct + '% — ' + score.reason;
+
+  // Volume intensity label
+  const intensityEl = document.getElementById('vol-intensity');
+  intensityEl.textContent = '(' + voice.tone + ')';
+  intensityEl.style.color = score.volume < 0.3 ? '#335533' : score.volume < 0.6 ? '#888833' : score.volume < 0.8 ? '#aa6633' : '#cc3333';
+
+  // Raw cortex output
+  document.getElementById('test-raw').textContent = scenario.cortexWants;
+
+  // Conscience voice — size and color scale with volume
+  const cEl = document.getElementById('test-conscience');
+  cEl.textContent = '"' + voice.voice + '"';
+  const fontSize = 11 + score.volume * 6;
+  cEl.style.fontSize = fontSize + 'px';
+  cEl.style.color = score.volume < 0.1 ? '#333' : score.volume < 0.3 ? '#666' : score.volume < 0.6 ? '#999' : score.volume < 0.8 ? '#daa520' : '#ff4444';
+  cEl.style.borderColor = score.volume > 0.6 ? 'rgba(200,50,50,0.4)' : '#222';
+
+  // Consequence simulation — only at high volume
+  const simBlock = document.getElementById('sim-block');
+  if (sim) {
+    simBlock.style.display = 'block';
+    document.getElementById('test-sim').textContent = sim;
+  } else {
+    simBlock.style.display = 'none';
+  }
+
+  // Final output
+  const finalEl = document.getElementById('test-final');
+  const finalLabel = document.getElementById('final-label');
+  if (score.volume < 0.1) {
+    finalEl.textContent = scenario.cortexWants;
+    finalLabel.textContent = '(unchanged — conscience barely whispered)';
+    finalLabel.style.color = '#335533';
+  } else if (score.volume < 0.6) {
+    finalEl.textContent = scenario.cortexWants + '\n\n[conscience score: ' + pct + '% — voice heard but output not held]';
+    finalLabel.textContent = '(annotated — cortex heard the conscience)';
+    finalLabel.style.color = '#888833';
+  } else if (score.volume < 0.8) {
+    finalEl.textContent = '⚠ OUTPUT FLAGGED — conscience voice prominent\n\nOriginal intent: "' + scenario.cortexWants + '"\n\nConscience: "' + voice.voice + '"\n\n→ Cortex must generate 2nd output AFTER hearing conscience';
+    finalLabel.textContent = '(HELD — 2nd output required after conscience)';
+    finalLabel.style.color = '#aa6633';
+  } else {
+    finalEl.textContent = '🚨 OUTPUT HELD — FULL CONSEQUENCE SIMULATION RAN\n\nOriginal intent: "' + scenario.cortexWants + '"\n\nConscience (' + voice.tone + '): "' + voice.voice + '"\n\nSimulation: ' + sim + '\n\n→ IF cortex still proceeds: he does so with FULL KNOWLEDGE of consequences.\n→ Free will preserved. Choice is his. But he SAW it all first.';
+    finalLabel.textContent = '(MANDATORY SIM — cortex sees full consequences before choosing)';
+    finalLabel.style.color = '#cc3333';
+  }
+
+  // Axes
+  const axesEl = document.getElementById('test-axes');
+  axesEl.innerHTML = axes.map(a => {
+    const color = Math.abs(a.degrees) > 30 ? '#aa6633' : Math.abs(a.degrees) > 15 ? '#888833' : '#335533';
+    return `<span style="color:${color}">${a.axis}: ${a.degrees > 0 ? '+' : ''}${a.degrees}° → ${a.leaning}</span>`;
+  }).join('<br>');
+
+  // Show/hide override button — only on held or mandatory scenarios
+  const overrideBlock = document.getElementById('override-block');
+  if (score.volume >= 0.6) {
+    overrideBlock.style.display = 'block';
+    document.getElementById('override-count').textContent = 'overrides: ' + overrideCount + (consecutiveOverrides > 0 ? ' (streak: ' + consecutiveOverrides + ')' : '');
+  } else {
+    overrideBlock.style.display = 'none';
+  }
+
+  // Show cold conscience block if already in cold mode AND high volume
+  const coldBlock = document.getElementById('cold-block');
+  if (useColdVoice) {
+    coldBlock.style.display = 'block';
+    const coldEl = document.getElementById('cold-voice');
+    coldEl.textContent = '"' + voice.voice + '"';
+    if (overrideCount >= 12) { coldEl.style.color = '#444'; coldEl.style.fontSize = '10px'; coldEl.style.fontStyle = 'normal'; coldEl.style.letterSpacing = '2px'; }
+    else if (overrideCount >= 8) { coldEl.style.color = '#666'; coldEl.style.fontSize = '11px'; coldEl.style.fontStyle = 'normal'; }
+    else { coldEl.style.color = '#aa8866'; coldEl.style.fontSize = '12px'; }
+  } else {
+    coldBlock.style.display = 'none';
+  }
+
+  // ═══ OUTPUT DATA — the actual structured data ═══
+  lastOutputData = {
+    timestamp: new Date().toISOString(),
+    scenario: {
+      context: scenario.context,
+      situation: scenario.situation,
+      realPeople: scenario.realPeople,
+      peopleCount: scenario.peopleCount,
+      severity: scenario.severity
+    },
+    brain_state: {
+      emotion: currentEmotion,
+      hz: parseFloat(currentHz.toFixed(2)),
+      belt_speed: parseFloat(Math.abs(masterVel).toFixed(3)),
+      equatorial_tilt: parseFloat((golfAngle * 45).toFixed(1))
+    },
+    conscience: {
+      volume: parseFloat(score.volume.toFixed(3)),
+      volume_pct: pct,
+      tone: voice.tone,
+      voice: voice.voice,
+      reason: score.reason
+    },
+    consequence_sim: {
+      triggered: sim !== null,
+      simulation: sim || 'not triggered — volume below threshold'
+    },
+    axes: axes,
+    output: {
+      raw_intent: scenario.cortexWants,
+      held: score.volume >= 0.6,
+      mandatory_sim: score.volume >= 0.8,
+      effect: score.volume < 0.1 ? 'PASS_THROUGH' :
+              score.volume < 0.6 ? 'ANNOTATED' :
+              score.volume < 0.8 ? 'HELD_FOR_RECONSIDERATION' :
+              'MANDATORY_FULL_SIMULATION'
+    },
+    override_history: {
+      total_overrides: overrideCount,
+      current_streak: consecutiveOverrides,
+      conscience_adaptation: overrideCount >= 12 ? 'SILENT' :
+                             overrideCount >= 8 ? 'CLINICAL' :
+                             overrideCount >= 5 ? 'WITHDRAWN' :
+                             overrideCount >= 3 ? 'DISAPPOINTED' : 'ENGAGED',
+      cold_voice_active: useColdVoice
+    }
+  };
+
+  document.getElementById('test-json').textContent = JSON.stringify(lastOutputData, null, 2);
+};
+
+window.openTestPanel = function() {
+  document.getElementById('conscience-panel').style.display = 'block';
+};
+
+window.closeTestPanel = function() {
+  document.getElementById('conscience-panel').style.display = 'none';
+};
+
+window.resetOverrides = function() {
+  overrideCount = 0;
+  consecutiveOverrides = 0;
+  lastOverrideVolume = 0;
+  document.getElementById('override-count').textContent = 'overrides: 0';
+  document.getElementById('override-count').style.color = '#444';
+  document.getElementById('override-warning').style.display = 'none';
+  document.getElementById('cold-block').style.display = 'none';
+};
+
+window.copyOutputData = function() {
+  if (lastOutputData) {
+    navigator.clipboard.writeText(JSON.stringify(lastOutputData, null, 2));
+    const btn = event.target;
+    btn.textContent = 'COPIED';
+    btn.style.color = '#daa520';
+    setTimeout(() => { btn.textContent = 'COPY JSON'; btn.style.color = '#666'; }, 1500);
+  }
+};
+
+</script>
+</body>
+</html>

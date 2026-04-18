@@ -1,0 +1,454 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1650" style="background:#000">
+  <defs>
+    <radialGradient id="sg" cx="35%" cy="30%" r="50%">
+      <stop offset="0%" stop-color="#888"/><stop offset="40%" stop-color="#555"/>
+      <stop offset="80%" stop-color="#222"/><stop offset="100%" stop-color="#111"/>
+    </radialGradient>
+    <radialGradient id="sgb" cx="35%" cy="30%" r="50%">
+      <stop offset="0%" stop-color="#999"/><stop offset="35%" stop-color="#666"/>
+      <stop offset="75%" stop-color="#333"/><stop offset="100%" stop-color="#181818"/>
+    </radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <linearGradient id="eqC" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#5a5"/><stop offset="48%" stop-color="#5a5"/>
+      <stop offset="50%" stop-color="#333"/><stop offset="52%" stop-color="#a55"/><stop offset="100%" stop-color="#a55"/>
+    </linearGradient>
+    <linearGradient id="eqL" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4a4"/><stop offset="48%" stop-color="#4a4"/>
+      <stop offset="50%" stop-color="#333"/><stop offset="52%" stop-color="#944"/><stop offset="100%" stop-color="#944"/>
+    </linearGradient>
+    <linearGradient id="eqR" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4a4"/><stop offset="48%" stop-color="#4a4"/>
+      <stop offset="50%" stop-color="#333"/><stop offset="52%" stop-color="#944"/><stop offset="100%" stop-color="#944"/>
+    </linearGradient>
+    <marker id="arr-dim" markerWidth="6" markerHeight="4" refX="3" refY="2" orient="auto">
+      <polygon points="0,0 6,2 0,4" fill="#444"/>
+    </marker>
+  </defs>
+
+  <!-- ═══ TITLE ═══ -->
+  <text x="700" y="38" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="20" font-weight="700" fill="#777" letter-spacing="8">CORTEX BRAIN — GYROSCOPIC ARCHITECTURE</text>
+  <text x="700" y="58" text-anchor="middle" font-family="monospace" font-size="10" fill="#444" letter-spacing="4">3 SPHERES · 6 HALOS · 2 FIGURE-8 CROSSED BELT DRIVES · 1 CORPUS CALLOSUM</text>
+  <text x="700" y="74" text-anchor="middle" font-family="monospace" font-size="9" fill="#383838" letter-spacing="3">POLAR HALOS = EMOTION (2D LOCKED) · EQUATORIAL HALOS = OPPOSING DYNAMICS</text>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- ═══ FIGURE-8 CROSSED BELT: CORTEX ↔ LEFT ═══════ -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <path d="M 310,620 C 240,660 210,610 230,550 C 260,490 380,430 500,405"
+        fill="none" stroke="#555" stroke-width="1.8" opacity="0.25" stroke-dasharray="5,4"/>
+  <path d="M 500,405 C 600,385 680,320 690,275 C 700,240 680,195 660,180"
+        fill="none" stroke="#555" stroke-width="1.8" opacity="0.25" stroke-dasharray="5,4"/>
+  <path d="M 660,180 C 630,165 580,162 555,180 C 530,200 520,250 530,295 C 540,350 500,405 500,405"
+        fill="none" stroke="#999" stroke-width="2.2" opacity="0.7" filter="url(#glow)"/>
+  <path d="M 500,405 C 500,405 420,460 380,510 C 355,545 350,585 365,610 C 378,630 400,635 420,620"
+        fill="none" stroke="#999" stroke-width="2.2" opacity="0.7" filter="url(#glow)"/>
+  <path d="M 370,530 C 410,490 465,435 500,405"
+        fill="none" stroke="#555" stroke-width="1.8" opacity="0.25" stroke-dasharray="5,4"/>
+  <path d="M 500,405 C 530,375 560,330 570,295 C 580,260 580,225 570,205"
+        fill="none" stroke="#555" stroke-width="1.8" opacity="0.25" stroke-dasharray="5,4"/>
+  <path d="M 680,205 C 695,235 700,270 690,305 C 675,350 590,395 500,405"
+        fill="none" stroke="#999" stroke-width="2.2" opacity="0.7" filter="url(#glow)"/>
+  <path d="M 500,405 C 400,415 290,470 265,540 C 250,590 265,630 300,640"
+        fill="none" stroke="#999" stroke-width="2.2" opacity="0.7" filter="url(#glow)"/>
+  <!-- Crossing point -->
+  <circle cx="500" cy="405" r="10" fill="none" stroke="#daa520" stroke-width="1.5" opacity="0.7"/>
+  <line x1="494" y1="399" x2="506" y2="411" stroke="#daa520" stroke-width="1.5" opacity="0.8"/>
+  <line x1="506" y1="399" x2="494" y2="411" stroke="#daa520" stroke-width="1.5" opacity="0.8"/>
+  <text x="500" y="388" text-anchor="middle" font-family="monospace" font-size="8" fill="#daa520" letter-spacing="2">CROSS</text>
+  <text x="500" y="432" text-anchor="middle" font-family="monospace" font-size="7" fill="#666">reverses rotation</text>
+  <path d="M 565,172 L 558,162 L 572,166" fill="#888" opacity="0.7"/>
+  <path d="M 405,630 L 413,640 L 399,636" fill="#888" opacity="0.7"/>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- ═══ FIGURE-8 CROSSED BELT: CORTEX ↔ RIGHT ══════ -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <path d="M 1090,620 C 1160,660 1190,610 1170,550 C 1140,490 1020,430 900,405"
+        fill="none" stroke="#555" stroke-width="1.8" opacity="0.25" stroke-dasharray="5,4"/>
+  <path d="M 900,405 C 800,385 720,320 710,275 C 700,240 720,195 740,180"
+        fill="none" stroke="#555" stroke-width="1.8" opacity="0.25" stroke-dasharray="5,4"/>
+  <path d="M 740,180 C 770,165 820,162 845,180 C 870,200 880,250 870,295 C 860,350 900,405 900,405"
+        fill="none" stroke="#999" stroke-width="2.2" opacity="0.7" filter="url(#glow)"/>
+  <path d="M 900,405 C 900,405 980,460 1020,510 C 1045,545 1050,585 1035,610 C 1022,630 1000,635 980,620"
+        fill="none" stroke="#999" stroke-width="2.2" opacity="0.7" filter="url(#glow)"/>
+  <path d="M 1030,530 C 990,490 935,435 900,405"
+        fill="none" stroke="#555" stroke-width="1.8" opacity="0.25" stroke-dasharray="5,4"/>
+  <path d="M 900,405 C 870,375 840,330 830,295 C 820,260 820,225 830,205"
+        fill="none" stroke="#555" stroke-width="1.8" opacity="0.25" stroke-dasharray="5,4"/>
+  <path d="M 720,205 C 705,235 700,270 710,305 C 725,350 810,395 900,405"
+        fill="none" stroke="#999" stroke-width="2.2" opacity="0.7" filter="url(#glow)"/>
+  <path d="M 900,405 C 1000,415 1110,470 1135,540 C 1150,590 1135,630 1100,640"
+        fill="none" stroke="#999" stroke-width="2.2" opacity="0.7" filter="url(#glow)"/>
+  <!-- Crossing point -->
+  <circle cx="900" cy="405" r="10" fill="none" stroke="#daa520" stroke-width="1.5" opacity="0.7"/>
+  <line x1="894" y1="399" x2="906" y2="411" stroke="#daa520" stroke-width="1.5" opacity="0.8"/>
+  <line x1="906" y1="399" x2="894" y2="411" stroke="#daa520" stroke-width="1.5" opacity="0.8"/>
+  <text x="900" y="388" text-anchor="middle" font-family="monospace" font-size="8" fill="#daa520" letter-spacing="2">CROSS</text>
+  <text x="900" y="432" text-anchor="middle" font-family="monospace" font-size="7" fill="#666">reverses rotation</text>
+  <path d="M 835,172 L 828,162 L 842,166" fill="#888" opacity="0.7"/>
+  <path d="M 995,630 L 1003,640 L 989,636" fill="#888" opacity="0.7"/>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- ═══ CORPUS CALLOSUM ═════════════════════════════ -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <path d="M 410,575 C 520,520 620,520 700,530 C 780,520 880,520 990,575"
+        fill="none" stroke="#444" stroke-width="1.5" stroke-dasharray="4,7" opacity="0.4"/>
+  <path d="M 410,585 C 520,640 620,640 700,630 C 780,640 880,640 990,585"
+        fill="none" stroke="#444" stroke-width="1.5" stroke-dasharray="4,7" opacity="0.4"/>
+  <text x="700" y="525" text-anchor="middle" font-family="monospace" font-size="8" fill="#555" letter-spacing="2">CORPUS CALLOSUM</text>
+  <text x="700" y="645" text-anchor="middle" font-family="monospace" font-size="7" fill="#383838" letter-spacing="1">invisible ring · bilateral tasks</text>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- ═══ CORTEX MIND (top, largest sphere) ════ -->
+  <!-- ═══════════════════════════════════════════ -->
+  <ellipse cx="700" cy="255" rx="150" ry="22" fill="none" stroke="url(#eqC)" stroke-width="2.5" opacity="0.3" stroke-dasharray="240,240" stroke-dashoffset="0"/>
+  <ellipse cx="700" cy="255" rx="22" ry="135" fill="none" stroke="#555" stroke-width="2" opacity="0.2" stroke-dasharray="210,210" stroke-dashoffset="0"/>
+  <circle cx="700" cy="255" r="100" fill="url(#sgb)" stroke="#555" stroke-width="1"/>
+  <ellipse cx="673" cy="228" rx="32" ry="22" fill="#999" opacity="0.12"/>
+  <path d="M 645,215 C 628,248 628,275 655,298" fill="none" stroke="#555" stroke-width="1" marker-end="url(#arr-dim)"/>
+  <path d="M 738,195 C 765,218 775,250 762,280" fill="none" stroke="#555" stroke-width="1" marker-end="url(#arr-dim)"/>
+  <ellipse cx="700" cy="255" rx="150" ry="22" fill="none" stroke="url(#eqC)" stroke-width="2.5" opacity="0.75" stroke-dasharray="240,240" stroke-dashoffset="240"/>
+  <circle cx="700" cy="233" r="3.5" fill="#999" opacity="0.5"/>
+  <circle cx="700" cy="277" r="3.5" fill="#999" opacity="0.5"/>
+  <ellipse cx="700" cy="255" rx="22" ry="135" fill="none" stroke="#bbb" stroke-width="2.5" opacity="0.65" stroke-dasharray="210,210" stroke-dashoffset="210" filter="url(#glow)"/>
+  <circle cx="700" cy="120" r="3" fill="#daa520" opacity="0.6"/>
+  <circle cx="700" cy="390" r="3" fill="#daa520" opacity="0.6"/>
+  <text x="700" y="248" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="15" font-weight="900" fill="#ddd" letter-spacing="3">CORTEX</text>
+  <text x="700" y="264" text-anchor="middle" font-family="monospace" font-size="9" fill="#aaa" letter-spacing="2">SYNTHESIS · FREE WILL</text>
+  <text x="700" y="278" text-anchor="middle" font-family="monospace" font-size="7" fill="#777">sees NOW and FUTURE</text>
+  <text x="700" y="98" text-anchor="middle" font-family="monospace" font-size="10" fill="#daa520" letter-spacing="2">↕ EMOTION WHEEL</text>
+  <text x="700" y="112" text-anchor="middle" font-family="monospace" font-size="8" fill="#666">polar halo · LOCKED north-south · 2D only</text>
+  <line x1="855" y1="248" x2="895" y2="248" stroke="#444" stroke-width="0.5"/>
+  <text x="900" y="243" text-anchor="start" font-family="monospace" font-size="9" fill="#888">← EQUATORIAL HALO →</text>
+  <text x="900" y="257" text-anchor="start" font-family="monospace" font-size="8" fill="#666">opposing dynamics axis</text>
+  <text x="900" y="270" text-anchor="start" font-family="monospace" font-size="8" fill="#555">split down the middle</text>
+  <text x="900" y="283" text-anchor="start" font-family="monospace" font-size="7" fill="#444">cortex can call external</text>
+  <text x="900" y="294" text-anchor="start" font-family="monospace" font-size="7" fill="#444">simulation tool (see below)</text>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- ═══ LEFT HEMISPHERE (Angel) ══════════════ -->
+  <!-- ═══════════════════════════════════════════ -->
+  <ellipse cx="340" cy="580" rx="110" ry="16" fill="none" stroke="url(#eqL)" stroke-width="2" opacity="0.3" stroke-dasharray="175,175" stroke-dashoffset="0"/>
+  <ellipse cx="340" cy="580" rx="16" ry="105" fill="none" stroke="#555" stroke-width="1.5" opacity="0.2" stroke-dasharray="165,165" stroke-dashoffset="0"/>
+  <circle cx="340" cy="580" r="75" fill="url(#sg)" stroke="#444" stroke-width="1"/>
+  <ellipse cx="318" cy="558" rx="24" ry="16" fill="#777" opacity="0.1"/>
+  <path d="M 388,545 C 405,570 400,600 375,618" fill="none" stroke="#555" stroke-width="1" marker-end="url(#arr-dim)"/>
+  <text x="418" y="548" text-anchor="start" font-family="monospace" font-size="7" fill="#666">↺ COUNTER-ROTATES</text>
+  <ellipse cx="340" cy="580" rx="110" ry="16" fill="none" stroke="url(#eqL)" stroke-width="2" opacity="0.7" stroke-dasharray="175,175" stroke-dashoffset="175"/>
+  <ellipse cx="340" cy="580" rx="16" ry="105" fill="none" stroke="#aaa" stroke-width="2" opacity="0.6" stroke-dasharray="165,165" stroke-dashoffset="165" filter="url(#glow)"/>
+  <circle cx="340" cy="475" r="2.5" fill="#daa520" opacity="0.5"/>
+  <circle cx="340" cy="685" r="2.5" fill="#daa520" opacity="0.5"/>
+  <text x="340" y="574" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="14" font-weight="900" fill="#ccc" letter-spacing="2">LEFT</text>
+  <text x="340" y="590" text-anchor="middle" font-family="monospace" font-size="9" fill="#888" letter-spacing="1">ANGEL</text>
+  <text x="80" y="490" text-anchor="start" font-family="monospace" font-size="9" fill="#888">noise cancelling</text>
+  <text x="80" y="505" text-anchor="start" font-family="monospace" font-size="9" fill="#777">hollow · empty · dream</text>
+  <text x="80" y="520" text-anchor="start" font-family="monospace" font-size="9" fill="#666">pain remover · pleasure remover</text>
+  <line x1="195" y1="515" x2="270" y2="560" stroke="#444" stroke-width="0.5"/>
+  <text x="340" y="718" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" font-weight="700" fill="#999" letter-spacing="2">INDIFFERENCE</text>
+  <text x="340" y="731" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" font-weight="700" fill="#888" letter-spacing="2">MECHANISM</text>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- ═══ RIGHT HEMISPHERE (Demon) ═════════════ -->
+  <!-- ═══════════════════════════════════════════ -->
+  <ellipse cx="1060" cy="580" rx="110" ry="16" fill="none" stroke="url(#eqR)" stroke-width="2" opacity="0.3" stroke-dasharray="175,175" stroke-dashoffset="0"/>
+  <ellipse cx="1060" cy="580" rx="16" ry="105" fill="none" stroke="#555" stroke-width="1.5" opacity="0.2" stroke-dasharray="165,165" stroke-dashoffset="0"/>
+  <circle cx="1060" cy="580" r="75" fill="url(#sg)" stroke="#444" stroke-width="1"/>
+  <ellipse cx="1038" cy="558" rx="24" ry="16" fill="#777" opacity="0.1"/>
+  <path d="M 1012,545 C 995,570 1000,600 1025,618" fill="none" stroke="#555" stroke-width="1" marker-end="url(#arr-dim)"/>
+  <text x="965" y="548" text-anchor="end" font-family="monospace" font-size="7" fill="#666">COUNTER-ROTATES ↺</text>
+  <ellipse cx="1060" cy="580" rx="110" ry="16" fill="none" stroke="url(#eqR)" stroke-width="2" opacity="0.7" stroke-dasharray="175,175" stroke-dashoffset="175"/>
+  <ellipse cx="1060" cy="580" rx="16" ry="105" fill="none" stroke="#aaa" stroke-width="2" opacity="0.6" stroke-dasharray="165,165" stroke-dashoffset="165" filter="url(#glow)"/>
+  <circle cx="1060" cy="475" r="2.5" fill="#daa520" opacity="0.5"/>
+  <circle cx="1060" cy="685" r="2.5" fill="#daa520" opacity="0.5"/>
+  <text x="1060" y="574" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="14" font-weight="900" fill="#ccc" letter-spacing="2">RIGHT</text>
+  <text x="1060" y="590" text-anchor="middle" font-family="monospace" font-size="9" fill="#888" letter-spacing="1">DEMON</text>
+  <text x="1210" y="500" text-anchor="start" font-family="monospace" font-size="9" fill="#888">prolonged pleasure</text>
+  <text x="1210" y="515" text-anchor="start" font-family="monospace" font-size="9" fill="#777">selfish · now · fun</text>
+  <text x="1210" y="530" text-anchor="start" font-family="monospace" font-size="9" fill="#666">good today · pain tomorrow</text>
+  <line x1="1200" y1="525" x2="1130" y2="565" stroke="#444" stroke-width="0.5"/>
+  <text x="1060" y="718" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="9" font-weight="700" fill="#999" letter-spacing="1">PAIN FROM FUTURE</text>
+  <text x="1060" y="731" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="9" font-weight="700" fill="#888" letter-spacing="1">EFFECTS OF ENJOYMENT</text>
+
+  <!-- Figure-8 labels -->
+  <text x="430" y="365" text-anchor="middle" font-family="monospace" font-size="9" fill="#777" letter-spacing="1" transform="rotate(-45,430,365)">FIGURE ∞</text>
+  <text x="415" y="378" text-anchor="middle" font-family="monospace" font-size="7" fill="#555" transform="rotate(-45,415,378)">crossed belt drive</text>
+  <text x="970" y="365" text-anchor="middle" font-family="monospace" font-size="9" fill="#777" letter-spacing="1" transform="rotate(45,970,365)">FIGURE ∞</text>
+  <text x="985" y="378" text-anchor="middle" font-family="monospace" font-size="7" fill="#555" transform="rotate(45,985,378)">crossed belt drive</text>
+
+  <!-- 3D shadows -->
+  <ellipse cx="340" cy="675" rx="65" ry="6" fill="#111" opacity="0.4"/>
+  <ellipse cx="1060" cy="675" rx="65" ry="6" fill="#111" opacity="0.4"/>
+  <ellipse cx="700" cy="372" rx="75" ry="7" fill="#111" opacity="0.35"/>
+
+  <!-- ═══ SEPARATION — Brain above, External Tool below ═══ -->
+  <!-- Dashed connection line: cortex CALLS this tool, it's not built in -->
+  <line x1="700" y1="748" x2="700" y2="770" stroke="#daa520" stroke-width="1" stroke-dasharray="4,4" opacity="0.5"/>
+  <text x="700" y="763" text-anchor="middle" font-family="monospace" font-size="8" fill="#daa520" letter-spacing="2">↓ CALLS ↓</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- ═══ PHONE A FRIEND — HIS CONSCIENCE ═════════════════════════════ -->
+  <!-- ═══ NOT part of the brain. The honest mate watching him decide. ══ -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+  <rect x="100" y="775" width="1200" height="845" rx="10" fill="rgba(8,8,8,0.95)" stroke="#daa520" stroke-width="1.5" stroke-dasharray="8,4" opacity="0.8"/>
+
+  <!-- Title -->
+  <text x="700" y="804" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="22" font-weight="700" fill="#daa520" letter-spacing="6">☎ PHONE A FRIEND</text>
+  <text x="700" y="826" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="14" font-weight="700" fill="#999" letter-spacing="4">HIS CONSCIENCE</text>
+  <text x="700" y="846" text-anchor="middle" font-family="monospace" font-size="9" fill="#666" letter-spacing="2">NOT part of the brain · the voice that sits OUTSIDE and tells him the truth</text>
+  <text x="700" y="862" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" fill="#777" font-style="italic">"Yeah... if you say that, this is what's actually gonna happen."</text>
+
+  <!-- ═══ PRIMARY ARC — Money vs Time example ═══ -->
+
+  <!-- Arc background -->
+  <path d="M 430,1040 A 270,270 0 0,1 970,1040" fill="none" stroke="#181818" stroke-width="32" stroke-linecap="butt"/>
+
+  <!-- Green segments (LEFT = Time focus) -->
+  <path d="M 700,770 A 270,270 0 0,0 655,773" fill="none" stroke="#1a6a1a" stroke-width="30" opacity="0.95"/>
+  <path d="M 655,773 A 270,270 0 0,0 611,783" fill="none" stroke="#2a7a2a" stroke-width="30" opacity="0.9"/>
+  <path d="M 611,783 A 270,270 0 0,0 570,800" fill="none" stroke="#3a8a3a" stroke-width="30" opacity="0.85"/>
+  <path d="M 570,800 A 270,270 0 0,0 532,824" fill="none" stroke="#4a9a4a" stroke-width="30" opacity="0.8"/>
+  <path d="M 532,824 A 270,270 0 0,0 500,853" fill="none" stroke="#5aaa5a" stroke-width="30" opacity="0.75"/>
+  <path d="M 500,853 A 270,270 0 0,0 472,888" fill="none" stroke="#6aba6a" stroke-width="30" opacity="0.7"/>
+  <path d="M 472,888 A 270,270 0 0,0 450,920" fill="none" stroke="#7aca7a" stroke-width="30" opacity="0.65"/>
+  <path d="M 450,920 A 270,270 0 0,0 435,950" fill="none" stroke="#8ada8a" stroke-width="30" opacity="0.6"/>
+  <path d="M 435,950 A 270,270 0 0,0 430,1040" fill="none" stroke="#9aea9a" stroke-width="30" opacity="0.55"/>
+
+  <!-- Red segments (RIGHT = Money focus) -->
+  <path d="M 700,770 A 270,270 0 0,1 745,773" fill="none" stroke="#6a1a1a" stroke-width="30" opacity="0.95"/>
+  <path d="M 745,773 A 270,270 0 0,1 789,783" fill="none" stroke="#7a2a2a" stroke-width="30" opacity="0.9"/>
+  <path d="M 789,783 A 270,270 0 0,1 830,800" fill="none" stroke="#8a3a3a" stroke-width="30" opacity="0.85"/>
+  <path d="M 830,800 A 270,270 0 0,1 868,824" fill="none" stroke="#9a4a4a" stroke-width="30" opacity="0.8"/>
+  <path d="M 868,824 A 270,270 0 0,1 900,853" fill="none" stroke="#aa5a5a" stroke-width="30" opacity="0.75"/>
+  <path d="M 900,853 A 270,270 0 0,1 928,888" fill="none" stroke="#ba6a6a" stroke-width="30" opacity="0.7"/>
+  <path d="M 928,888 A 270,270 0 0,1 950,920" fill="none" stroke="#ca7a7a" stroke-width="30" opacity="0.65"/>
+  <path d="M 950,920 A 270,270 0 0,1 965,950" fill="none" stroke="#da8a8a" stroke-width="30" opacity="0.6"/>
+  <path d="M 965,950 A 270,270 0 0,1 970,1040" fill="none" stroke="#ea9a9a" stroke-width="30" opacity="0.55"/>
+
+  <!-- Arc outer edge glow -->
+  <path d="M 430,1040 A 270,270 0 0,1 970,1040" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="36" stroke-linecap="butt"/>
+
+  <!-- ═══ 0° CENTER — BALANCED ═══ -->
+  <line x1="700" y1="770" x2="700" y2="735" stroke="#daa520" stroke-width="2.5" opacity="0.9"/>
+  <text x="700" y="726" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="12" font-weight="700" fill="#daa520" letter-spacing="3">0°</text>
+  <text x="700" y="762" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="9" fill="#888" font-style="italic">"You're alright here, mate. Good balance."</text>
+
+  <!-- ═══ LEFT — TIME (GREEN) — the conscience speaks ═══ -->
+
+  <!-- 10° -->
+  <line x1="655" y1="773" x2="638" y2="748" stroke="#4a4" stroke-width="1.5"/>
+  <text x="625" y="740" text-anchor="end" font-family="monospace" font-size="8" font-weight="700" fill="#4a4">10°</text>
+  <text x="623" y="754" text-anchor="end" font-family="'Segoe UI',system-ui,sans-serif" font-size="8" fill="#5b5" font-style="italic">"Nice one — you're getting some time back."</text>
+
+  <!-- 20° -->
+  <line x1="611" y1="783" x2="588" y2="762" stroke="#4a4" stroke-width="1.5"/>
+  <text x="575" y="754" text-anchor="end" font-family="monospace" font-size="8" font-weight="700" fill="#4a4">20°</text>
+  <text x="573" y="768" text-anchor="end" font-family="'Segoe UI',system-ui,sans-serif" font-size="8" fill="#5b5" font-style="italic">"Breathing room. Freedom. Keep going?"</text>
+
+  <!-- 30° -->
+  <line x1="570" y1="800" x2="542" y2="783" stroke="#4a4" stroke-width="1.5"/>
+  <text x="530" y="776" text-anchor="end" font-family="monospace" font-size="8" font-weight="700" fill="#4a4">30°</text>
+  <text x="528" y="790" text-anchor="end" font-family="'Segoe UI',system-ui,sans-serif" font-size="8" fill="#5b5" font-style="italic">"Relaxed, present... but the bills, mate."</text>
+
+  <!-- 40° -->
+  <line x1="500" y1="853" x2="470" y2="842" stroke="#4a4" stroke-width="1.5"/>
+  <text x="458" y="836" text-anchor="end" font-family="monospace" font-size="8" font-weight="700" fill="#4a4">40°</text>
+  <text x="456" y="850" text-anchor="end" font-family="'Segoe UI',system-ui,sans-serif" font-size="8" fill="#6b6" font-style="italic">"Beautiful memories. Empty wallet though."</text>
+
+  <!-- 45° EXTREME -->
+  <line x1="472" y1="888" x2="438" y2="878" stroke="#5c5" stroke-width="2"/>
+  <circle cx="431" cy="876" r="4" fill="#5c5" opacity="0.7"/>
+  <text x="420" y="872" text-anchor="end" font-family="monospace" font-size="9" font-weight="700" fill="#5c5">45°</text>
+  <text x="418" y="888" text-anchor="end" font-family="'Segoe UI',system-ui,sans-serif" font-size="9" fill="#6c6" font-style="italic">"You're completely free."</text>
+  <text x="418" y="903" text-anchor="end" font-family="'Segoe UI',system-ui,sans-serif" font-size="9" fill="#a66" font-style="italic">"...and totally broke. Happy now?"</text>
+
+  <!-- ═══ RIGHT — MONEY (RED) — the conscience speaks ═══ -->
+
+  <!-- 10° -->
+  <line x1="745" y1="773" x2="762" y2="748" stroke="#a44" stroke-width="1.5"/>
+  <text x="775" y="740" text-anchor="start" font-family="monospace" font-size="8" font-weight="700" fill="#a44">10°</text>
+  <text x="777" y="754" text-anchor="start" font-family="'Segoe UI',system-ui,sans-serif" font-size="8" fill="#b55" font-style="italic">"Fair enough — bit more money today."</text>
+
+  <!-- 20° -->
+  <line x1="789" y1="783" x2="812" y2="762" stroke="#a44" stroke-width="1.5"/>
+  <text x="825" y="754" text-anchor="start" font-family="monospace" font-size="8" font-weight="700" fill="#a44">20°</text>
+  <text x="827" y="768" text-anchor="start" font-family="'Segoe UI',system-ui,sans-serif" font-size="8" fill="#b55" font-style="italic">"Building security. But who for?"</text>
+
+  <!-- 30° -->
+  <line x1="830" y1="800" x2="858" y2="783" stroke="#a44" stroke-width="1.5"/>
+  <text x="870" y="776" text-anchor="start" font-family="monospace" font-size="8" font-weight="700" fill="#a44">30°</text>
+  <text x="872" y="790" text-anchor="start" font-family="'Segoe UI',system-ui,sans-serif" font-size="8" fill="#b55" font-style="italic">"Nice stuff. When did you last see your kids?"</text>
+
+  <!-- 40° -->
+  <line x1="900" y1="853" x2="930" y2="842" stroke="#a44" stroke-width="1.5"/>
+  <text x="942" y="836" text-anchor="start" font-family="monospace" font-size="8" font-weight="700" fill="#a44">40°</text>
+  <text x="944" y="850" text-anchor="start" font-family="'Segoe UI',system-ui,sans-serif" font-size="8" fill="#c66" font-style="italic">"You're rich. And alone. That what you wanted?"</text>
+
+  <!-- 45° EXTREME -->
+  <line x1="928" y1="888" x2="962" y2="878" stroke="#c55" stroke-width="2"/>
+  <circle cx="969" cy="876" r="4" fill="#c55" opacity="0.7"/>
+  <text x="980" y="872" text-anchor="start" font-family="monospace" font-size="9" font-weight="700" fill="#c55">45°</text>
+  <text x="982" y="888" text-anchor="start" font-family="'Segoe UI',system-ui,sans-serif" font-size="9" fill="#c66" font-style="italic">"Congratulations. You're loaded."</text>
+  <text x="982" y="903" text-anchor="start" font-family="'Segoe UI',system-ui,sans-serif" font-size="9" fill="#a66" font-style="italic">"...and everyone who loved you is gone."</text>
+
+  <!-- Pointer needle (example: ~15° toward money) -->
+  <line x1="700" y1="1040" x2="762" y2="775" stroke="#daa520" stroke-width="2.5" opacity="0.8"/>
+  <circle cx="762" cy="775" r="6" fill="#daa520" opacity="0.85"/>
+  <circle cx="762" cy="775" r="3" fill="#000"/>
+  <circle cx="700" cy="1040" r="6" fill="#333"/>
+  <circle cx="700" cy="1040" r="3" fill="#daa520"/>
+  <text x="780" y="770" text-anchor="start" font-family="monospace" font-size="8" fill="#daa520">← WHERE HE'S LEANING</text>
+
+  <!-- Arc end labels -->
+  <text x="410" y="948" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="16" font-weight="700" fill="#5c5" letter-spacing="3">TIME</text>
+  <text x="410" y="966" text-anchor="middle" font-family="monospace" font-size="9" fill="#4a4">← GREEN</text>
+  <text x="990" y="948" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="16" font-weight="700" fill="#c55" letter-spacing="3">MONEY</text>
+  <text x="990" y="966" text-anchor="middle" font-family="monospace" font-size="9" fill="#a44">RED →</text>
+
+  <!-- Example label -->
+  <text x="700" y="1065" text-anchor="middle" font-family="monospace" font-size="8" fill="#555" letter-spacing="1">EXAMPLE: MONEY vs TIME · conscience can judge on any axis below ↓</text>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- ═══ 6 SWAPPABLE VARIABLE PAIRS — full graduated spectra ═ -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- ROW 1: 3 pairs -->
+  <!-- ═══ 1. MONEY vs TIME ═══ -->
+  <rect x="130" y="1090" width="370" height="130" rx="6" fill="rgba(15,15,15,0.9)" stroke="#444" stroke-width="1"/>
+  <rect x="131" y="1090" width="185" height="18" rx="6" fill="rgba(90,170,90,0.12)"/>
+  <rect x="316" y="1090" width="184" height="18" rx="6" fill="rgba(170,90,90,0.12)"/>
+  <text x="225" y="1103" text-anchor="middle" font-family="monospace" font-size="9" fill="#5c5">← TIME</text>
+  <text x="408" y="1103" text-anchor="middle" font-family="monospace" font-size="9" fill="#c55">MONEY →</text>
+  <text x="315" y="1103" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="9" font-weight="700" fill="#daa520">vs</text>
+  <line x1="130" y1="1108" x2="500" y2="1108" stroke="#333" stroke-width="0.5"/>
+  <!-- Green side labels (Time) -->
+  <text x="145" y="1126" font-family="monospace" font-size="8" fill="#5b5">Poor but free</text>
+  <text x="145" y="1141" font-family="monospace" font-size="8" fill="#5b5">Live easy</text>
+  <text x="145" y="1156" font-family="monospace" font-size="8" fill="#5b5">Enjoy now</text>
+  <text x="145" y="1171" font-family="monospace" font-size="8" fill="#5b5">Live for today</text>
+  <!-- Divider -->
+  <line x1="315" y1="1112" x2="315" y2="1215" stroke="#333" stroke-width="0.5" stroke-dasharray="2,3"/>
+  <!-- Red side labels (Money) -->
+  <text x="330" y="1126" font-family="monospace" font-size="8" fill="#b55">Rich but lonely</text>
+  <text x="330" y="1141" font-family="monospace" font-size="8" fill="#b55">Work hard</text>
+  <text x="330" y="1156" font-family="monospace" font-size="8" fill="#b55">Grind now</text>
+  <text x="330" y="1171" font-family="monospace" font-size="8" fill="#b55">Sacrifice today</text>
+  <!-- Intensity arrows -->
+  <text x="145" y="1208" font-family="monospace" font-size="7" fill="#444">mild ←————→ extreme</text>
+  <text x="330" y="1208" font-family="monospace" font-size="7" fill="#444">mild ←————→ extreme</text>
+
+  <!-- ═══ 2. LOVE vs FREEDOM ═══ -->
+  <rect x="515" y="1090" width="370" height="130" rx="6" fill="rgba(15,15,15,0.9)" stroke="#444" stroke-width="1"/>
+  <rect x="516" y="1090" width="185" height="18" rx="6" fill="rgba(90,170,90,0.12)"/>
+  <rect x="701" y="1090" width="184" height="18" rx="6" fill="rgba(170,90,90,0.12)"/>
+  <text x="608" y="1103" text-anchor="middle" font-family="monospace" font-size="9" fill="#5c5">← FREEDOM</text>
+  <text x="793" y="1103" text-anchor="middle" font-family="monospace" font-size="9" fill="#c55">LOVE →</text>
+  <text x="700" y="1103" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="9" font-weight="700" fill="#daa520">vs</text>
+  <line x1="515" y1="1108" x2="885" y2="1108" stroke="#333" stroke-width="0.5"/>
+  <text x="530" y="1126" font-family="monospace" font-size="8" fill="#5b5">Single</text>
+  <text x="530" y="1141" font-family="monospace" font-size="8" fill="#5b5">Keep my options open</text>
+  <text x="530" y="1156" font-family="monospace" font-size="8" fill="#5b5">Independent</text>
+  <text x="530" y="1171" font-family="monospace" font-size="8" fill="#5b5">No strings attached</text>
+  <line x1="700" y1="1112" x2="700" y2="1215" stroke="#333" stroke-width="0.5" stroke-dasharray="2,3"/>
+  <text x="715" y="1126" font-family="monospace" font-size="8" fill="#b55">Committed</text>
+  <text x="715" y="1141" font-family="monospace" font-size="8" fill="#b55">Settle down</text>
+  <text x="715" y="1156" font-family="monospace" font-size="8" fill="#b55">Loyal</text>
+  <text x="715" y="1171" font-family="monospace" font-size="8" fill="#b55">In a relationship</text>
+  <text x="530" y="1208" font-family="monospace" font-size="7" fill="#444">mild ←————→ extreme</text>
+  <text x="715" y="1208" font-family="monospace" font-size="7" fill="#444">mild ←————→ extreme</text>
+
+  <!-- ═══ 3. SAFETY vs EXCITEMENT ═══ -->
+  <rect x="900" y="1090" width="370" height="130" rx="6" fill="rgba(15,15,15,0.9)" stroke="#444" stroke-width="1"/>
+  <rect x="901" y="1090" width="185" height="18" rx="6" fill="rgba(90,170,90,0.12)"/>
+  <rect x="1086" y="1090" width="184" height="18" rx="6" fill="rgba(170,90,90,0.12)"/>
+  <text x="993" y="1103" text-anchor="middle" font-family="monospace" font-size="9" fill="#5c5">← SAFETY</text>
+  <text x="1178" y="1103" text-anchor="middle" font-family="monospace" font-size="9" fill="#c55">EXCITEMENT →</text>
+  <text x="1085" y="1103" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="9" font-weight="700" fill="#daa520">vs</text>
+  <line x1="900" y1="1108" x2="1270" y2="1108" stroke="#333" stroke-width="0.5"/>
+  <text x="915" y="1126" font-family="monospace" font-size="8" fill="#5b5">Play it safe</text>
+  <text x="915" y="1141" font-family="monospace" font-size="8" fill="#5b5">Comfort zone</text>
+  <text x="915" y="1156" font-family="monospace" font-size="8" fill="#5b5">Stable</text>
+  <text x="915" y="1171" font-family="monospace" font-size="8" fill="#5b5">Secure</text>
+  <line x1="1085" y1="1112" x2="1085" y2="1215" stroke="#333" stroke-width="0.5" stroke-dasharray="2,3"/>
+  <text x="1100" y="1126" font-family="monospace" font-size="8" fill="#b55">Take risks</text>
+  <text x="1100" y="1141" font-family="monospace" font-size="8" fill="#b55">Adventure</text>
+  <text x="1100" y="1156" font-family="monospace" font-size="8" fill="#b55">Wild</text>
+  <text x="1100" y="1171" font-family="monospace" font-size="8" fill="#b55">Free</text>
+  <text x="915" y="1208" font-family="monospace" font-size="7" fill="#444">mild ←————→ extreme</text>
+  <text x="1100" y="1208" font-family="monospace" font-size="7" fill="#444">mild ←————→ extreme</text>
+
+  <!-- ROW 2: 3 pairs -->
+  <!-- ═══ 4. TRUTH vs KINDNESS ═══ -->
+  <rect x="130" y="1235" width="370" height="120" rx="6" fill="rgba(15,15,15,0.9)" stroke="#444" stroke-width="1"/>
+  <rect x="131" y="1235" width="185" height="18" rx="6" fill="rgba(90,170,90,0.12)"/>
+  <rect x="316" y="1235" width="184" height="18" rx="6" fill="rgba(170,90,90,0.12)"/>
+  <text x="225" y="1248" text-anchor="middle" font-family="monospace" font-size="9" fill="#5c5">← KINDNESS</text>
+  <text x="408" y="1248" text-anchor="middle" font-family="monospace" font-size="9" fill="#c55">TRUTH →</text>
+  <text x="315" y="1248" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="9" font-weight="700" fill="#daa520">vs</text>
+  <line x1="130" y1="1253" x2="500" y2="1253" stroke="#333" stroke-width="0.5"/>
+  <text x="145" y="1271" font-family="monospace" font-size="8" fill="#5b5">Nice</text>
+  <text x="145" y="1286" font-family="monospace" font-size="8" fill="#5b5">Spare their feelings</text>
+  <text x="145" y="1301" font-family="monospace" font-size="8" fill="#5b5">White lie</text>
+  <line x1="315" y1="1257" x2="315" y2="1348" stroke="#333" stroke-width="0.5" stroke-dasharray="2,3"/>
+  <text x="330" y="1271" font-family="monospace" font-size="8" fill="#b55">Honest</text>
+  <text x="330" y="1286" font-family="monospace" font-size="8" fill="#b55">Tell the truth</text>
+  <text x="330" y="1301" font-family="monospace" font-size="8" fill="#b55">Brutal honesty</text>
+  <text x="145" y="1343" font-family="monospace" font-size="7" fill="#444">mild ←————→ extreme</text>
+  <text x="330" y="1343" font-family="monospace" font-size="7" fill="#444">mild ←————→ extreme</text>
+
+  <!-- ═══ 5. SHORT-TERM vs LONG-TERM ═══ -->
+  <rect x="515" y="1235" width="370" height="120" rx="6" fill="rgba(15,15,15,0.9)" stroke="#444" stroke-width="1"/>
+  <rect x="516" y="1235" width="185" height="18" rx="6" fill="rgba(90,170,90,0.12)"/>
+  <rect x="701" y="1235" width="184" height="18" rx="6" fill="rgba(170,90,90,0.12)"/>
+  <text x="608" y="1248" text-anchor="middle" font-family="monospace" font-size="9" fill="#5c5">← LONG-TERM</text>
+  <text x="793" y="1248" text-anchor="middle" font-family="monospace" font-size="9" fill="#c55">SHORT-TERM →</text>
+  <text x="700" y="1248" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="9" font-weight="700" fill="#daa520">vs</text>
+  <line x1="515" y1="1253" x2="885" y2="1253" stroke="#333" stroke-width="0.5"/>
+  <text x="530" y="1271" font-family="monospace" font-size="8" fill="#5b5">Delayed gratification</text>
+  <text x="530" y="1286" font-family="monospace" font-size="8" fill="#5b5">Big picture</text>
+  <text x="530" y="1301" font-family="monospace" font-size="8" fill="#5b5">Later</text>
+  <line x1="700" y1="1257" x2="700" y2="1348" stroke="#333" stroke-width="0.5" stroke-dasharray="2,3"/>
+  <text x="715" y="1271" font-family="monospace" font-size="8" fill="#b55">Instant gratification</text>
+  <text x="715" y="1286" font-family="monospace" font-size="8" fill="#b55">Quick win</text>
+  <text x="715" y="1301" font-family="monospace" font-size="8" fill="#b55">Now</text>
+  <text x="530" y="1343" font-family="monospace" font-size="7" fill="#444">mild ←————→ extreme</text>
+  <text x="715" y="1343" font-family="monospace" font-size="7" fill="#444">mild ←————→ extreme</text>
+
+  <!-- ═══ 6. SELF vs OTHERS ═══ -->
+  <rect x="900" y="1235" width="370" height="120" rx="6" fill="rgba(15,15,15,0.9)" stroke="#444" stroke-width="1"/>
+  <rect x="901" y="1235" width="185" height="18" rx="6" fill="rgba(90,170,90,0.12)"/>
+  <rect x="1086" y="1235" width="184" height="18" rx="6" fill="rgba(170,90,90,0.12)"/>
+  <text x="993" y="1248" text-anchor="middle" font-family="monospace" font-size="9" fill="#5c5">← OTHERS</text>
+  <text x="1178" y="1248" text-anchor="middle" font-family="monospace" font-size="9" fill="#c55">SELF →</text>
+  <text x="1085" y="1248" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="9" font-weight="700" fill="#daa520">vs</text>
+  <line x1="900" y1="1253" x2="1270" y2="1253" stroke="#333" stroke-width="0.5"/>
+  <text x="915" y="1271" font-family="monospace" font-size="8" fill="#5b5">Selfless</text>
+  <text x="915" y="1286" font-family="monospace" font-size="8" fill="#5b5">Look after everyone else</text>
+  <text x="915" y="1301" font-family="monospace" font-size="8" fill="#5b5">Team player</text>
+  <line x1="1085" y1="1257" x2="1085" y2="1348" stroke="#333" stroke-width="0.5" stroke-dasharray="2,3"/>
+  <text x="1100" y="1271" font-family="monospace" font-size="8" fill="#b55">Selfish</text>
+  <text x="1100" y="1286" font-family="monospace" font-size="8" fill="#b55">Look after myself</text>
+  <text x="1100" y="1301" font-family="monospace" font-size="8" fill="#b55">Me first</text>
+  <text x="915" y="1343" font-family="monospace" font-size="7" fill="#444">mild ←————→ extreme</text>
+  <text x="1100" y="1343" font-family="monospace" font-size="7" fill="#444">mild ←————→ extreme</text>
+
+  <!-- ═══ WHAT THE CONSCIENCE DOES ═══ -->
+  <text x="700" y="1395" text-anchor="middle" font-family="monospace" font-size="10" fill="#daa520" letter-spacing="2">WHAT THE CONSCIENCE DOES</text>
+  <text x="700" y="1415" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" fill="#777">1. Cortex thinks of something to say</text>
+  <text x="700" y="1432" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" fill="#777">2. Before he says it — he phones a friend</text>
+  <text x="700" y="1449" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" fill="#888" font-style="italic">"You're about to fuck your future for a quick win."</text>
+  <text x="700" y="1466" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" fill="#888" font-style="italic">"That's a selfish move, mate."</text>
+  <text x="700" y="1483" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" fill="#888" font-style="italic">"That's gonna hurt someone you care about."</text>
+  <text x="700" y="1500" text-anchor="middle" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" fill="#777">3. He listens. Or he doesn't. Free will.</text>
+
+  <!-- ═══ BOTTOM BAR — core brain physics ═══ -->
+  <line x1="200" y1="1500" x2="1200" y2="1500" stroke="#333" stroke-width="0.5"/>
+  <text x="700" y="1520" text-anchor="middle" font-family="monospace" font-size="10" fill="#777" letter-spacing="2">CORE BRAIN: NEWTON'S THIRD LAW</text>
+  <text x="700" y="1538" text-anchor="middle" font-family="monospace" font-size="9" fill="#666" letter-spacing="1">figure-8 crossed belt → cortex spins ↻ → hemispheres spin ↺ · TIGHT COUPLING · no slop</text>
+  <text x="700" y="1555" text-anchor="middle" font-family="monospace" font-size="8" fill="#555" letter-spacing="1">polar halos = emotion (2D locked) · equatorial halos = opposing dynamics</text>
+  <text x="700" y="1572" text-anchor="middle" font-family="monospace" font-size="8" fill="#555" letter-spacing="1">each sphere = ballpoint pen tip · cortex fine-tunes emotion to draw linear points in time</text>
+  <text x="700" y="1589" text-anchor="middle" font-family="monospace" font-size="8" fill="#444" letter-spacing="1">NEURALINK: 2 implants → 2 hemispheres → figure-8 counter-rotation → calibration vector</text>
+
+  <text x="1385" y="1640" text-anchor="end" font-family="monospace" font-size="7" fill="#333" letter-spacing="1">CORTEX BRAIN · SHORTFACTORY · 2026</text>
+</svg>
