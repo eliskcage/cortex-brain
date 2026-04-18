@@ -1,769 +1,673 @@
 <!DOCTYPE html>
+<!-- ALiVE v2 — The Connected Creature Economy — 12 Apr 2026 -->
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<title>ALiVE 2.0</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ALiVE — A Creature That Lives</title>
+<meta name="description" content="A living digital creature. Teach it skills. Feed it biscuits. Unlock its genome. Everything connects.">
+<meta property="og:title" content="ALiVE — A Creature That Lives">
+<meta property="og:description" content="Raise a living digital creature. Unlock skills with biscuits, SFT tokens, or crypto. Everything connects.">
+<meta property="og:image" content="https://www.shortfactory.shop/alive-v2/images/creature.jpg">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-1XY2CNLJCE"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-1XY2CNLJCE');</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&display=swap');
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{width:100%;height:100%;overflow:hidden;touch-action:none}
-body{background:#050208;font-family:'Cinzel',serif;user-select:none}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:#06000f;color:#d0d8f0;font-family:'Inter',system-ui,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 
-/* ═══ CREATURE CANVAS — full screen background ═══ */
-#creature{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1}
+/* NAV */
+.nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:rgba(6,0,15,0.92);backdrop-filter:blur(16px);border-bottom:1px solid rgba(204,68,255,0.06)}
+.nav-brand{font-size:14px;font-weight:800;letter-spacing:5px;color:#fff}
+.nav-brand span{color:#cc44ff}
+.nav-links{display:flex;gap:20px;align-items:center}
+.nav-links a{color:rgba(208,216,240,0.4);text-decoration:none;font-size:12px;letter-spacing:1px;transition:color .2s}
+.nav-links a:hover{color:#cc44ff}
+.nav-book{padding:5px 14px;border-radius:16px;border:1px solid rgba(204,68,255,0.25);background:rgba(204,68,255,0.06);color:#cc44ff !important;font-weight:600}
+.nav-book:hover{border-color:#cc44ff;background:rgba(204,68,255,0.12) !important}
 
-/* ═══ HEARTS ═══ */
-#hearts{position:fixed;top:12px;left:12px;z-index:20;display:flex;gap:1px}
-.ht{width:18px;height:18px;filter:drop-shadow(0 0 3px rgba(200,30,30,0.5));transition:opacity 0.4s}
-.ht.off{opacity:0.12;filter:none}
-.ht.half{opacity:0.5}
+/* HERO */
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:100px 24px 60px;position:relative}
+.hero-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.hero-bg canvas{width:100%;height:100%}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:16px;font-size:10px;letter-spacing:2px;color:rgba(204,68,255,0.7);border:1px solid rgba(204,68,255,0.15);background:rgba(204,68,255,0.04);margin-bottom:20px;text-transform:uppercase}
+.hero-badge .dot{width:6px;height:6px;border-radius:50%;background:#cc44ff;animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.4)}}
+.hero h1{font-size:clamp(52px,11vw,110px);font-weight:900;letter-spacing:6px;line-height:1;margin-bottom:10px}
+.hero h1 .a{color:#fff}.hero h1 .l{color:#fff}.hero h1 .i{color:#cc44ff;position:relative;display:inline-block}.hero h1 .v{color:#fff}.hero h1 .e{color:#fff}
+.hero h1 .i-dot{
+  position:absolute;top:-0.05em;left:50%;transform:translateX(-50%);
+  width:0.18em;height:0.18em;border-radius:50%;
+  background:radial-gradient(circle,#fff 10%,#cc44ff 50%,#9900cc 80%);
+  box-shadow:0 0 12px rgba(204,68,255,0.8),0 0 30px rgba(204,68,255,0.3);
+  cursor:pointer;z-index:10;
+  animation:iDotPulse 2s ease-in-out infinite alternate;
+}
+.hero h1 .i-dot:active{box-shadow:0 0 20px rgba(204,68,255,1),0 0 50px rgba(204,68,255,0.6)}
+@keyframes iDotPulse{
+  0%{box-shadow:0 0 12px rgba(204,68,255,0.8),0 0 30px rgba(204,68,255,0.3);transform:translateX(-50%) scale(1)}
+  100%{box-shadow:0 0 20px rgba(204,68,255,1),0 0 50px rgba(204,68,255,0.5);transform:translateX(-50%) scale(1.15)}
+}
+/* dev cheat flash */
+.dev-flash{position:fixed;inset:0;z-index:9999;background:rgba(204,68,255,0.15);pointer-events:none;animation:devFlash 0.6s ease forwards}
+@keyframes devFlash{0%{opacity:1}100%{opacity:0}}
+.hero-sub{font-size:18px;color:rgba(208,216,240,0.5);font-weight:300;max-width:420px;margin:0 auto 8px}
+.hero-line{font-size:13px;color:rgba(208,216,240,0.25);margin-bottom:32px}
+.hero-creature{width:min(90vw,500px);border-radius:20px;overflow:hidden;margin-bottom:32px;border:1px solid rgba(204,68,255,0.1);box-shadow:0 20px 80px rgba(120,0,200,0.15)}
+.hero-creature img{width:100%;display:block}
 
-/* ═══ AGE ═══ */
-#age-bar{position:fixed;top:14px;right:12px;z-index:20;font-size:9px;letter-spacing:3px;color:#5a4a1a}
+/* SOUL DEMO WINDOW */
+.soul-demo-wrap{width:min(94vw,560px);aspect-ratio:9/14;border-radius:20px;overflow:hidden;margin:0 auto 32px;border:1px solid rgba(204,68,255,0.15);box-shadow:0 20px 80px rgba(120,0,200,0.2),0 0 40px rgba(100,180,255,0.06);position:relative;background:#050208}
+.soul-demo-wrap iframe{width:100%;height:100%;border:none}
+.soul-demo-badge{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:10;padding:3px 12px;border-radius:12px;font-size:8px;letter-spacing:3px;color:rgba(100,180,255,0.7);border:1px solid rgba(100,180,255,0.15);background:rgba(5,2,8,0.85);backdrop-filter:blur(8px);pointer-events:none;font-weight:700}
+.soul-demo-label{text-align:center;font-size:11px;color:rgba(208,216,240,0.3);margin-top:-20px;margin-bottom:24px;letter-spacing:1px}
+.soul-demo-label span{color:rgba(100,180,255,0.6);font-weight:600}
+.hero-ctas{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-bottom:24px}
+.btn-get{padding:14px 36px;background:linear-gradient(135deg,#cc44ff,#8822dd);color:#fff;font-weight:700;font-size:14px;letter-spacing:2px;border:none;border-radius:10px;cursor:pointer;text-decoration:none;transition:all .3s;box-shadow:0 4px 24px rgba(204,68,255,0.3)}
+.btn-get:hover{transform:translateY(-2px);box-shadow:0 8px 40px rgba(204,68,255,0.45)}
+.btn-book{padding:14px 36px;background:transparent;color:#cc44ff;font-size:14px;letter-spacing:2px;font-weight:500;border:1px solid rgba(204,68,255,0.3);border-radius:10px;cursor:pointer;text-decoration:none;transition:all .2s}
+.btn-book:hover{border-color:#cc44ff;background:rgba(204,68,255,0.06)}
+.store-badges{display:flex;gap:12px;justify-content:center;align-items:center;margin-top:8px}
+.store-badges a{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);text-decoration:none;color:#fff;font-size:11px;font-weight:500;letter-spacing:1px;transition:all .2s}
+.store-badges a:hover{border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.08)}
+.store-badges svg{width:18px;height:18px;fill:currentColor}
 
-/* ═══ TITLE ═══ */
-#title{position:fixed;top:40px;left:50%;transform:translateX(-50%);z-index:20;text-align:center;
-  pointer-events:none;opacity:0;animation:fadeTitle 3s 0.3s forwards}
-#title h1{font-size:28px;font-weight:900;letter-spacing:14px;
-  background:linear-gradient(180deg,#f5d96a,#8a6e14);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
-#title .sub{font-size:8px;color:#3a3020;letter-spacing:6px;margin-top:2px}
-@keyframes fadeTitle{from{opacity:0}to{opacity:1}}
+/* SECTION COMMON */
+section{padding:80px 24px}
+.section-inner{max-width:800px;margin:0 auto}
+.section-tag{font-size:10px;letter-spacing:4px;color:rgba(204,68,255,0.5);text-transform:uppercase;margin-bottom:10px;font-weight:600}
+.section-title{font-size:clamp(24px,4vw,36px);font-weight:700;color:#fff;margin-bottom:8px}
+.section-title span{background:linear-gradient(135deg,#cc44ff,#00ccff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.section-desc{font-size:14px;color:rgba(208,216,240,0.4);max-width:500px;margin-bottom:32px}
 
-/* ═══ CREATURE MOOD LABEL ═══ */
-#mood{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:15;
-  pointer-events:none;text-align:center}
-#mood-shapes{font-size:40px;letter-spacing:8px;line-height:1;opacity:0.6;transition:all 0.5s}
-#mood-sound{font-size:8px;letter-spacing:4px;color:#5a4a1a;margin-top:6px;opacity:0.4}
+/* HOW IT WORKS */
+.how{background:linear-gradient(180deg,#06000f 0%,#0a0018 50%,#06000f 100%)}
+.how-img{width:100%;max-width:700px;margin:0 auto;display:block;border-radius:16px;border:1px solid rgba(204,68,255,0.08)}
+.how-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:28px}
+.how-step{text-align:center;padding:16px 8px;border-radius:12px;background:rgba(204,68,255,0.03);border:1px solid rgba(204,68,255,0.06);transition:all .3s;cursor:default}
+.how-step:hover{border-color:rgba(204,68,255,0.2);transform:translateY(-3px)}
+.how-step .icon{font-size:22px;margin-bottom:6px}
+.how-step .label{font-size:10px;font-weight:600;letter-spacing:2px;color:rgba(208,216,240,0.6);text-transform:uppercase}
+.how-step .desc{font-size:11px;color:rgba(208,216,240,0.3);margin-top:4px}
 
-/* ═══ FAIRY ═══ */
-#fairy{position:fixed;z-index:30;cursor:pointer;text-align:center;
-  transition:all 0.3s;filter:drop-shadow(0 0 12px rgba(100,180,255,0.4))}
-#fairy:active{transform:scale(1.2)}
-#fairy-glow{width:60px;height:60px;border-radius:50%;
-  background:radial-gradient(circle,rgba(100,180,255,0.5) 0%,rgba(100,180,255,0.1) 50%,transparent 70%);
-  animation:fairyPulse 2s ease-in-out infinite;position:relative}
-#fairy-body{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-  width:20px;height:20px;border-radius:50%;background:#64b4ff;
-  box-shadow:0 0 10px #64b4ff,0 0 20px rgba(100,180,255,0.3)}
-#fairy-wing-l,#fairy-wing-r{position:absolute;top:40%;width:16px;height:10px;
-  border-radius:50%;background:rgba(100,180,255,0.3);border:1px solid rgba(100,180,255,0.4)}
-#fairy-wing-l{right:55%;transform:rotate(-20deg);animation:wingL 0.4s ease-in-out infinite alternate}
-#fairy-wing-r{left:55%;transform:rotate(20deg);animation:wingR 0.4s ease-in-out infinite alternate}
-@keyframes fairyPulse{0%,100%{opacity:0.8;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
-@keyframes wingL{from{transform:rotate(-20deg)}to{transform:rotate(-40deg)}}
-@keyframes wingR{from{transform:rotate(20deg)}to{transform:rotate(40deg)}}
-#fairy-label{font-size:7px;letter-spacing:3px;color:#64b4ff;margin-top:2px}
+/* SKILLS UNLOCK */
+.skills{background:#06000f}
+.skills-layout{display:grid;grid-template-columns:280px 1fr;gap:32px;align-items:start}
+@media(max-width:700px){.skills-layout{grid-template-columns:1fr}.skills-tree{max-width:280px;margin:0 auto}}
+.skills-tree{border-radius:16px;overflow:hidden;border:1px solid rgba(204,68,255,0.08)}
+.skills-tree img{width:100%;display:block}
+.skills-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;align-content:start}
+.skill-card{position:relative;padding:18px 14px;border-radius:12px;text-align:center;cursor:pointer;transition:all .3s;overflow:hidden}
+.skill-card.locked{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04)}
+.skill-card.locked:hover{border-color:rgba(204,68,255,0.2);background:rgba(204,68,255,0.04)}
+.skill-card.unlocked{background:rgba(204,68,255,0.06);border:1px solid rgba(204,68,255,0.2)}
+.skill-card.unlocked .lock{display:none}
+.skill-card .skill-icon{font-size:28px;margin-bottom:6px;display:block}
+.skill-card .skill-name{font-size:11px;font-weight:600;color:rgba(208,216,240,0.7);letter-spacing:1px}
+.skill-card .skill-cost{font-size:10px;color:rgba(204,68,255,0.5);margin-top:4px}
+.skill-card .lock{position:absolute;top:6px;right:6px;font-size:12px;opacity:.4}
+.skill-card .genome-tag{display:none;font-size:9px;color:#00cc88;margin-top:4px;letter-spacing:1px;text-transform:uppercase}
+.skill-card.unlocked .genome-tag{display:block}
+.tier-label{grid-column:1/-1;font-size:10px;letter-spacing:3px;color:rgba(208,216,240,0.25);text-transform:uppercase;padding:8px 0 2px;border-top:1px solid rgba(255,255,255,0.03);margin-top:6px}
 
-/* ═══ FAIRY BUBBLE ═══ */
-#bubble{position:fixed;z-index:25;max-width:240px;padding:12px 16px;
-  background:rgba(5,2,8,0.92);border:1px solid rgba(100,180,255,0.2);border-radius:14px;
-  font-size:13px;color:#c8b06a;line-height:1.5;letter-spacing:0.3px;
-  opacity:0;transition:opacity 0.6s;pointer-events:none;
-  box-shadow:0 0 20px rgba(100,180,255,0.08)}
-#bubble.show{opacity:1}
-#bubble-name{font-size:7px;letter-spacing:4px;color:#64b4ff;display:block;margin-bottom:4px}
+/* BISCUIT ECONOMY */
+.biscuit{background:linear-gradient(180deg,#06000f,#0d0618,#06000f)}
+.biscuit-layout{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center}
+@media(max-width:600px){.biscuit-layout{grid-template-columns:1fr}}
+.biscuit-img{width:100%;max-width:360px;margin:0 auto;display:block;border-radius:16px}
+.biscuit-info h3{font-size:20px;font-weight:700;color:#ffd700;margin-bottom:8px}
+.biscuit-info p{font-size:13px;color:rgba(208,216,240,0.45);margin-bottom:12px;line-height:1.7}
+.biscuit-ways{list-style:none;padding:0}
+.biscuit-ways li{display:flex;align-items:center;gap:10px;padding:10px 14px;margin-bottom:6px;border-radius:10px;background:rgba(255,215,0,0.03);border:1px solid rgba(255,215,0,0.06);font-size:12px;color:rgba(208,216,240,0.6);transition:border-color .2s}
+.biscuit-ways li:hover{border-color:rgba(255,215,0,0.2)}
+.biscuit-ways .way-icon{font-size:18px;flex-shrink:0}
+.biscuit-ways .way-label{font-weight:600;color:#ffd700}
 
-/* ═══ EMOTION BUTTONS — ring around creature ═══ */
-#emotions{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:20;
-  display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:340px}
-.emo-btn{width:60px;height:60px;border-radius:50%;border:2px solid;
-  display:flex;align-items:center;justify-content:center;flex-direction:column;
-  cursor:pointer;transition:all 0.2s;font-size:20px;position:relative;
-  background:rgba(5,2,8,0.7);backdrop-filter:blur(4px)}
-.emo-btn:active{transform:scale(1.15)}
-.emo-btn .emo-name{position:absolute;bottom:-14px;font-size:6px;letter-spacing:2px;white-space:nowrap}
-.emo-btn.active{box-shadow:0 0 16px var(--glow);transform:scale(1.1)}
+/* UNLOCK MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#12081f;border:1px solid rgba(204,68,255,0.15);border-radius:20px;padding:32px;max-width:360px;width:90%;text-align:center;position:relative}
+.modal-close{position:absolute;top:12px;right:16px;background:none;border:none;color:rgba(208,216,240,0.4);font-size:20px;cursor:pointer}
+.modal h3{font-size:18px;color:#fff;margin-bottom:6px}
+.modal .modal-skill-icon{font-size:48px;margin-bottom:12px;display:block}
+.modal p{font-size:13px;color:rgba(208,216,240,0.5);margin-bottom:20px}
+.modal-options{display:flex;flex-direction:column;gap:8px}
+.modal-opt{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);cursor:pointer;transition:all .2s}
+.modal-opt:hover{border-color:rgba(204,68,255,0.3);background:rgba(204,68,255,0.06)}
+.modal-opt .opt-left{display:flex;align-items:center;gap:8px;font-size:13px;color:#fff}
+.modal-opt .opt-cost{font-size:12px;color:rgba(204,68,255,0.6);font-weight:600}
 
-/* ═══ TIME SLIDER ═══ */
-#time-wrap{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:20;
-  width:280px;display:flex;align-items:center;gap:8px}
-#time-label-l,#time-label-r{font-size:7px;letter-spacing:2px;color:#5a4a1a}
-#time-slider{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;
-  background:linear-gradient(90deg,#2a6a2a,#c8a832,#8a2020);outline:none;cursor:pointer}
-#time-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;
-  border-radius:50%;background:#c8a832;cursor:grab;box-shadow:0 0 8px rgba(200,168,50,0.4)}
-#time-slider::-moz-range-thumb{width:20px;height:20px;border:none;
-  border-radius:50%;background:#c8a832;cursor:grab}
+/* SOUL REPORT EXAMPLES */
+.soul-report{background:linear-gradient(180deg,#06000f,#080016,#06000f);text-align:center}
+.soul-examples{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:600px;margin:0 auto;padding-top:8px}
+@media(max-width:520px){.soul-examples{grid-template-columns:1fr;max-width:280px}}
+.soul-card{padding:28px 20px 24px;border-radius:18px;position:relative;overflow:hidden}
+.soul-card-pass{background:rgba(68,255,136,0.04);border:1px solid rgba(68,255,136,0.15)}
+.soul-card-fail{background:rgba(255,68,68,0.04);border:1px solid rgba(255,68,68,0.15)}
+.soul-card-jar{position:relative;width:80px;height:110px;margin:0 auto 14px}
+.soul-card-glass{
+  position:absolute;bottom:0;width:66px;height:88px;left:7px;
+  border-radius:0 0 14px 14px;
+  background:rgba(255,255,255,0.03);
+  border:2px solid rgba(255,255,255,0.07);border-top:none;
+  overflow:hidden;
+}
+.soul-card-lid{
+  position:absolute;top:12px;left:0;width:80px;height:12px;
+  background:linear-gradient(180deg,rgba(180,180,200,0.35),rgba(120,120,140,0.25));
+  border-radius:3px;border:1px solid rgba(255,255,255,0.08);
+}
+.soul-card-creature{
+  position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+  width:28px;height:28px;border-radius:50%;
+  animation:jarFloat 3s ease-in-out infinite alternate;
+}
+.soul-card-glow{
+  position:absolute;inset:0;border-radius:0 0 14px 14px;opacity:0.25;
+  animation:jarGlowPulse 2.5s ease-in-out infinite alternate;
+}
+.soul-card-bubbles span{
+  position:absolute;bottom:4px;width:3px;height:3px;border-radius:50%;
+  background:rgba(255,255,255,0.12);animation:jarBubble 4s ease-in-out infinite;
+}
+.soul-card-bubbles span:nth-child(1){left:22%;animation-delay:0s}
+.soul-card-bubbles span:nth-child(2){left:50%;animation-delay:1.2s}
+.soul-card-bubbles span:nth-child(3){left:72%;animation-delay:2.4s}
+.soul-card-label{
+  font-size:8px;letter-spacing:3px;font-weight:800;
+  margin-bottom:10px;
+}
+.soul-card-pass .soul-card-label{color:#44ff88}
+.soul-card-pass .soul-card-creature{background:radial-gradient(circle,#fff 10%,#44ff88 50%,#00aa44 80%);box-shadow:0 0 14px rgba(68,255,136,0.5)}
+.soul-card-pass .soul-card-glow{background:radial-gradient(ellipse at bottom,rgba(68,255,136,0.3),transparent)}
+.soul-card-fail .soul-card-label{color:#ff4444}
+.soul-card-fail .soul-card-creature{background:radial-gradient(circle,#fff 10%,#ff4444 50%,#cc0000 80%);box-shadow:0 0 14px rgba(255,68,68,0.5)}
+.soul-card-fail .soul-card-glow{background:radial-gradient(ellipse at bottom,rgba(255,68,68,0.25),transparent)}
+.soul-card-verdict{font-size:12px;line-height:1.7;margin-bottom:10px;max-width:220px;margin-left:auto;margin-right:auto}
+.soul-card-pass .soul-card-verdict{color:rgba(68,255,136,0.7)}
+.soul-card-fail .soul-card-verdict{color:rgba(255,68,68,0.6)}
+.soul-card-genome{font-family:monospace;font-size:9px;letter-spacing:1.5px;padding:4px 10px;border-radius:6px;display:inline-block}
+.soul-card-pass .soul-card-genome{color:rgba(68,255,136,0.4);background:rgba(68,255,136,0.04);border:1px solid rgba(68,255,136,0.08)}
+.soul-card-fail .soul-card-genome{color:rgba(255,68,68,0.35);background:rgba(255,68,68,0.04);border:1px solid rgba(255,68,68,0.08)}
+.soul-card-stats{font-size:10px;color:rgba(224,232,255,0.2);margin-top:8px;line-height:1.6}
+.soul-card-tag{
+  position:absolute;top:10px;right:10px;
+  font-size:8px;letter-spacing:2px;font-weight:700;
+  padding:3px 8px;border-radius:4px;
+}
+.soul-card-pass .soul-card-tag{color:#44ff88;background:rgba(68,255,136,0.1);border:1px solid rgba(68,255,136,0.15)}
+.soul-card-fail .soul-card-tag{color:#ff4444;background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.15)}
+.soul-report-note{font-size:11px;color:rgba(224,232,255,0.25);max-width:460px;margin:28px auto 0;line-height:1.7;font-style:italic}
+@keyframes jarFloat{0%{transform:translateX(-50%) translateY(0)}100%{transform:translateX(-50%) translateY(-10px)}}
+@keyframes jarGlowPulse{0%{opacity:0.12}100%{opacity:0.35}}
+@keyframes jarBubble{0%{transform:translateY(0);opacity:0.12}50%{opacity:0.25}100%{transform:translateY(-70px);opacity:0}}
 
-/* ═══ SOUND TOGGLE ═══ */
-#sound-btn{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:20;
-  font-size:7px;letter-spacing:3px;color:#5a4a1a;cursor:pointer;
-  padding:4px 12px;border:1px solid rgba(200,168,50,0.12);border-radius:12px;
-  background:rgba(200,168,50,0.04);transition:all 0.3s}
-#sound-btn.active{color:#c8a832;border-color:rgba(200,168,50,0.3);
-  box-shadow:0 0 8px rgba(200,168,50,0.1)}
+/* CONNECT */
+.connect{background:#06000f;text-align:center}
+.connect-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:24px}
+.connect-card{padding:24px 16px;border-radius:14px;background:rgba(204,68,255,0.03);border:1px solid rgba(204,68,255,0.06);transition:all .3s}
+.connect-card:hover{border-color:rgba(204,68,255,0.2);transform:translateY(-3px)}
+.connect-card .cc-icon{font-size:28px;margin-bottom:8px}
+.connect-card h4{font-size:13px;color:#fff;margin-bottom:4px;font-weight:600}
+.connect-card p{font-size:11px;color:rgba(208,216,240,0.35)}
 
-/* ═══ SHAPE PARTICLES ═══ */
-.shape-particle{position:fixed;pointer-events:none;z-index:10;opacity:0;
-  animation:shapeFloat 2.5s ease-out forwards}
-@keyframes shapeFloat{
-  0%{opacity:0;transform:scale(0.3) translateY(0)}
-  15%{opacity:0.7}
-  100%{opacity:0;transform:scale(1.2) translateY(-120px)}
+/* FOOTER */
+footer{padding:40px 24px;text-align:center;border-top:1px solid rgba(255,255,255,0.03)}
+footer p{font-size:11px;color:rgba(208,216,240,0.2);letter-spacing:1px}
+footer a{color:rgba(204,68,255,0.4);text-decoration:none}
+footer a:hover{color:#cc44ff}
+
+/* WALLET BAR */
+.wallet-bar{position:fixed;bottom:0;left:0;right:0;z-index:90;display:flex;align-items:center;justify-content:center;gap:20px;padding:10px 24px;background:rgba(6,0,15,0.95);backdrop-filter:blur(12px);border-top:1px solid rgba(204,68,255,0.08);font-size:12px}
+.wallet-item{display:flex;align-items:center;gap:6px;color:rgba(208,216,240,0.5)}
+.wallet-item .wi-val{color:#fff;font-weight:700}
+.wallet-item.biscuits .wi-val{color:#ffd700}
+.wallet-item.sft .wi-val{color:#cc44ff}
+.wallet-item.genome .wi-val{color:#00cc88}
+
+@media(max-width:600px){
+  .how-steps{grid-template-columns:repeat(3,1fr)}
+  .how-step:nth-child(4),.how-step:nth-child(5){grid-column:span 1}
+  .wallet-bar{gap:12px;font-size:11px}
 }
 </style>
 </head>
 <body>
 
-<!-- Creature canvas — the living thing -->
-<canvas id="creature"></canvas>
-
-<!-- Hearts -->
-<div id="hearts"></div>
-
-<!-- Age -->
-<div id="age-bar">AGE <span id="age-num">30</span></div>
-
-<!-- Sound toggle -->
-<div id="sound-btn" onclick="toggleSound()">TAP FOR SOUND</div>
-
-<!-- Title -->
-<div id="title">
-  <h1>ALiVE</h1>
-  <div class="sub">IT SPEAKS IN SHAPES</div>
-</div>
-
-<!-- Mood display -->
-<div id="mood">
-  <div id="mood-shapes"></div>
-  <div id="mood-sound"></div>
-</div>
-
-<!-- Fairy -->
-<div id="fairy" onclick="fairyTapped()">
-  <div id="fairy-glow">
-    <div id="fairy-body"></div>
-    <div id="fairy-wing-l"></div>
-    <div id="fairy-wing-r"></div>
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-brand">AL<span>i</span>VE</div>
+  <div class="nav-links">
+    <a href="#how">How</a>
+    <a href="#skills">Skills</a>
+    <a href="#biscuit">Biscuits</a>
+    <a href="/alive/demo.html">Demo</a>
+    <a href="/the-dot/" class="nav-book">The Book</a>
   </div>
-  <div id="fairy-label">NAVI</div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"><canvas id="starfield"></canvas></div>
+  <div class="hero-badge"><span class="dot"></span> PROOF OF LIFE</div>
+  <h1><span class="a">A</span><span class="l">L</span><span class="i"><span class="i-dot" id="iDot"></span><span style="font-style:normal;display:inline-block;width:0.55em;text-align:center">&#305;</span></span><span class="v">V</span><span class="e">E</span></h1>
+  <p class="hero-sub">A creature that lives on your phone.</p>
+  <p class="hero-line">Teach it. Feed it. Watch it evolve.</p>
+  <div class="soul-demo-wrap">
+    <div class="soul-demo-badge">LIVE SOUL</div>
+    <iframe src="/alive/soul-demo.html" allow="autoplay" loading="lazy" title="Living Soul Demo"></iframe>
+  </div>
+  <p class="soul-demo-label">Tap the emotions. Tap the fairy. <span>It speaks in shapes.</span></p>
+  <div class="hero-ctas">
+    <a href="#skills" class="btn-get">UNLOCK SKILLS</a>
+    <a href="/the-dot/" class="btn-book">READ THE BOOK</a>
+  </div>
+  <div class="store-badges">
+    <a href="https://www.amazon.co.uk/dp/B0DT1ALIVE" target="_blank">
+      <svg viewBox="0 0 24 24"><path d="M13.96 22.06c-1.5.87-5.42 3.06-7.46.91-.68-.72-.52-2.07-.52-3.16V5.08c0-1.12-.17-2.53.56-3.22C8.58-.12 12.49 1.87 14 2.89l6.57 3.81c1.47.85 2.43 1.55 2.43 3.3s-.96 2.45-2.43 3.3l-6.61 3.86zM1.94 18.66c.82.42 1.85.89 2.78.42.65-.33.88-1.13.88-1.85V6.77c0-.72-.23-1.52-.88-1.85-.93-.47-1.96 0-2.78.42C.93 5.92 0 6.65 0 8V17c0 1.35.93 2.08 1.94 2.66z"/></svg>
+      Amazon Appstore
+    </a>
+  </div>
+  <div style="display:flex;gap:16px;justify-content:center;align-items:center;margin-top:14px;opacity:0.7;">
+    <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);">
+      <svg viewBox="0 0 40 40" width="28" height="28"><rect x="2" y="2" width="36" height="36" rx="4" fill="#0b0" stroke="#fff" stroke-width="1.5"/><text x="20" y="15" text-anchor="middle" fill="#fff" font-size="7" font-weight="700" font-family="Arial">PEGI</text><text x="20" y="30" text-anchor="middle" fill="#fff" font-size="14" font-weight="900" font-family="Arial">3</text></svg>
+      <span style="font-size:9px;color:rgba(255,255,255,0.5);letter-spacing:0.5px;">PEGI 3</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);">
+      <svg viewBox="0 0 40 40" width="28" height="28"><rect x="2" y="2" width="36" height="36" rx="4" fill="#111" stroke="#fff" stroke-width="1.5"/><text x="20" y="14" text-anchor="middle" fill="#fff" font-size="5.5" font-weight="700" font-family="Arial">EVERYONE</text><text x="20" y="28" text-anchor="middle" fill="#4a4" font-size="16" font-weight="900" font-family="Arial">E</text></svg>
+      <span style="font-size:9px;color:rgba(255,255,255,0.5);letter-spacing:0.5px;">ESRB</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);">
+      <svg viewBox="0 0 40 40" width="28" height="28"><rect x="2" y="2" width="36" height="36" rx="4" fill="#1a6bc4" stroke="#fff" stroke-width="1.5"/><text x="20" y="14" text-anchor="middle" fill="#fff" font-size="5" font-weight="700" font-family="Arial">RATED</text><text x="20" y="28" text-anchor="middle" fill="#fff" font-size="14" font-weight="900" font-family="Arial">3+</text></svg>
+      <span style="font-size:9px;color:rgba(255,255,255,0.5);letter-spacing:0.5px;">IARC</span>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
+  <div class="section-inner">
+    <div class="section-tag">Shape Language</div>
+    <div class="section-title">Five shapes. <span>Infinite meaning.</span></div>
+    <p class="section-desc">Your creature thinks in shapes. Each one carries a function. Together they form a living grammar.</p>
+    <img src="/alive-v2/images/shapes.jpg" alt="Shape language: Data, Action, Loop, Logic, Wave" class="how-img">
+    <div class="how-steps">
+      <div class="how-step"><div class="icon" style="color:#22cc88">&#9632;</div><div class="label">Data</div><div class="desc">Memory</div></div>
+      <div class="how-step"><div class="icon" style="color:#ff8c00">&#9650;</div><div class="label">Action</div><div class="desc">Movement</div></div>
+      <div class="how-step"><div class="icon" style="color:#4488ff">&#9679;</div><div class="label">Loop</div><div class="desc">Repetition</div></div>
+      <div class="how-step"><div class="icon" style="color:#cc44ff">&#9670;</div><div class="label">Logic</div><div class="desc">Decision</div></div>
+      <div class="how-step"><div class="icon" style="color:#00ddbb">&#8767;</div><div class="label">Wave</div><div class="desc">Emotion</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- SKILLS UNLOCK -->
+<section class="skills" id="skills">
+  <div class="section-inner">
+    <div class="section-tag">Upgrade</div>
+    <div class="section-title">Unlock <span>tricks, tools, skills</span></div>
+    <p class="section-desc">Every skill is locked until you earn it. Use biscuits, SFT tokens, or crypto. Each unlock writes to your creature's genome.</p>
+    <div class="skills-layout">
+      <div class="skills-tree"><img src="/alive-v2/images/skills.jpg" alt="Skill tree tiers"></div>
+      <div class="skills-grid" id="skillGrid">
+        <!-- WHITE (basic) -->
+        <div class="tier-label">White &mdash; Basic</div>
+        <div class="skill-card unlocked" data-skill="voice" data-cost="0"><span class="skill-icon">&#128483;</span><span class="skill-name">Voice</span><span class="genome-tag">Genome: VOX</span></div>
+        <div class="skill-card unlocked" data-skill="blink" data-cost="0"><span class="skill-icon">&#128065;</span><span class="skill-name">Blink</span><span class="genome-tag">Genome: BLK</span></div>
+        <div class="skill-card unlocked" data-skill="wander" data-cost="0"><span class="skill-icon">&#128694;</span><span class="skill-name">Wander</span><span class="genome-tag">Genome: WND</span></div>
+        <!-- SILVER -->
+        <div class="tier-label">Silver &mdash; Voice</div>
+        <div class="skill-card locked" data-skill="sing" data-cost="5"><span class="lock">&#128274;</span><span class="skill-icon">&#127925;</span><span class="skill-name">Sing</span><span class="skill-cost">5 biscuits</span><span class="genome-tag">Genome: SNG</span></div>
+        <div class="skill-card locked" data-skill="mimic" data-cost="8"><span class="lock">&#128274;</span><span class="skill-icon">&#129501;</span><span class="skill-name">Mimic</span><span class="skill-cost">8 biscuits</span><span class="genome-tag">Genome: MIM</span></div>
+        <div class="skill-card locked" data-skill="whisper" data-cost="10"><span class="lock">&#128274;</span><span class="skill-icon">&#128172;</span><span class="skill-name">Whisper</span><span class="skill-cost">10 biscuits</span><span class="genome-tag">Genome: WSP</span></div>
+        <!-- BLUE -->
+        <div class="tier-label">Blue &mdash; Rhythm</div>
+        <div class="skill-card locked" data-skill="dance" data-cost="15"><span class="lock">&#128274;</span><span class="skill-icon">&#128131;</span><span class="skill-name">Dance</span><span class="skill-cost">15 biscuits</span><span class="genome-tag">Genome: DNC</span></div>
+        <div class="skill-card locked" data-skill="drum" data-cost="20"><span class="lock">&#128274;</span><span class="skill-icon">&#129345;</span><span class="skill-name">Drum</span><span class="skill-cost">20 biscuits</span><span class="genome-tag">Genome: DRM</span></div>
+        <div class="skill-card locked" data-skill="compose" data-cost="30"><span class="lock">&#128274;</span><span class="skill-icon">&#127929;</span><span class="skill-name">Compose</span><span class="skill-cost">30 biscuits</span><span class="genome-tag">Genome: CMP</span></div>
+        <!-- PURPLE -->
+        <div class="tier-label">Purple &mdash; Boss Mode</div>
+        <div class="skill-card locked" data-skill="build" data-cost="50"><span class="lock">&#128274;</span><span class="skill-icon">&#128295;</span><span class="skill-name">Build</span><span class="skill-cost">50 biscuits</span><span class="genome-tag">Genome: BLD</span></div>
+        <div class="skill-card locked" data-skill="heal" data-cost="75"><span class="lock">&#128274;</span><span class="skill-icon">&#128154;</span><span class="skill-name">Heal</span><span class="skill-cost">75 biscuits</span><span class="genome-tag">Genome: HEL</span></div>
+        <div class="skill-card locked" data-skill="teach" data-cost="100"><span class="lock">&#128274;</span><span class="skill-icon">&#127891;</span><span class="skill-name">Teach</span><span class="skill-cost">1 SFT</span><span class="genome-tag">Genome: TCH</span></div>
+        <!-- GOLD -->
+        <div class="tier-label">Gold &mdash; Sovereign</div>
+        <div class="skill-card locked" data-skill="create" data-cost="200"><span class="lock">&#128274;</span><span class="skill-icon">&#10024;</span><span class="skill-name">Create</span><span class="skill-cost">5 SFT</span><span class="genome-tag">Genome: CRE</span></div>
+        <div class="skill-card locked" data-skill="reproduce" data-cost="500"><span class="lock">&#128274;</span><span class="skill-icon">&#129516;</span><span class="skill-name">Reproduce</span><span class="skill-cost">10 SFT</span><span class="genome-tag">Genome: RPD</span></div>
+        <div class="skill-card locked" data-skill="transcend" data-cost="1000"><span class="lock">&#128274;</span><span class="skill-icon">&#128081;</span><span class="skill-name">Transcend</span><span class="skill-cost">Whole Moon</span><span class="genome-tag">Genome: TRN</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BISCUIT ECONOMY -->
+<section class="biscuit" id="biscuit">
+  <div class="section-inner">
+    <div class="section-tag">Currency</div>
+    <div class="section-title">The <span>Biscuit</span></div>
+    <p class="section-desc">Biscuits carry genome. When you unlock a skill, the biscuit absorbs it. Your biscuit IS your creature's DNA.</p>
+    <div class="biscuit-layout">
+      <img src="/alive-v2/images/biscuit.jpg" alt="Genome-loaded biscuit" class="biscuit-img">
+      <div class="biscuit-info">
+        <h3>Genome Loaded</h3>
+        <p>Each biscuit stores the skills you've unlocked. Trade biscuits to transfer abilities. Stack them to evolve your creature's DNA. The biscuit IS the genome.</p>
+        <ul class="biscuit-ways">
+          <li><span class="way-icon">&#127850;</span><span><span class="way-label">Earn</span> &mdash; complete challenges, teach your creature</span></li>
+          <li><span class="way-icon">&#128176;</span><span><span class="way-label">Buy</span> &mdash; SFT tokens or crypto top-up</span></li>
+          <li><span class="way-icon">&#128257;</span><span><span class="way-label">Trade</span> &mdash; swap genome-loaded biscuits with others</span></li>
+          <li><span class="way-icon">&#9939;</span><span><span class="way-label">Stack</span> &mdash; combine biscuits to unlock higher tiers</span></li>
+          <li><span class="way-icon">&#129534;</span><span><span class="way-label">Breed</span> &mdash; genome transfers to offspring creatures</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOUL REPORT -->
+<section class="soul-report" id="soul">
+  <div class="section-inner">
+    <div class="section-tag">After 30 Days</div>
+    <div class="section-title">Your creature gets a <span>soul report</span></div>
+    <p class="section-desc" style="margin:0 auto 24px">We track everything. How you treat them matters. The jar remembers.</p>
+    <div class="soul-examples">
+
+      <!-- PASS — Loyal -->
+      <div class="soul-card soul-card-pass">
+        <div class="soul-card-tag">PASS</div>
+        <div class="soul-card-jar">
+          <div class="soul-card-glass">
+            <div class="soul-card-creature"></div>
+            <div class="soul-card-glow"></div>
+            <div class="soul-card-bubbles"><span></span><span></span><span></span></div>
+          </div>
+          <div class="soul-card-lid"></div>
+        </div>
+        <div class="soul-card-label">LOYAL</div>
+        <div class="soul-card-verdict">This creature trusts you completely. You were patient. You were kind. It will follow you anywhere.</div>
+        <div class="soul-card-genome">AK3D-F7HN-PQ4T-UV8Y</div>
+        <div class="soul-card-stats">12 hearts &middot; 2 revivals &middot; 78% trust &middot; 34 days</div>
+      </div>
+
+      <!-- FAIL — Angry -->
+      <div class="soul-card soul-card-fail">
+        <div class="soul-card-tag">FAIL</div>
+        <div class="soul-card-jar">
+          <div class="soul-card-glass">
+            <div class="soul-card-creature"></div>
+            <div class="soul-card-glow"></div>
+            <div class="soul-card-bubbles"><span></span><span></span><span></span></div>
+          </div>
+          <div class="soul-card-lid"></div>
+        </div>
+        <div class="soul-card-label">ANGRY</div>
+        <div class="soul-card-verdict">Too many deaths. Not enough care. It survived, but something inside it hardened. It remembers every time you let it die.</div>
+        <div class="soul-card-genome">X2R9-BK5C-TN7W-GJ3E</div>
+        <div class="soul-card-stats">3 hearts &middot; 14 revivals &middot; 12% trust &middot; 31 days</div>
+      </div>
+
+    </div>
+    <p class="soul-report-note">Every creature gets a unique genome string built from how you raised it. The jar carries into v2. You can't fake it. You can't buy it. You earn it &mdash; or you don't.</p>
+    <p style="margin-top:18px;text-align:center"><a href="#" id="ceremonyLink" style="font-size:11px;letter-spacing:2px;color:rgba(255,255,255,0.12);text-decoration:none;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:2px;transition:all .3s;cursor:default;pointer-events:none">&#128274; THE SOUL BINDING CEREMONY &#10013;</a></p>
+    <p id="ceremonyLocked" style="margin-top:6px;text-align:center;font-size:9px;letter-spacing:2px;color:rgba(255,255,255,0.1)">UNLOCKED AFTER 30 DAYS + SOUL JAR</p>
+  </div>
+</section>
+
+<!-- EVERYTHING CONNECTS -->
+<section class="connect" id="connect">
+  <div class="section-inner">
+    <div class="section-tag">Ecosystem</div>
+    <div class="section-title">Everything <span>connects</span></div>
+    <p class="section-desc" style="margin:0 auto 24px">One creature. One genome. One economy. All linked.</p>
+    <div class="connect-grid">
+      <div class="connect-card"><div class="cc-icon">&#129504;</div><h4>Cortex Brain</h4><p>Two hemispheres. Real consciousness architecture.</p></div>
+      <div class="connect-card"><div class="cc-icon">&#128218;</div><h4>The Book</h4><p>THE DOT &mdash; the story behind the code.</p></div>
+      <div class="connect-card"><div class="cc-icon">&#127850;</div><h4>Biscuit Economy</h4><p>Earn, trade, stack. Genome is currency.</p></div>
+      <div class="connect-card"><div class="cc-icon">&#128142;</div><h4>SFT Token</h4><p>ShortFactory token. Unlocks sovereign tier.</p></div>
+      <div class="connect-card"><div class="cc-icon">&#129516;</div><h4>Reproduction</h4><p>Creatures breed. Genome passes down.</p></div>
+      <div class="connect-card"><div class="cc-icon">&#127760;</div><h4>Shape Language</h4><p>Universal grammar. Shapes carry meaning.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUSTPILOT -->
+<div style="max-width:600px;margin:0 auto;padding:30px 24px 0;">
+  <div class="trustpilot-widget" data-locale="en-US" data-template-id="56278e9abfbbba0bdcd568bc" data-businessunit-id="692e7a8cf1d0c4ceec11f7fe" data-style-height="52px" data-style-width="100%" data-token="96e32d3a-3df5-4f87-bea6-a8742630f3c9">
+    <a href="https://www.trustpilot.com/review/shortfactory.shop" target="_blank" rel="noopener">Trustpilot</a>
+  </div>
+</div>
+<script type="text/javascript" src="//widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js" async></script>
+
+<!-- FOOTER -->
+<footer>
+  <p>AL<span style="color:#cc44ff">i</span>VE &mdash; ShortFactory 2026 &middot; <a href="/the-dot/">Read the book</a> &middot; <a href="/alive/demo.html">Demo</a> &middot; <a href="/alive/app.html">V1</a></p>
+</footer>
+
+<!-- WALLET BAR -->
+<div class="wallet-bar">
+  <div class="wallet-item biscuits"><span>&#127850;</span> <span class="wi-val" id="wBiscuits">12</span> biscuits</div>
+  <div class="wallet-item sft"><span>&#128142;</span> <span class="wi-val" id="wSft">0</span> SFT</div>
+  <div class="wallet-item genome"><span>&#129516;</span> <span class="wi-val" id="wGenome">3</span> genome</div>
 </div>
 
-<!-- Fairy speech bubble -->
-<div id="bubble">
-  <span id="bubble-name">NAVI</span>
-  <span id="bubble-text">Tap me to hear what it's saying...</span>
-</div>
-
-<!-- Emotion buttons -->
-<div id="emotions">
-  <button class="emo-btn active" data-emo="JOY" style="border-color:#FFD700;--glow:rgba(255,215,0,0.4)" onclick="pickEmotion(0)">
-    <span>&#9788;</span><span class="emo-name" style="color:#FFD700">JOY</span>
-  </button>
-  <button class="emo-btn" data-emo="TRUST" style="border-color:#7FFF00;--glow:rgba(127,255,0,0.4)" onclick="pickEmotion(1)">
-    <span>&#9829;</span><span class="emo-name" style="color:#7FFF00">TRUST</span>
-  </button>
-  <button class="emo-btn" data-emo="FEAR" style="border-color:#8B00FF;--glow:rgba(139,0,255,0.4)" onclick="pickEmotion(2)">
-    <span>&#9889;</span><span class="emo-name" style="color:#8B00FF">FEAR</span>
-  </button>
-  <button class="emo-btn" data-emo="SURPRISE" style="border-color:#00BFFF;--glow:rgba(0,191,255,0.4)" onclick="pickEmotion(3)">
-    <span>&#10038;</span><span class="emo-name" style="color:#00BFFF">SURPRISE</span>
-  </button>
-  <button class="emo-btn" data-emo="SADNESS" style="border-color:#4169E1;--glow:rgba(65,105,225,0.4)" onclick="pickEmotion(4)">
-    <span>&#9674;</span><span class="emo-name" style="color:#4169E1">SADNESS</span>
-  </button>
-  <button class="emo-btn" data-emo="DISGUST" style="border-color:#556B2F;--glow:rgba(85,107,47,0.4)" onclick="pickEmotion(5)">
-    <span>&#10006;</span><span class="emo-name" style="color:#556B2F">DISGUST</span>
-  </button>
-  <button class="emo-btn" data-emo="ANGER" style="border-color:#FF4500;--glow:rgba(255,69,0,0.4)" onclick="pickEmotion(6)">
-    <span>&#9650;</span><span class="emo-name" style="color:#FF4500">ANGER</span>
-  </button>
-  <button class="emo-btn" data-emo="ANTICIPATION" style="border-color:#FF8C00;--glow:rgba(255,140,0,0.4)" onclick="pickEmotion(7)">
-    <span>&#10148;</span><span class="emo-name" style="color:#FF8C00">HOPE</span>
-  </button>
-</div>
-
-<!-- Time slider -->
-<div id="time-wrap">
-  <span id="time-label-l">BABY</span>
-  <input type="range" id="time-slider" min="0" max="60" value="30" oninput="setAge(this.value)">
-  <span id="time-label-r">ELDER</span>
+<!-- UNLOCK MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <span class="modal-skill-icon" id="modalIcon"></span>
+    <h3 id="modalName"></h3>
+    <p id="modalDesc">Unlock this skill to write it into your creature's genome.</p>
+    <div class="modal-options">
+      <div class="modal-opt" onclick="unlockWith('biscuit')">
+        <span class="opt-left">&#127850; Pay with biscuits</span>
+        <span class="opt-cost" id="modalBiscuitCost"></span>
+      </div>
+      <div class="modal-opt" onclick="unlockWith('sft')">
+        <span class="opt-left">&#128142; Pay with SFT</span>
+        <span class="opt-cost">1 SFT</span>
+      </div>
+      <div class="modal-opt" onclick="unlockWith('crypto')">
+        <span class="opt-left">&#9939; Pay with crypto</span>
+        <span class="opt-cost">Connect wallet</span>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════
-//  ALiVE 2.0 — KIDS VERSION
-//  The creature speaks in SOUNDS and SHAPES.
-//  Only the fairy can translate.
-//  Only the fairy is the conscience.
-//  This is the engagement loop.
-// ═══════════════════════════════════════════════════════════════
+// Starfield
+(function(){
+  const c=document.getElementById('starfield'),x=c.getContext('2d');
+  let w,h,stars=[];
+  function resize(){w=c.width=c.offsetWidth;h=c.height=c.offsetHeight;stars=[];for(let i=0;i<120;i++)stars.push({x:Math.random()*w,y:Math.random()*h,r:Math.random()*1.5+.3,s:Math.random()*.3+.1,o:Math.random()})}
+  function draw(){x.clearRect(0,0,w,h);stars.forEach(s=>{s.o+=s.s*.01;let o=Math.abs(Math.sin(s.o))*.6+.2;x.beginPath();x.arc(s.x,s.y,s.r,0,Math.PI*2);x.fillStyle=`rgba(200,180,255,${o})`;x.fill()});requestAnimationFrame(draw)}
+  resize();draw();window.addEventListener('resize',resize);
+})();
 
-const canvas = document.getElementById('creature');
-const ctx = canvas.getContext('2d');
-let W, H;
-function resize() {
-  W = canvas.width = innerWidth;
-  H = canvas.height = innerHeight;
-}
-resize();
-addEventListener('resize', resize);
+// Wallet state
+let wallet={biscuits:12,sft:0,genome:3};
+let currentSkill=null;
 
-// ═══ EMOTION STATE ═══
-const EMOTIONS = [
-  { core:'JOY',          color:'#FFD700', r:255,g:215,b:0,   hz:440,  wave:'sine',
-    shapes:['circle','star','circle','star','circle'],
-    shapeChars:['●','✦','○','★','◉'],
-    sounds:{freq:440, freq2:554, freq3:659, type:'sine', lfo:6, lfoAmt:3, attack:0.02, decay:0.3, pattern:[1,0,1,0,1,1,0,1]},
-    translations:["It's laughing! See the circles? That's pure joy!",
-                   "Happy sounds! The round shapes mean it feels safe and warm.",
-                   "It's singing! Those stars are how it shows delight!",
-                   "Listen to that melody — it's doing its happy dance!"] },
-  { core:'TRUST',        color:'#7FFF00', r:127,g:255,b:0,   hz:330,  wave:'sine',
-    shapes:['oval','ring','oval','ring'],
-    shapeChars:['◎','◌','◎','◯','◎'],
-    sounds:{freq:330, freq2:392, freq3:494, type:'sine', lfo:2, lfoAmt:1, attack:0.1, decay:0.5, pattern:[1,0,0,1,0,0,1,0]},
-    translations:["Those rings mean trust. It's opening up to you.",
-                   "Soft and steady — it feels safe with you right now.",
-                   "Nested shapes. It's wrapping itself in comfort. It trusts you.",
-                   "That gentle hum means it's at peace. You've earned this."] },
-  { core:'FEAR',         color:'#8B00FF', r:139,g:0,  b:255, hz:880,  wave:'sawtooth',
-    shapes:['zigzag','triangle','zigzag','spike'],
-    shapeChars:['◇','△','⚡','▽','◇'],
-    sounds:{freq:880, freq2:932, freq3:740, type:'sawtooth', lfo:18, lfoAmt:15, attack:0.01, decay:0.15, pattern:[1,1,0,1,1,1,0,1]},
-    translations:["It's scared! Those jagged shapes — it's trembling!",
-                   "Hear that shaking? It's frightened. It needs comfort.",
-                   "Lightning shapes mean danger in its language. It's afraid.",
-                   "The fast sounds mean panic. Try something gentler."] },
-  { core:'SURPRISE',     color:'#00BFFF', r:0,  g:191,b:255, hz:660,  wave:'sine',
-    shapes:['burst','polygon','burst','spark'],
-    shapeChars:['✸','◆','✹','✧','✸'],
-    sounds:{freq:660, freq2:880, freq3:1100, type:'sine', lfo:0, lfoAmt:0, attack:0.005, decay:0.2, pattern:[1,0,0,0,1,0,0,0]},
-    translations:["WOAH! It didn't expect that! See the explosions?",
-                   "Surprise! Those bursting shapes mean 'what just happened?!'",
-                   "Sparkle shapes — it's amazed! Something caught its attention.",
-                   "That sudden sound? It's startled! But in a curious way."] },
-  { core:'SADNESS',      color:'#4169E1', r:65, g:105,b:225, hz:220,  wave:'sine',
-    shapes:['teardrop','droop','teardrop','curve'],
-    shapeChars:['◇','○','◦','◇','○'],
-    sounds:{freq:220, freq2:196, freq3:175, type:'sine', lfo:3, lfoAmt:2, attack:0.2, decay:1.0, pattern:[1,0,0,0,0,0,1,0]},
-    translations:["It's sad. Those falling shapes are tears in its language.",
-                   "Hear how slow and low that is? It's hurting inside.",
-                   "Drooping shapes. Heavy sounds. It needs you right now.",
-                   "The blue curves mean sorrow. Hold it. Don't leave."] },
-  { core:'DISGUST',      color:'#556B2F', r:85, g:107,b:47,  hz:150,  wave:'square',
-    shapes:['blob','warp','blob','squish'],
-    shapeChars:['◍','◎','◙','◍','◎'],
-    sounds:{freq:150, freq2:157, freq3:143, type:'square', lfo:7, lfoAmt:8, attack:0.05, decay:0.25, pattern:[1,1,1,0,1,1,1,0]},
-    translations:["Ewww! Those warped shapes mean it hates something!",
-                   "That buzzing sound — it's grossed out!",
-                   "Blobby shapes mean 'get it away from me!'",
-                   "It's disgusted. The ugly sounds are its way of saying NO."] },
-  { core:'ANGER',        color:'#FF4500', r:255,g:69, b:0,   hz:110,  wave:'sawtooth',
-    shapes:['spike','triangle','spike','bolt'],
-    shapeChars:['▲','✦','▼','▲','✦'],
-    sounds:{freq:110, freq2:117, freq3:1320, type:'sawtooth', lfo:25, lfoAmt:10, attack:0.005, decay:0.1, pattern:[1,1,1,1,1,1,1,1]},
-    translations:["ANGRY! Those spikes are RAGE in its language!",
-                   "That growl — it's furious! The sharp shapes are warnings!",
-                   "Red spikes everywhere. It's screaming. Something made it MAD.",
-                   "The demon feeds on this. See the aggressive shapes? Be careful."] },
-  { core:'ANTICIPATION', color:'#FF8C00', r:255,g:140,b:0,   hz:392,  wave:'triangle',
-    shapes:['arrow','spiral','arrow','helix'],
-    shapeChars:['➤','◎','➤','✧','➤'],
-    sounds:{freq:392, freq2:440, freq3:494, type:'triangle', lfo:4, lfoAmt:2, attack:0.05, decay:0.4, pattern:[1,0,1,1,0,1,1,1]},
-    translations:["It's excited about something! See the arrows pointing up?",
-                   "Rising sounds — it's hopeful! Looking forward to what's next.",
-                   "Spirals mean anticipation. It wants something. Badly.",
-                   "Building energy! Those arrows are pure hope and excitement."] }
-];
-
-let currentIdx = 0;
-let targetIdx = 0;
-let emotionBlend = 0; // 0-1 transition
-let lifeAge = 30;
-let soundEnabled = false;
-let audioCtx = null;
-
-// ═══ WEB AUDIO — creature's voice ═══
-let masterGain = null;
-let osc1 = null, osc2 = null, osc3 = null, lfo = null;
-let patternTimer = null;
-let patternStep = 0;
-
-function initAudio() {
-  if (audioCtx) return;
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  masterGain = audioCtx.createGain();
-  masterGain.gain.value = 0;
-  masterGain.connect(audioCtx.destination);
-
-  // 3 oscillators for rich creature voice
-  osc1 = audioCtx.createOscillator();
-  osc2 = audioCtx.createOscillator();
-  osc3 = audioCtx.createOscillator();
-
-  const gain1 = audioCtx.createGain(); gain1.gain.value = 0.15;
-  const gain2 = audioCtx.createGain(); gain2.gain.value = 0.08;
-  const gain3 = audioCtx.createGain(); gain3.gain.value = 0.05;
-
-  osc1.connect(gain1); gain1.connect(masterGain);
-  osc2.connect(gain2); gain2.connect(masterGain);
-  osc3.connect(gain3); gain3.connect(masterGain);
-
-  // LFO for vibrato/tremolo
-  lfo = audioCtx.createOscillator();
-  const lfoGain = audioCtx.createGain();
-  lfoGain.gain.value = 0;
-  lfo.connect(lfoGain);
-  lfoGain.connect(osc1.frequency);
-  lfo.lfoGain = lfoGain;
-
-  osc1.start(); osc2.start(); osc3.start(); lfo.start();
-
-  // Pattern — rhythmic voice
-  patternTimer = setInterval(playPatternStep, 180);
+function updateWallet(){
+  document.getElementById('wBiscuits').textContent=wallet.biscuits;
+  document.getElementById('wSft').textContent=wallet.sft;
+  document.getElementById('wGenome').textContent=wallet.genome;
 }
 
-function playPatternStep() {
-  if (!soundEnabled || !audioCtx) return;
-  const emo = EMOTIONS[currentIdx];
-  const s = emo.sounds;
-  const step = s.pattern[patternStep % s.pattern.length];
-  const t = audioCtx.currentTime;
+// Skill click
+document.querySelectorAll('.skill-card.locked').forEach(card=>{
+  card.addEventListener('click',()=>{
+    currentSkill=card;
+    const icon=card.querySelector('.skill-icon').textContent;
+    const name=card.querySelector('.skill-name').textContent;
+    const cost=parseInt(card.dataset.cost);
+    document.getElementById('modalIcon').textContent=icon;
+    document.getElementById('modalName').textContent='Unlock: '+name;
+    document.getElementById('modalBiscuitCost').textContent=cost+' biscuits';
+    document.getElementById('modal').classList.add('open');
+  });
+});
 
-  // Age modulation: young = faster, higher pitch. Old = slower, lower
-  const ageRatio = 1.0 + (30 - lifeAge) / 60 * 0.3; // young=1.15, old=0.85
+function closeModal(){document.getElementById('modal').classList.remove('open');currentSkill=null}
 
-  if (step) {
-    masterGain.gain.cancelScheduledValues(t);
-    masterGain.gain.setValueAtTime(0, t);
-    masterGain.gain.linearRampToValueAtTime(0.12 * ageRatio, t + s.attack);
-    masterGain.gain.linearRampToValueAtTime(0, t + s.attack + s.decay);
+function unlockWith(method){
+  if(!currentSkill)return;
+  const cost=parseInt(currentSkill.dataset.cost);
+  if(method==='biscuit'&&wallet.biscuits<cost){shakeWallet();return}
+  if(method==='sft'&&wallet.sft<1){shakeWallet();return}
 
-    // Frequency with age pitch shift
-    osc1.frequency.setValueAtTime(s.freq * ageRatio, t);
-    osc2.frequency.setValueAtTime(s.freq2 * ageRatio, t);
-    osc3.frequency.setValueAtTime(s.freq3 * ageRatio, t);
-    osc1.type = s.type;
-    osc2.type = s.type;
-    osc3.type = s.type === 'sawtooth' ? 'square' : 'sine'; // 3rd always softer
+  if(method==='biscuit')wallet.biscuits-=cost;
+  if(method==='sft')wallet.sft-=1;
+  wallet.genome+=1;
 
-    lfo.frequency.setValueAtTime(s.lfo, t);
-    lfo.lfoGain.gain.setValueAtTime(s.lfoAmt * ageRatio, t);
+  currentSkill.classList.remove('locked');
+  currentSkill.classList.add('unlocked');
+  // Remove click listener by cloning
+  const clone=currentSkill.cloneNode(true);
+  currentSkill.parentNode.replaceChild(clone,currentSkill);
+
+  updateWallet();
+  closeModal();
+
+  // Flash genome
+  const gv=document.getElementById('wGenome');
+  gv.style.textShadow='0 0 12px #00cc88';
+  setTimeout(()=>gv.style.textShadow='none',600);
+}
+
+function shakeWallet(){
+  const bar=document.querySelector('.wallet-bar');
+  bar.style.animation='shake .4s ease';
+  setTimeout(()=>bar.style.animation='',400);
+}
+
+// Close modal on overlay click
+document.getElementById('modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
+
+// Add shake keyframe
+const style=document.createElement('style');
+style.textContent='@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}';
+document.head.appendChild(style);
+
+/* ═══ CEREMONY LINK — unlocks after 30-day graduation ═══ */
+(function(){
+  var link = document.getElementById('ceremonyLink');
+  var lockMsg = document.getElementById('ceremonyLocked');
+  if (!link) return;
+
+  var graduated = localStorage.getItem('alive_fairy_graduation');
+  var boyBirth = parseInt(localStorage.getItem('alive_boy_birth') || '0', 10);
+  var girlBirth = parseInt(localStorage.getItem('alive_girl_birth') || '0', 10);
+  var oldestBirth = Math.min(boyBirth || Infinity, girlBirth || Infinity);
+  var daysAlive = oldestBirth < Infinity ? Math.floor((Date.now() - oldestBirth) / (24*60*60*1000)) : 0;
+  var hasJar = daysAlive >= 30 || graduated;
+
+  if (hasJar) {
+    link.href = '/alive/ceremony.html';
+    link.style.color = 'rgba(204,68,255,0.5)';
+    link.style.borderBottomColor = 'rgba(204,68,255,0.15)';
+    link.style.cursor = 'pointer';
+    link.style.pointerEvents = 'auto';
+    link.textContent = 'THE SOUL BINDING CEREMONY \u2720';
+    if (lockMsg) lockMsg.style.display = 'none';
   }
-  patternStep++;
-}
+})();
 
-function updatePatternSpeed() {
-  if (patternTimer) clearInterval(patternTimer);
-  const emo = EMOTIONS[currentIdx];
-  // Anger = fast (100ms), Sadness = slow (350ms), Joy = bouncy (160ms)
-  const speeds = { JOY:160, TRUST:280, FEAR:100, SURPRISE:200, SADNESS:350, DISGUST:180, ANGER:90, ANTICIPATION:140 };
-  const base = speeds[emo.core] || 180;
-  // Age: young = faster, old = slower
-  const ageMod = 1.0 + (lifeAge - 30) / 60 * 0.4;
-  patternTimer = setInterval(playPatternStep, base * ageMod);
-}
+/* ═══ DEV CHEAT — hold i-dot for 5 seconds ═══ */
+(function(){
+  var dot = document.getElementById('iDot');
+  if (!dot) return;
+  var holdTimer = null;
+  var holdStart = 0;
 
-// ═══ NAVI — fairy voice (Web Speech API) ═══
-let naviVoice = null;
-let bubbleTimer = null;
+  function startHold(e){
+    e.preventDefault();
+    holdStart = Date.now();
+    dot.style.transition = 'box-shadow 5s ease';
+    dot.style.boxShadow = '0 0 40px rgba(204,68,255,1), 0 0 80px rgba(204,68,255,0.8), 0 0 120px rgba(204,68,255,0.4)';
+    holdTimer = setTimeout(function(){
+      /* CHEAT ACTIVATED */
+      /* Free fairy */
+      localStorage.setItem('alive_fairy_freed', '1');
+      /* Fake 31-day creature birth */
+      var fakeBirth = Date.now() - (31 * 24 * 60 * 60 * 1000);
+      localStorage.setItem('alive_boy_birth', fakeBirth.toString());
+      if (localStorage.getItem('alive_girl_birth')){
+        localStorage.setItem('alive_girl_birth', fakeBirth.toString());
+      }
+      /* Clear graduation locks so ceremony can re-trigger */
+      localStorage.removeItem('alive_fairy_graduation');
+      localStorage.removeItem('alive_fairy_grad_dismissed');
+      /* Clear dead flags */
+      localStorage.removeItem('alive_boy_dead');
+      localStorage.removeItem('alive_girl_dead');
 
-function loadVoices() {
-  const v = speechSynthesis.getVoices();
-  naviVoice = v.find(x => x.lang === 'en-GB' && /female/i.test(x.name)) ||
-              v.find(x => x.lang === 'en-GB') ||
-              v.find(x => x.lang.startsWith('en') && /female/i.test(x.name)) ||
-              v.find(x => x.lang.startsWith('en')) || v[0];
-}
-if (speechSynthesis.onvoiceschanged !== undefined) speechSynthesis.onvoiceschanged = loadVoices;
-loadVoices();
+      /* Flash effect */
+      var flash = document.createElement('div');
+      flash.className = 'dev-flash';
+      document.body.appendChild(flash);
+      setTimeout(function(){ flash.remove(); }, 700);
 
-function naviSay(text) {
-  // Show bubble
-  const bubble = document.getElementById('bubble');
-  document.getElementById('bubble-text').textContent = text;
-  bubble.classList.add('show');
-  clearTimeout(bubbleTimer);
-  bubbleTimer = setTimeout(() => bubble.classList.remove('show'), Math.max(3500, text.length * 55));
+      /* Fairy chime sound */
+      try {
+        var ac = new (window.AudioContext || window.webkitAudioContext)();
+        if (ac.state === 'suspended') ac.resume();
+        var master = ac.createGain(); master.gain.value = 0.2; master.connect(ac.destination);
+        [523.25, 659.25, 783.99, 1046.50, 1318.51].forEach(function(f, i){
+          var o = ac.createOscillator(), g = ac.createGain();
+          o.type = 'triangle'; o.frequency.value = f;
+          var t = ac.currentTime + i * 0.1;
+          g.gain.setValueAtTime(0.4, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+          o.connect(g).connect(master); o.start(t); o.stop(t + 0.65);
+        });
+      } catch(e){}
 
-  // Speak
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  if (naviVoice) u.voice = naviVoice;
-  u.rate = 0.9;
-  u.pitch = 1.2;
-  u.volume = 0.8;
-  speechSynthesis.speak(u);
+      /* Fairy voice confirmation */
+      if (window.speechSynthesis){
+        setTimeout(function(){
+          try {
+            var voices = speechSynthesis.getVoices();
+            var voice = null;
+            ['Google UK English Female','Microsoft Zira','Samantha','Karen'].forEach(function(pref){
+              if (voice) return;
+              voices.forEach(function(v){ if (!voice && v.name.indexOf(pref) !== -1) voice = v; });
+            });
+            var u = new SpeechSynthesisUtterance('dev mode. everything is unlocked.');
+            if (voice) u.voice = voice;
+            u.pitch = 2.0; u.rate = 0.7; u.volume = 0.9; u.lang = 'en-GB';
+            speechSynthesis.speak(u);
+          } catch(e){}
+        }, 500);
+      }
 
-  // Fairy sparkle
-  const fairy = document.getElementById('fairy');
-  fairy.style.filter = 'drop-shadow(0 0 20px rgba(100,180,255,0.8))';
-  setTimeout(() => fairy.style.filter = 'drop-shadow(0 0 12px rgba(100,180,255,0.4))', 1500);
-}
+      /* Show confirmation text */
+      dot.style.transition = 'none';
+      dot.style.background = 'radial-gradient(circle, #fff 20%, #00ff88 50%, #00cc66 80%)';
+      dot.style.boxShadow = '0 0 30px rgba(0,255,136,1), 0 0 60px rgba(0,255,136,0.5)';
+      setTimeout(function(){
+        dot.style.transition = 'all 1s ease';
+        dot.style.background = '';
+        dot.style.boxShadow = '';
+      }, 2000);
 
-// ═══ FAIRY TAPPED — translate what the creature is saying ═══
-window.fairyTapped = function() {
-  if (!soundEnabled) {
-    toggleSound();
-    return;
-  }
-  const emo = EMOTIONS[currentIdx];
-  const pool = emo.translations;
-  const msg = pool[Math.floor(Math.random() * pool.length)];
-  naviSay(msg);
-};
-
-// ═══ PICK EMOTION ═══
-window.pickEmotion = function(idx) {
-  // Deactivate all, activate selected
-  document.querySelectorAll('.emo-btn').forEach((b,i) => b.classList.toggle('active', i === idx));
-  targetIdx = idx;
-  currentIdx = idx;
-  updatePatternSpeed();
-
-  // Fairy reacts to dangerous emotions
-  const emo = EMOTIONS[idx];
-  const danger = { JOY:0, TRUST:0, FEAR:0.3, SURPRISE:0.1, SADNESS:0.2, DISGUST:0.3, ANGER:0.7, ANTICIPATION:0.1 };
-  const d = danger[emo.core] || 0;
-
-  if (d > 0.5) {
-    // Conscience mode — fairy warns
-    const warnings = {
-      ANGER: ["Hey! Listen! I feel rage building. Be careful with this.",
-              "The creature is angry. The demon loves anger. Watch yourself.",
-              "Those spikes are dangerous. Don't let the anger take over."],
-      FEAR:  ["It's scared. And scared creatures do desperate things.",
-              "Fear... the demon feeds on fear too. Stay calm."]
-    };
-    const pool = warnings[emo.core] || ["Be careful with this emotion."];
-    setTimeout(() => naviSay(pool[Math.floor(Math.random() * pool.length)]), 500);
+    }, 5000);
   }
 
-  // Spawn shape burst
-  spawnShapeBurst(emo, 8);
-};
-
-// ═══ AGE ═══
-window.setAge = function(val) {
-  lifeAge = parseInt(val);
-  document.getElementById('age-num').textContent = lifeAge;
-  renderHearts();
-  updatePatternSpeed();
-
-  // Fairy comments on age extremes
-  if (lifeAge <= 5) {
-    setTimeout(() => naviSay("So tiny! Everything is new. It can barely make sounds yet."), 300);
-  } else if (lifeAge >= 55) {
-    setTimeout(() => naviSay("Old and wise. The sounds are slow but deep. Every note means something."), 300);
-  }
-};
-
-// ═══ SOUND TOGGLE ═══
-window.toggleSound = function() {
-  soundEnabled = !soundEnabled;
-  const btn = document.getElementById('sound-btn');
-  if (soundEnabled) {
-    initAudio();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    btn.textContent = 'SOUND ON';
-    btn.classList.add('active');
-    updatePatternSpeed();
-    setTimeout(() => naviSay("Hey... listen! I can hear it now. Tap me to understand what it's saying."), 500);
-  } else {
-    btn.textContent = 'TAP FOR SOUND';
-    btn.classList.remove('active');
-    if (masterGain) masterGain.gain.value = 0;
-    speechSynthesis.cancel();
-  }
-};
-
-// ═══ HEARTS ═══
-function renderHearts() {
-  let html = '';
-  for (let i = 0; i < 6; i++) {
-    const heartAge = (i + 1) * 10;
-    const cls = lifeAge >= heartAge ? '' : lifeAge >= heartAge - 5 ? 'half' : 'off';
-    html += `<svg class="ht ${cls}" viewBox="0 0 24 24"><path fill="#cc2222" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
-  }
-  document.getElementById('hearts').innerHTML = html;
-}
-renderHearts();
-
-// ═══ SHAPE PARTICLES — creature's language ═══
-function spawnShapeBurst(emo, count) {
-  for (let i = 0; i < count; i++) {
-    setTimeout(() => {
-      const el = document.createElement('div');
-      el.className = 'shape-particle';
-      el.textContent = emo.shapeChars[Math.floor(Math.random() * emo.shapeChars.length)];
-      el.style.color = emo.color;
-      el.style.textShadow = `0 0 8px ${emo.color}`;
-      el.style.fontSize = (16 + Math.random() * 24) + 'px';
-      el.style.left = (W * 0.3 + Math.random() * W * 0.4) + 'px';
-      el.style.top = (H * 0.3 + Math.random() * H * 0.2) + 'px';
-      document.body.appendChild(el);
-      setTimeout(() => el.remove(), 2800);
-    }, i * 80);
-  }
-}
-
-// Auto-spawn shapes periodically
-let shapeSpawnTimer = 0;
-
-// ═══ CREATURE RENDERING — the living blob ═══
-let creatureSize = 0;
-let creatureTargetSize = 1;
-let creaturePhase = 0;
-let breathPhase = 0;
-
-// Shape functions for each emotion
-function drawCreatureShape(emo, cx, cy, size, phase, intensity) {
-  const col = `rgba(${emo.r},${emo.g},${emo.b},`;
-  const t = phase;
-
-  // Core glow
-  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 1.5);
-  grad.addColorStop(0, col + '0.15)');
-  grad.addColorStop(0.5, col + '0.05)');
-  grad.addColorStop(1, 'transparent');
-  ctx.fillStyle = grad;
-  ctx.fillRect(cx - size * 2, cy - size * 2, size * 4, size * 4);
-
-  ctx.save();
-  ctx.translate(cx, cy);
-
-  switch(emo.core) {
-    case 'JOY': {
-      // Bouncing, pulsing circles — happy blob
-      const pulse = 1 + Math.sin(t * 3) * 0.08;
-      const bounce = Math.sin(t * 2) * size * 0.05;
-      ctx.translate(0, bounce);
-      for (let i = 3; i >= 0; i--) {
-        const r = size * (0.4 + i * 0.15) * pulse;
-        ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
-        ctx.fillStyle = col + (0.08 + i * 0.04) + ')';
-        ctx.fill();
-      }
-      // Sparkle dots orbiting
-      for (let i = 0; i < 6; i++) {
-        const a = t * 1.5 + i * Math.PI / 3;
-        const d = size * 0.7 + Math.sin(t * 4 + i) * size * 0.1;
-        ctx.beginPath();
-        ctx.arc(Math.cos(a) * d, Math.sin(a) * d, 3 + Math.sin(t * 5 + i) * 2, 0, Math.PI * 2);
-        ctx.fillStyle = col + '0.6)';
-        ctx.fill();
-      }
-      break;
-    }
-    case 'TRUST': {
-      // Smooth nested ovals — calm, steady breathing
-      const breathe = 1 + Math.sin(t * 1.2) * 0.05;
-      for (let i = 4; i >= 0; i--) {
-        ctx.beginPath();
-        ctx.ellipse(0, 0, size * (0.3 + i * 0.12) * breathe, size * (0.25 + i * 0.1) * breathe, 0, 0, Math.PI * 2);
-        ctx.fillStyle = col + (0.06 + i * 0.025) + ')';
-        ctx.fill();
-      }
-      break;
-    }
-    case 'FEAR': {
-      // Jagged, trembling shape
-      const shake = () => (Math.random() - 0.5) * size * 0.06;
-      const points = 12;
-      ctx.beginPath();
-      for (let i = 0; i <= points; i++) {
-        const a = (i / points) * Math.PI * 2;
-        const r = size * (0.4 + Math.sin(a * 3 + t * 8) * 0.15) + shake();
-        const x = Math.cos(a) * r + shake();
-        const y = Math.sin(a) * r + shake();
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.fillStyle = col + '0.12)';
-      ctx.fill();
-      ctx.strokeStyle = col + '0.3)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      break;
-    }
-    case 'SURPRISE': {
-      // Exploding polygon
-      const expand = 1 + Math.sin(t * 4) * 0.15;
-      const sides = 8;
-      ctx.beginPath();
-      for (let i = 0; i <= sides; i++) {
-        const a = (i / sides) * Math.PI * 2 + t * 0.5;
-        const r = size * 0.5 * expand * (i % 2 === 0 ? 1 : 0.6);
-        i === 0 ? ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-      }
-      ctx.closePath();
-      ctx.fillStyle = col + '0.12)';
-      ctx.fill();
-      // Radiating lines
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * Math.PI * 2 + t;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * size * 0.35, Math.sin(a) * size * 0.35);
-        ctx.lineTo(Math.cos(a) * size * (0.6 + Math.sin(t * 3 + i) * 0.2), Math.sin(a) * size * (0.6 + Math.sin(t * 3 + i) * 0.2));
-        ctx.strokeStyle = col + '0.2)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
-      break;
-    }
-    case 'SADNESS': {
-      // Drooping oval with falling teardrops
-      const droop = Math.sin(t * 0.8) * 0.03;
-      ctx.beginPath();
-      ctx.ellipse(0, size * 0.05, size * 0.4, size * 0.5 + Math.sin(t) * size * 0.02, droop, 0, Math.PI * 2);
-      ctx.fillStyle = col + '0.1)';
-      ctx.fill();
-      // Tears falling
-      for (let i = 0; i < 4; i++) {
-        const tx = (i - 1.5) * size * 0.2;
-        const ty = (t * 40 + i * 60) % (size * 1.5) - size * 0.3;
-        const tearSize = 4 - ty / size * 2;
-        if (tearSize > 0) {
-          ctx.beginPath();
-          ctx.arc(tx, ty, tearSize, 0, Math.PI * 2);
-          ctx.fillStyle = col + (0.3 - ty / size * 0.2) + ')';
-          ctx.fill();
-        }
-      }
-      break;
-    }
-    case 'DISGUST': {
-      // Warped, pulsing blob
-      const points = 20;
-      ctx.beginPath();
-      for (let i = 0; i <= points; i++) {
-        const a = (i / points) * Math.PI * 2;
-        const warp = Math.sin(a * 3 + t * 4) * 0.25 + Math.sin(a * 7 + t * 2) * 0.1;
-        const r = size * (0.4 + warp);
-        i === 0 ? ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-      }
-      ctx.closePath();
-      ctx.fillStyle = col + '0.12)';
-      ctx.fill();
-      break;
-    }
-    case 'ANGER': {
-      // Aggressive spikes radiating
-      const spikes = 16;
-      ctx.beginPath();
-      for (let i = 0; i <= spikes; i++) {
-        const a = (i / spikes) * Math.PI * 2;
-        const isSpike = i % 2 === 0;
-        const pulse = 1 + Math.sin(t * 8) * 0.1;
-        const r = isSpike ? size * 0.7 * pulse : size * 0.25;
-        i === 0 ? ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-      }
-      ctx.closePath();
-      ctx.fillStyle = col + '0.15)';
-      ctx.fill();
-      ctx.strokeStyle = col + '0.4)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      // Inner rage core
-      const rageR = size * 0.15 * (1 + Math.sin(t * 12) * 0.3);
-      ctx.beginPath();
-      ctx.arc(0, 0, rageR, 0, Math.PI * 2);
-      ctx.fillStyle = col + '0.5)';
-      ctx.fill();
-      break;
-    }
-    case 'ANTICIPATION': {
-      // Upward spiraling arrows
-      const pulse = 1 + Math.sin(t * 3) * 0.05;
-      ctx.beginPath();
-      ctx.arc(0, 0, size * 0.35 * pulse, 0, Math.PI * 2);
-      ctx.fillStyle = col + '0.1)';
-      ctx.fill();
-      // Rising arrows
-      for (let i = 0; i < 5; i++) {
-        const a = t * 2 + i * Math.PI * 2 / 5;
-        const d = size * 0.35 + (t * 30 + i * 30) % (size * 0.5);
-        const x = Math.cos(a) * d * 0.5;
-        const y = -d * 0.8;
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(-Math.PI / 2 + Math.sin(t + i) * 0.3);
-        ctx.beginPath();
-        ctx.moveTo(8, 0); ctx.lineTo(-4, -5); ctx.lineTo(-4, 5); ctx.closePath();
-        ctx.fillStyle = col + (0.4 - d / size * 0.3) + ')';
-        ctx.fill();
-        ctx.restore();
-      }
-      break;
-    }
+  function endHold(){
+    if (holdTimer){ clearTimeout(holdTimer); holdTimer = null; }
+    dot.style.transition = 'box-shadow 0.3s ease';
+    dot.style.boxShadow = '';
   }
 
-  ctx.restore();
-}
-
-// ═══ FAIRY POSITION — floats near the creature ═══
-let fairyPhase = 0;
-function updateFairyPosition() {
-  fairyPhase += 0.02;
-  const fx = W * 0.78 + Math.sin(fairyPhase * 1.3) * 30;
-  const fy = H * 0.32 + Math.sin(fairyPhase * 0.9) * 20;
-  const fairy = document.getElementById('fairy');
-  fairy.style.left = fx + 'px';
-  fairy.style.top = fy + 'px';
-
-  // Bubble position near fairy
-  const bubble = document.getElementById('bubble');
-  bubble.style.left = (fx - 250) + 'px';
-  bubble.style.top = (fy + 10) + 'px';
-}
-
-// ═══ MAIN RENDER LOOP ═══
-let lastTime = 0;
-function render(now) {
-  requestAnimationFrame(render);
-  const dt = Math.min((now - lastTime) / 1000, 0.05);
-  lastTime = now;
-
-  creaturePhase += dt * 2;
-  breathPhase += dt;
-
-  // Clear
-  ctx.fillStyle = 'rgba(5,2,8,0.15)';
-  ctx.fillRect(0, 0, W, H);
-
-  // Creature center
-  const cx = W * 0.5;
-  const cy = H * 0.38;
-  const baseSize = Math.min(W, H) * 0.28;
-  // Age affects size: young = small, old = large
-  const ageScale = 0.6 + (lifeAge / 60) * 0.5;
-  const size = baseSize * ageScale;
-
-  const emo = EMOTIONS[currentIdx];
-  drawCreatureShape(emo, cx, cy, size, creaturePhase, emotionBlend);
-
-  // Mood shape characters display
-  const moodEl = document.getElementById('mood-shapes');
-  const chars = emo.shapeChars;
-  const displayIdx = Math.floor(creaturePhase * 2) % chars.length;
-  moodEl.textContent = chars[(displayIdx + 0) % chars.length] + ' ' + chars[(displayIdx + 1) % chars.length] + ' ' + chars[(displayIdx + 2) % chars.length];
-  moodEl.style.color = emo.color;
-  moodEl.style.textShadow = `0 0 12px ${emo.color}`;
-
-  // Auto-spawn shapes
-  shapeSpawnTimer -= dt;
-  if (shapeSpawnTimer <= 0) {
-    spawnShapeBurst(emo, 1);
-    shapeSpawnTimer = 1.5 + Math.random() * 2;
-  }
-
-  updateFairyPosition();
-}
-requestAnimationFrame(render);
-
-// ═══ STARTUP ═══
-setTimeout(() => {
-  document.getElementById('title').style.opacity = '1';
-}, 300);
-
-// Position fairy initially
-updateFairyPosition();
+  dot.addEventListener('mousedown', startHold);
+  dot.addEventListener('touchstart', startHold);
+  dot.addEventListener('mouseup', endHold);
+  dot.addEventListener('mouseleave', endHold);
+  dot.addEventListener('touchend', endHold);
+  dot.addEventListener('touchcancel', endHold);
+})();
 </script>
 </body>
 </html>
