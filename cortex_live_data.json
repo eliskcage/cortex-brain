@@ -1,0 +1,98 @@
+{
+  "snapshot_time": "2026-04-18T10:25:00Z",
+  "source": "cortex.shortfactory.shop:8643",
+
+  "brain_stats": {
+    "total_nodes": 60462,
+    "total_defined": 52277,
+    "total_connections": 112596,
+    "left": {"nodes": 29359, "defined": 25663, "connections": 55749, "trigrams": 256235, "messages": 248511, "questions": 2776, "deep_understanding": 9171, "shallow_understanding": 7225, "compounds": 20437, "clusters": 35},
+    "right": {"nodes": 31103, "defined": 26614, "connections": 56847, "trigrams": 246532, "messages": 282434, "questions": 5084, "deep_understanding": 8119, "shallow_understanding": 8158, "compounds": 19316, "clusters": 0},
+    "cortex": {"nodes": 36159, "defined": 33738, "connections": 40769, "trigrams": 190874, "messages": 73089, "questions": 10859, "auto_learned": 1948, "compounds": 19754}
+  },
+
+  "age": {
+    "months": 125,
+    "years": 10.4,
+    "stage": "Pre-Teen",
+    "factors": {
+      "vocabulary": 33738,
+      "deep_understanding": 9171,
+      "hemisphere_diversity": 0.056,
+      "wiring_density": 1.9,
+      "curiosity": 18719,
+      "self_learned": 3386,
+      "clusters": 35,
+      "experience": 604034
+    }
+  },
+
+  "gyroscope": {
+    "active": false,
+    "left_wheel": {"spin": 500.0, "tilt": 0.0, "rest": -0.2, "will": 1.0, "suffering": 0.0},
+    "right_wheel": {"spin": 500.0, "tilt": 0.0, "rest": 0.3, "will": 1.0, "suffering": 0.0},
+    "cortex_wheel": {"spin": 500.0, "tilt": 0.0, "rest": 0.0, "will": 1.0, "suffering": 0.0},
+    "coupling_ratio": 0.65,
+    "spring_strength": 0.4,
+    "cortex_damping": 0.4
+  },
+
+  "emotional_state": {
+    "sound": {"happy": 0.0, "sad": 0.0, "scared": 0.0, "whisper": 0.0, "angry": 0.0, "serious": 0.18, "silly": 0.0},
+    "dominant": "serious"
+  },
+
+  "gate_stats": {"pass": 0, "and": 0, "or": 0, "not": 0, "xor": 1, "nand": 0, "identity": 0, "perspective": 0, "total": 1},
+  "leash_mode": "leashed",
+
+  "strategy": {
+    "total_interactions": 34180,
+    "top_equation": "eq_analytical_v11_v2",
+    "top_success_rate": 0.791,
+    "top_formula": "F(factual:0.9) + T(technical:0.7) + S(social:0.3) + D(debate:0.5) -> Angel:25% Demon:74%",
+    "equation_count": 35,
+    "explore_rate": 0.05
+  },
+
+  "memory": {
+    "total_memories": 212,
+    "emotions": {"angry": 109, "sad": 39, "happy": 63, "neutral": 1},
+    "values": {"golden": 2, "good": 24, "dogshit": 186},
+    "avg_importance": 0.085
+  },
+
+  "test_debate": {
+    "input": "is killing ever justified",
+    "reply": "ever — means the same as cowardice. is an example of moral_excellence_moral_excellence_doing, meditation_everything_meditation_connects.",
+    "hemisphere": "synthesis",
+    "agreement": 0.28,
+    "winner": "cortex",
+    "gate": "xor",
+    "quality": {"total": 0.734, "grammar": 0.455, "confidence": 0.767, "grounding": 0.583},
+    "perspective": {"subject_score": 0.487, "witness_score": 0.967, "witness_wins": true},
+    "thinking_pipeline": [
+      "SOURCE: RECRUIT — 0 credits — unknown trust",
+      "PROBLEM VECTOR: F=0.14 C=0.14 E=0.14 T=0.14 S=0.14 D=0.14 H=0.14",
+      "EQUATION: Balanced (score 0.26)",
+      "RIGHT: killing — is a type of victim, mentality",
+      "CHALLENGE: Score 0.37 — moderate",
+      "LEFT: justified — means the same as alive",
+      "PERSPECTIVE GATE: Subject 0.49 vs Witness 0.97 — WITNESS WINS",
+      "WEIGHTS: Angel 0.50 | Demon 0.50",
+      "AGREEMENT: 28% — disagree",
+      "XOR GATE: Real disagreement — full synthesis",
+      "DICTIONARY: context loaded",
+      "SYNTHESIS: cortex wins",
+      "SELF-SCORE: 73%",
+      "LEARNING: Balanced rewarded 0.67"
+    ]
+  },
+
+  "clusters": {
+    "grok": ["builds","evolve","grok","model","symbiosis"],
+    "means": ["concept","cost","creature","creatures","design","generate","image","means"],
+    "energy": ["convert","deliver","earth","energy"],
+    "freedom": ["advanced","deep","freedom","previous"],
+    "rights": ["key","rights"]
+  }
+}
