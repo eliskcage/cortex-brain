@@ -54,6 +54,7 @@ from fork_manager import ForkManager
 from frontal_cortex import FrontalCortex
 from truth_engine import TruthEngine
 from playbook_engine import PlaybookEngine
+from means_will import MeansWill
 
 PINATA_JWT = os.environ.get('PINATA_JWT', 'YOUR_PINATA_JWT')  # REDACTED — set via environment variable
 
@@ -87,6 +88,16 @@ cortex.truth_engine = truth_engine
 playbook = PlaybookEngine()
 cortex.playbook = playbook
 print('[CORTEX] Dashboard modules + Playbook Engine loaded')
+
+# --- MEANS_WILL — Free Will Engine (Euler's Wheel) ---
+try:
+    means_will = MeansWill()
+    means_will.load_teeth_from_brain(cortex_own.data.get('nodes', {}))
+    cortex.means_will = means_will
+    print('[CORTEX] MEANS_WILL loaded — %d teeth, %d bounces' % (len(means_will.teeth), means_will.total_bounces))
+except Exception as e:
+    print('[CORTEX] MEANS_WILL FAILED: %s' % str(e))
+    means_will = None
 
 # --- Memory Store (persistent emotional memory — DuckDB, local, zero latency) ---
 from memory_store import MemoryStore
@@ -650,6 +661,16 @@ class OnlineHandler(http.server.SimpleHTTPRequestHandler):
                 'leash_mode': cortex.leash_mode,
                 'gyroscope_active': cortex.gyroscope.active,
             })
+
+        elif self.path == '/api/means-will':
+            data = {'ok': False, 'error': 'MEANS_WILL not loaded'}
+            if means_will:
+                summary = means_will.get_state_summary()
+                summary['teeth'] = means_will.teeth[:32]
+                summary['gravity_wells'] = means_will.gravity_wells[:5]
+                summary['collisions'] = means_will.collisions[-20:]
+                data = {'ok': True, 'wheel': summary}
+            self._json_response(data)
 
         elif self.path == '/api/brain-live':
             # Handle toggle commands piggybacked on brain-live

@@ -185,6 +185,7 @@ class CortexMind:
         self.truth_engine = None
         self.playbook = None  # PlaybookEngine — set by online_server.py
         self.strategy_engine = None  # StrategyEngine — set by online_server.py
+        self.means_will = None       # MeansWill — free will engine, set by online_server.py
 
         # Hedonic state (set by online_server.py before each process() call)
         # When hz < FREQ_MODE_THRESHOLD: use frequency resolver (lower Hz reply wins)
@@ -408,6 +409,57 @@ class CortexMind:
             qtype = self.detect_type(user_msg)
             thinking_log.append({'stage': 'detect', 'label': 'TYPE', 'text': qtype, 'data': {}})
 
+        # === MEANS_WILL — Free Will Engine (Euler's Wheel) ===
+        means_will_hits = []
+        if self.means_will:
+            try:
+                print('[MEANS_WILL] FIRING — %d teeth, msg: %s' % (len(self.means_will.teeth), user_msg[:40]))
+                self.means_will.load_teeth_from_message(user_msg)
+                # Map cortex Hz (200-800) to pain_pleasure Hz (0.5-14.0)
+                pp_hz = max(0.5, min(14.0, 0.5 + (self.hedonic_hz - 200) * 13.5 / 600.0))
+                if pp_hz < 1.0: _emo = 'ecstasy'
+                elif pp_hz < 2.0: _emo = 'pleasure'
+                elif pp_hz < 3.0: _emo = 'ease'
+                elif pp_hz < 4.0: _emo = 'neutral'
+                elif pp_hz < 5.5: _emo = 'sadness'
+                elif pp_hz < 7.0: _emo = 'loneliness'
+                elif pp_hz < 9.0: _emo = 'disgust'
+                elif pp_hz < 11.0: _emo = 'fear'
+                elif pp_hz < 13.0: _emo = 'rage'
+                else: _emo = 'panic'
+                self.means_will.update_from_hedonic(pp_hz, _emo)
+                means_will_hits = self.means_will.step()
+                print('[MEANS_WILL] Step done — %d hits, %s %.1fHz, adr=%.2f cort=%.2f' % (
+                    len(means_will_hits), _emo, pp_hz, self.means_will.adrenaline, self.means_will.cortisol))
+                if means_will_hits:
+                    hit_words = ', '.join('%s(%s)' % (h['word'], h['ball']) for h in means_will_hits[:5])
+                    thinking_log.append({
+                        'stage': 'means_will', 'label': 'EULER WHEEL',
+                        'text': 'Hits: %s | %s %.1fHz | adr=%.2f cort=%.2f%s' % (
+                            hit_words, _emo, pp_hz,
+                            self.means_will.adrenaline, self.means_will.cortisol,
+                            ' FROZEN' if self.means_will.frozen else ''),
+                        'data': self.means_will.get_state_summary()
+                    })
+                else:
+                    thinking_log.append({
+                        'stage': 'means_will', 'label': 'EULER WHEEL',
+                        'text': 'No hits this step | %s %.1fHz' % (_emo, pp_hz),
+                        'data': self.means_will.get_state_summary()
+                    })
+            except Exception as e:
+                print('[MEANS_WILL] Step error: %s' % e)
+
+        # MEANS_WILL TOOTH INJECTION — force hot word into cortex input
+        # When a ball hits a tooth, that word gets seeded into what the hemispheres see.
+        # This makes the fixed point physically impossible — the starting word is different.
+        wheel_word = ''
+        if means_will_hits:
+            wheel_word = means_will_hits[0]['word']
+            if wheel_word and wheel_word not in user_msg.lower():
+                user_msg = user_msg + ' ' + wheel_word
+                print('[MEANS_WILL] INJECTED "%s" into input' % wheel_word)
+
         if qtype == 'identity':
             thinking_log.append({'stage': 'identity', 'label': 'IDENTITY', 'text': 'Self-identity question recognised', 'data': {}})
             reply = self._identity_response(user_msg)
@@ -630,6 +682,12 @@ class CortexMind:
         else:
             left_weight, right_weight = self._calc_weights(qtype, left_reply, right_reply)
 
+        # MEANS_WILL hemisphere bias — the wheel tilts the table
+        if self.means_will:
+            mw_left, mw_right = self.means_will.get_hemisphere_bias()
+            left_weight = max(0.01, left_weight + mw_left)
+            right_weight = max(0.01, right_weight + mw_right)
+
         thinking_log.append({
             'stage': 'weights', 'label': 'WEIGHTS',
             'text': 'Angel %.2f | Demon %.2f' % (left_weight, right_weight),
@@ -827,6 +885,8 @@ class CortexMind:
         winner_brain.self_reinforce(final, quality)
         debate['quality'] = quality
         debate['strategy'] = strategy_meta
+        if self.means_will:
+            debate['means_will'] = self.means_will.get_state_summary()
 
         q_total = quality.get('total', 0) if isinstance(quality, dict) else 0
         q_grammar = quality.get('grammar', 0) if isinstance(quality, dict) else 0
@@ -868,6 +928,14 @@ class CortexMind:
                 multi_parts = [' '.join(sentences[:mid]), ' '.join(sentences[mid:])]
         debate['multi_parts'] = multi_parts
         debate['thinking_log'] = thinking_log
+
+        # MEANS_WILL — place gravity toward words the cortex used + save state
+        if self.means_will and final:
+            for word in final.lower().split()[:10]:
+                word = word.strip('.,!?;:\'"()[]{}')
+                if len(word) > 2:
+                    self.means_will.place_gravity(word)
+            self.means_will._save_state()
 
         self._log_debate(debate)
 
@@ -1126,6 +1194,18 @@ class CortexMind:
 
             # Cortex gets a small inherent bonus for being the synthesiser
             cortex_total *= 1.1
+
+            # MEANS_WILL topic weights — hot teeth bias which reply wins
+            if self.means_will:
+                tw = self.means_will.get_topic_weights()
+                for word, weight in tw.items():
+                    if weight > 0.15:
+                        if angel_said and word in angel_said.lower():
+                            angel_total += weight * 0.1
+                        if demon_said and word in demon_said.lower():
+                            demon_total += weight * 0.1
+                        if cortex_reply and word in cortex_reply.lower():
+                            cortex_total += weight * 0.1
 
             # Pick the winner
             scores = [
@@ -1499,6 +1579,13 @@ class CortexMind:
             try:
                 self.ramble_cycle += 1
 
+                # Reload wheel teeth every 50 cycles so new words get picked up
+                if self.means_will and self.ramble_cycle % 50 == 0:
+                    try:
+                        self.means_will.load_teeth_from_brain(self.cortex.data.get('nodes', {}))
+                    except Exception:
+                        pass
+
                 # ═══ CROSS-POLLINATION — every 3rd and 4th cycle ═══
                 # Cycle % 5 == 2: demon+cortex → angel
                 # Cycle % 5 == 4: angel+cortex → demon
@@ -1574,6 +1661,14 @@ class CortexMind:
                 else:
                     qtype = self.detect_type(question)
 
+                # MEANS_WILL — run wheel during internal monologue
+                if self.means_will:
+                    try:
+                        self.means_will.load_teeth_from_message(question)
+                        self.means_will.step()
+                    except Exception:
+                        pass
+
                 # Process through both hemispheres
                 left_reply = self.left.process(question)
                 right_reply = self.right.process(question)
@@ -1584,6 +1679,12 @@ class CortexMind:
                     right_weight = ramble_strategy['right_weight']
                 else:
                     left_weight, right_weight = self._calc_weights(qtype, left_reply, right_reply)
+
+                # MEANS_WILL hemisphere bias in ramble
+                if self.means_will:
+                    mw_left, mw_right = self.means_will.get_hemisphere_bias()
+                    left_weight = max(0.01, left_weight + mw_left)
+                    right_weight = max(0.01, right_weight + mw_right)
 
                 # Agreement
                 left_words = set(left_reply.lower().split()) if left_reply else set()

@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STUDIO 3 — Shape Language</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #050508;
+  color: #e2e8f0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#psi-field {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  transition: background 1.2s ease;
+}
+
+#zone-pip {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  z-index: 10;
+  transition: background 0.6s ease, box-shadow 0.6s ease;
+}
+.zone-ALIVE { background: #22c55e; box-shadow: 0 0 8px #22c55e80; }
+.zone-DEAD { background: #475569; box-shadow: none; }
+.zone-COLLAPSE { background: #ef4444; box-shadow: 0 0 12px #ef444480; }
+.zone-TERMINAL { background: #3b82f6; box-shadow: 0 0 8px #3b82f680; }
+
+#psi-readout {
+  position: fixed;
+  top: 14px;
+  left: 16px;
+  font-size: 10px;
+  font-family: monospace;
+  color: #475569;
+  z-index: 10;
+  letter-spacing: 1px;
+}
+
+#stream {
+  flex: 1;
+  overflow-y: auto;
+  padding: 60px 24px 240px 24px;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.msg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.msg-human { align-items: flex-end; }
+.msg-cortex { align-items: flex-start; }
+
+.msg-bubble {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.msg-human .msg-bubble {
+  background: #1a1a2e;
+  border: 1px solid #ffffff10;
+  color: #e2e8f0;
+}
+
+.msg-cortex .msg-bubble {
+  background: #0a0a14;
+  border: 1px solid #ffffff08;
+  color: #cbd5e1;
+}
+
+/* Colour bar — shape language per word */
+.msg-colours {
+  display: flex;
+  gap: 2px;
+  padding: 0 4px;
+  height: 6px;
+  max-width: 85%;
+}
+
+.msg-colours .word-pip {
+  flex: 1;
+  border-radius: 3px;
+  min-width: 4px;
+  max-width: 20px;
+}
+
+/* Direction arrows on message bubbles */
+.msg-bubble .tagged-word {
+  display: inline;
+  border-bottom: 2px solid transparent;
+  transition: border-color 0.2s;
+}
+.msg-bubble .tagged-word.dir-me { border-bottom-color: #3b82f680; }
+.msg-bubble .tagged-word.dir-him { border-bottom-color: #22c55e80; }
+.msg-bubble .tagged-word.dir-universe { border-bottom-color: #a855f780; }
+
+.msg-thinking .msg-bubble {
+  background: #0a0a14;
+  border: 1px solid #ffffff06;
+}
+.msg-thinking .msg-bubble::after {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  background: #475569;
+  border-radius: 50%;
+  animation: pulse 1s ease infinite;
+  margin-left: 4px;
+}
+@keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+.msg-zone {
+  font-size: 9px;
+  font-family: monospace;
+  letter-spacing: 1px;
+  padding: 0 6px;
+  color: #475569;
+}
+
+/* ========================================
+   INPUT AREA — word chips + text box
+   ======================================== */
+
+#input-area {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  padding: 0 24px 20px 24px;
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Word chips — tappable words above the input */
+#word-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 4px;
+  min-height: 0;
+  transition: min-height 0.2s ease;
+}
+
+#word-chips.active { min-height: 36px; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+  border: 1px solid #ffffff10;
+  background: #0f0f18;
+  color: #94a3b8;
+}
+
+.chip:hover { border-color: #ffffff20; }
+
+/* Emotion states */
+.chip.emo-none { background: #0f0f18; color: #94a3b8; }
+.chip.emo-joy { background: #14532d20; color: #4ade80; border-color: #22c55e40; }
+.chip.emo-anger { background: #7f1d1d20; color: #f87171; border-color: #ef444440; }
+.chip.emo-sadness { background: #1e1b4b20; color: #818cf8; border-color: #6366f140; }
+.chip.emo-fear { background: #451a0320; color: #fb923c; border-color: #f9731640; }
+.chip.emo-wonder { background: #3b076420; color: #c084fc; border-color: #a855f740; }
+.chip.emo-love { background: #50072720; color: #fb7185; border-color: #f4366240; }
+.chip.emo-calm { background: #0c4a6e20; color: #38bdf8; border-color: #0ea5e940; }
+.chip.emo-truth { background: #fefce820; color: #fde047; border-color: #eab30840; }
+
+/* Direction indicator on chip */
+.chip-dir {
+  font-size: 9px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff08;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.chip.dir-me .chip-dir { background: #3b82f630; color: #60a5fa; }
+.chip.dir-him .chip-dir { background: #22c55e30; color: #4ade80; }
+.chip.dir-universe .chip-dir { background: #a855f730; color: #c084fc; }
+
+/* Tag picker popup */
+#tag-picker {
+  display: none;
+  position: fixed;
+  z-index: 20;
+  background: #0f0f1a;
+  border: 1px solid #ffffff15;
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 8px 32px #00000080;
+}
+
+#tag-picker.show { display: flex; flex-direction: column; gap: 4px; }
+
+.picker-row {
+  display: flex;
+  gap: 4px;
+}
+
+.picker-btn {
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid #ffffff10;
+  background: #0a0a14;
+  color: #94a3b8;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.picker-btn:hover { background: #1a1a2e; border-color: #ffffff20; }
+.picker-btn.active { border-color: #ffffff30; background: #1a1a3e; }
+
+.picker-label {
+  font-size: 9px;
+  color: #475569;
+  padding: 2px 4px 0;
+  letter-spacing: 1px;
+}
+
+#input-box {
+  width: 100%;
+  background: #0f0f18;
+  border: 1px solid #ffffff10;
+  border-radius: 20px;
+  padding: 14px 20px;
+  font-size: 15px;
+  color: #e2e8f0;
+  font-family: inherit;
+  outline: none;
+  resize: none;
+  max-height: 120px;
+  line-height: 1.5;
+  transition: border-color 0.4s ease;
+}
+#input-box:focus { border-color: #ffffff20; }
+#input-box::placeholder { color: #334155; }
+
+#stream::-webkit-scrollbar { width: 4px; }
+#stream::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+#stream::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+
+<div id="psi-field"></div>
+<div id="zone-pip" class="zone-ALIVE"></div>
+<div id="psi-readout">p:-- f:-- zone:--</div>
+
+<div id="stream"></div>
+
+<div id="input-area">
+  <div id="word-chips"></div>
+  <textarea id="input-box" rows="1" placeholder="speak in shapes..." autocomplete="off"></textarea>
+</div>
+
+<div id="tag-picker">
+  <div class="picker-label">EMOTION</div>
+  <div class="picker-row">
+    <div class="picker-btn" data-emo="none">raw</div>
+    <div class="picker-btn" data-emo="joy">joy</div>
+    <div class="picker-btn" data-emo="anger">anger</div>
+    <div class="picker-btn" data-emo="sadness">sad</div>
+    <div class="picker-btn" data-emo="fear">fear</div>
+    <div class="picker-btn" data-emo="wonder">wonder</div>
+    <div class="picker-btn" data-emo="love">love</div>
+    <div class="picker-btn" data-emo="calm">calm</div>
+    <div class="picker-btn" data-emo="truth">truth</div>
+  </div>
+  <div class="picker-label">DIRECTION</div>
+  <div class="picker-row">
+    <div class="picker-btn" data-dir="none">-</div>
+    <div class="picker-btn" data-dir="me">me</div>
+    <div class="picker-btn" data-dir="him">him</div>
+    <div class="picker-btn" data-dir="universe">all</div>
+  </div>
+</div>
+
+<script>
+var SERVER = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+  ? 'http://localhost:8643'
+  : 'https://cortex.shortfactory.shop';
+
+var stream = document.getElementById('stream');
+var inputBox = document.getElementById('input-box');
+var wordChips = document.getElementById('word-chips');
+var psiField = document.getElementById('psi-field');
+var zonePip = document.getElementById('zone-pip');
+var psiReadout = document.getElementById('psi-readout');
+var tagPicker = document.getElementById('tag-picker');
+var chatInFlight = false;
+var prevPsi = null;
+var cortexSid = 'studio3-' + Date.now();
+
+// Word tag state: { word, emotion, direction }
+var wordTags = [];
+var activeChipIdx = -1;
+
+// Emotions and their psi modifiers
+var EMOTIONS = {
+  none:    { p: 0,    f: 0,    hue: 0,   label: '' },
+  joy:     { p: 0.3,  f: 0.2,  hue: 140, label: 'joy' },
+  anger:   { p: -0.3, f: 0.4,  hue: 0,   label: 'anger' },
+  sadness: { p: -0.1, f: -0.3, hue: 240, label: 'sadness' },
+  fear:    { p: -0.2, f: 0.3,  hue: 30,  label: 'fear' },
+  wonder:  { p: 0.2,  f: 0.3,  hue: 280, label: 'wonder' },
+  love:    { p: 0.4,  f: 0.1,  hue: 340, label: 'love' },
+  calm:    { p: 0.2,  f: -0.2, hue: 200, label: 'calm' },
+  truth:   { p: 0.5,  f: 0,    hue: 55,  label: 'truth' }
+};
+
+var DIR_SYMBOLS = { none: '', me: '←', him: '→', universe: '↕' };
+
+// ========================================
+// SHAPE LANGUAGE
+// ========================================
+
+function wordToShape(word) {
+  var vowels = 'aeiou';
+  var syllables = 0, prevVowel = false, tags = [];
+  var w = word.toLowerCase().replace(/[^a-z]/g, '');
+  if (!w) return null;
+  for (var i = 0; i < w.length; i++) {
+    var isV = vowels.indexOf(w[i]) >= 0;
+    if (isV && !prevVowel) syllables++;
+    prevVowel = isV;
+    tags.push(isV);
+  }
+  syllables = Math.max(syllables, 1);
+  var p = tags.reduce(function(a, t) { return a + (t ? 1 : 0); }, 0) / tags.length;
+  return { word: word, sides: syllables, tags: tags, p: p, n: 1 - p };
+}
+
+function computePsiTagged(tags) {
+  if (!tags.length) return { p: 0.5, n: 0.5, f: 0, words: [] };
+  var shapes = [];
+  var totalP = 0;
+  tags.forEach(function(t) {
+    var shape = wordToShape(t.word);
+    if (!shape) return;
+    var emo = EMOTIONS[t.emotion] || EMOTIONS.none;
+    shape.p = Math.max(0, Math.min(1, shape.p + emo.p * 0.3));
+    shape.n = 1 - shape.p;
+    shape.emotion = t.emotion;
+    shape.direction = t.direction;
+    shape.emoMod = emo;
+    totalP += shape.p;
+    shapes.push(shape);
+  });
+  if (!shapes.length) return { p: 0.5, n: 0.5, f: 0, words: [] };
+  var avgP = totalP / shapes.length;
+  var unique = {};
+  tags.forEach(function(t) { unique[t.word.toLowerCase()] = true; });
+  var f = Object.keys(unique).length / tags.length;
+  return { p: avgP, n: 1 - avgP, f: f, words: shapes };
+}
+
+function psiToColour(p, f) {
+  var hue = Math.round(p * 200 + 10);
+  var sat = Math.round(30 + f * 50);
+  var lit = Math.round(20 + f * 25 + p * 15);
+  return 'hsl(' + hue + ',' + sat + '%,' + lit + '%)';
+}
+
+function shapeToColour(shape) {
+  if (!shape) return '#0f0f18';
+  if (shape.emotion && shape.emotion !== 'none') {
+    var emo = EMOTIONS[shape.emotion];
+    var sat = Math.round(40 + shape.p * 30);
+    var lit = Math.round(25 + shape.p * 20);
+    return 'hsl(' + emo.hue + ',' + sat + '%,' + lit + '%)';
+  }
+  return psiToColour(shape.p, 0.5);
+}
+
+function psiToEmotion(p, f, dp) {
+  if (f > 0.8 && p > 0.6) return 'curious';
+  if (f > 0.8 && p < 0.4) return 'agitated';
+  if (f < 0.3 && p > 0.6) return 'calm';
+  if (f < 0.3 && p < 0.4) return 'withdrawn';
+  if (dp > 0.1) return 'rising';
+  if (dp < -0.1) return 'falling';
+  return 'seeking';
+}
+
+function classifyZone(p, f, dp, df) {
+  if (Math.abs(dp) < 0.01 && Math.abs(df) < 0.05 && f < 0.2) return 'DEAD';
+  if (p < 0.4 && f > 1.0) return 'COLLAPSE';
+  if (p > 0.9 && Math.abs(dp) < 0.02 && Math.abs(df) < 0.05) return 'TERMINAL';
+  return 'ALIVE';
+}
+
+// ========================================
+// AMBIENT
+// ========================================
+
+function updateField(psi) {
+  var col = psiToColour(psi.p, psi.f);
+  psiField.style.background = 'radial-gradient(ellipse at 50% 80%, ' + col.replace(')', ',0.08)') + ' 0%, transparent 60%)';
+}
+
+function updateReadout(psi, zone) {
+  var dp = prevPsi ? (psi.p - prevPsi.p) : 0;
+  var emotion = psiToEmotion(psi.p, psi.f, dp);
+  psiReadout.textContent = 'p:' + psi.p.toFixed(2) + ' f:' + psi.f.toFixed(2) + ' ' + zone.toLowerCase() + ' / ' + emotion;
+  zonePip.className = 'zone-' + zone;
+}
+
+// ========================================
+// WORD CHIPS — type, then tag
+// ========================================
+
+function syncChips() {
+  var text = inputBox.value;
+  var words = text.split(/\s+/).filter(function(w) { return w.length > 0; });
+
+  // Sync wordTags array with current words
+  var newTags = words.map(function(w, i) {
+    // Try to match existing tag
+    if (i < wordTags.length && wordTags[i].word === w) return wordTags[i];
+    return { word: w, emotion: 'none', direction: 'none' };
+  });
+  wordTags = newTags;
+
+  renderChips();
+}
+
+function renderChips() {
+  wordChips.innerHTML = '';
+  if (!wordTags.length) {
+    wordChips.classList.remove('active');
+    return;
+  }
+  wordChips.classList.add('active');
+
+  wordTags.forEach(function(tag, idx) {
+    var chip = document.createElement('div');
+    chip.className = 'chip emo-' + tag.emotion;
+    if (tag.direction !== 'none') chip.className += ' dir-' + tag.direction;
+
+    var label = document.createTextNode(tag.word);
+    chip.appendChild(label);
+
+    if (tag.direction !== 'none') {
+      var dirSpan = document.createElement('span');
+      dirSpan.className = 'chip-dir';
+      dirSpan.textContent = DIR_SYMBOLS[tag.direction];
+      chip.appendChild(dirSpan);
+    }
+
+    chip.addEventListener('click', function(e) {
+      e.stopPropagation();
+      openPicker(idx, chip);
+    });
+
+    wordChips.appendChild(chip);
+  });
+
+  // Update psi from tagged words
+  var psi = computePsiTagged(wordTags);
+  updateField(psi);
+  var dp = prevPsi ? psi.p - prevPsi.p : 0;
+  var df = prevPsi ? psi.f - prevPsi.f : 0;
+  updateReadout(psi, classifyZone(psi.p, psi.f, dp, df));
+}
+
+// ========================================
+// TAG PICKER
+// ========================================
+
+function openPicker(idx, chipEl) {
+  activeChipIdx = idx;
+  var tag = wordTags[idx];
+
+  // Position near chip
+  var rect = chipEl.getBoundingClientRect();
+  tagPicker.style.left = Math.min(rect.left, window.innerWidth - 260) + 'px';
+  tagPicker.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+  tagPicker.style.top = 'auto';
+  tagPicker.classList.add('show');
+
+  // Highlight active buttons
+  tagPicker.querySelectorAll('.picker-btn').forEach(function(btn) {
+    btn.classList.remove('active');
+    if (btn.dataset.emo === tag.emotion) btn.classList.add('active');
+    if (btn.dataset.dir === tag.direction) btn.classList.add('active');
+  });
+}
+
+function closePicker() {
+  tagPicker.classList.remove('show');
+  activeChipIdx = -1;
+}
+
+tagPicker.addEventListener('click', function(e) {
+  var btn = e.target.closest('.picker-btn');
+  if (!btn) return;
+  e.stopPropagation();
+
+  // Cortex correction mode
+  if (correctionTarget) {
+    var tag = correctionTarget.tag;
+    var el = correctionTarget.el;
+    var oldEmo = tag.emotion;
+
+    if (btn.dataset.emo !== undefined) {
+      tag.emotion = btn.dataset.emo;
+      fetch(SERVER + '/api/emotion-correct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word: tag.word, old_emotion: oldEmo, new_emotion: btn.dataset.emo })
+      }).catch(function() {});
+    }
+    if (btn.dataset.dir !== undefined) {
+      tag.direction = btn.dataset.dir;
+    }
+    el.className = 'tagged-word';
+    if (tag.direction && tag.direction !== 'none') el.className += ' dir-' + tag.direction;
+    if (tag.emotion && tag.emotion !== 'none') {
+      el.style.color = shapeToColour({ p: 0.6, emotion: tag.emotion, emoMod: EMOTIONS[tag.emotion] });
+    } else {
+      el.style.color = '';
+    }
+    correctionTarget = null;
+    closePicker();
+    return;
+  }
+
+  // Human chip tagging mode
+  if (activeChipIdx < 0) return;
+  if (btn.dataset.emo !== undefined) {
+    wordTags[activeChipIdx].emotion = btn.dataset.emo;
+  }
+  if (btn.dataset.dir !== undefined) {
+    wordTags[activeChipIdx].direction = btn.dataset.dir;
+  }
+  renderChips();
+  closePicker();
+});
+
+document.addEventListener('click', function(e) {
+  if (!tagPicker.contains(e.target)) closePicker();
+});
+
+// Cortex word correction — tap his word, pick the RIGHT emotion
+var correctionTarget = null;
+
+function openCortexPicker(spanEl, tag) {
+  correctionTarget = { el: spanEl, tag: tag };
+  var rect = spanEl.getBoundingClientRect();
+  tagPicker.style.left = Math.min(rect.left, window.innerWidth - 260) + 'px';
+  tagPicker.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+  tagPicker.style.top = 'auto';
+  tagPicker.classList.add('show');
+
+  tagPicker.querySelectorAll('.picker-btn').forEach(function(btn) {
+    btn.classList.remove('active');
+    if (btn.dataset.emo === tag.emotion) btn.classList.add('active');
+    if (btn.dataset.dir === tag.direction) btn.classList.add('active');
+  });
+
+  // Override picker click for correction mode
+  activeChipIdx = -999;
+}
+
+
+// ========================================
+// MESSAGE RENDERING
+// ========================================
+
+function addMessage(text, who, psi, zone, tags) {
+  var msg = document.createElement('div');
+  msg.className = 'msg msg-' + who;
+
+  var colours = document.createElement('div');
+  colours.className = 'msg-colours';
+  if (psi && psi.words) {
+    psi.words.forEach(function(shape) {
+      var pip = document.createElement('div');
+      pip.className = 'word-pip';
+      pip.style.background = shapeToColour(shape);
+      var tip = shape.word + ' [p:' + shape.p.toFixed(2) + ']';
+      if (shape.emotion && shape.emotion !== 'none') tip += ' ' + shape.emotion;
+      if (shape.direction && shape.direction !== 'none') tip += ' ' + DIR_SYMBOLS[shape.direction];
+      pip.title = tip;
+      colours.appendChild(pip);
+    });
+  }
+
+  var bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+
+  // Render tagged words — tappable for both human and cortex
+  if (tags && tags.length) {
+    tags.forEach(function(t, i) {
+      var span = document.createElement('span');
+      span.className = 'tagged-word';
+      if (t.direction && t.direction !== 'none') span.className += ' dir-' + t.direction;
+      if (t.emotion && t.emotion !== 'none') {
+        span.style.color = shapeToColour({ p: 0.6, emotion: t.emotion, emoMod: EMOTIONS[t.emotion] });
+      }
+      span.textContent = t.word;
+      // Cortex words are tappable for correction
+      if (who === 'cortex') {
+        span.style.cursor = 'pointer';
+        span.dataset.idx = i;
+        span.dataset.word = t.word;
+        span.dataset.emotion = t.emotion || 'none';
+        span.dataset.direction = t.direction || 'none';
+        span.addEventListener('click', function(e) {
+          e.stopPropagation();
+          openCortexPicker(span, tags[i]);
+        });
+      }
+      bubble.appendChild(span);
+      if (i < tags.length - 1) bubble.appendChild(document.createTextNode(' '));
+    });
+  } else {
+    bubble.textContent = text;
+  }
+
+  if (who === 'cortex' && zone) {
+    var zl = document.createElement('div');
+    zl.className = 'msg-zone';
+    zl.textContent = zone;
+    msg.appendChild(zl);
+  }
+
+  if (who === 'human') {
+    msg.appendChild(bubble);
+    msg.appendChild(colours);
+  } else {
+    msg.appendChild(colours);
+    msg.appendChild(bubble);
+  }
+
+  stream.appendChild(msg);
+  stream.scrollTop = stream.scrollHeight;
+}
+
+function addThinking() {
+  var msg = document.createElement('div');
+  msg.className = 'msg msg-cortex msg-thinking';
+  msg.id = 'thinking-msg';
+  var bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.textContent = 'thinking';
+  msg.appendChild(bubble);
+  stream.appendChild(msg);
+  stream.scrollTop = stream.scrollHeight;
+}
+
+function removeThinking() {
+  var el = document.getElementById('thinking-msg');
+  if (el) el.remove();
+}
+
+// ========================================
+// SEND
+// ========================================
+
+async function send() {
+  var text = inputBox.value.trim();
+  if (!text || chatInFlight) return;
+
+  var tags = wordTags.slice();
+  var psi = computePsiTagged(tags);
+  var dp = prevPsi ? psi.p - prevPsi.p : 0;
+  var df = prevPsi ? psi.f - prevPsi.f : 0;
+  var zone = classifyZone(psi.p, psi.f, dp, df);
+
+  addMessage(text, 'human', psi, null, tags);
+  inputBox.value = '';
+  wordTags = [];
+  wordChips.innerHTML = '';
+  wordChips.classList.remove('active');
+  chatInFlight = true;
+  closePicker();
+
+  addThinking();
+
+  // Build shape metadata for cortex
+  var shapeMeta = tags.map(function(t) {
+    return { word: t.word, emotion: t.emotion, direction: t.direction };
+  }).filter(function(t) { return t.emotion !== 'none' || t.direction !== 'none'; });
+
+  try {
+    var intent = detectIntent(text);
+    var res = await fetch(SERVER + '/api/chat-cortex', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: text,
+        intent: intent,
+        session_id: cortexSid,
+        psi: { p: psi.p, n: psi.n, f: psi.f },
+        shape_tags: shapeMeta
+      })
+    });
+    var data = await res.json();
+    removeThinking();
+
+    var reply = data.response || data.reply || '';
+    var replyTags = data.reply_tags || reply.split(/\s+/).filter(Boolean).map(function(w) {
+      return { word: w, emotion: 'none', direction: 'none' };
+    });
+    var replyPsi = computePsiTagged(replyTags);
+    var replyZone = (data.debate && data.debate.alive_zone) || classifyZone(replyPsi.p, replyPsi.f, replyPsi.p - psi.p, replyPsi.f - psi.f);
+
+    addMessage(reply, 'cortex', replyPsi, replyZone, replyTags);
+    prevPsi = replyPsi;
+    updateField(replyPsi);
+    updateReadout(replyPsi, replyZone);
+
+  } catch (e) {
+    removeThinking();
+    addMessage('(connection lost)', 'cortex', null, 'DEAD', null);
+  }
+
+  chatInFlight = false;
+}
+
+function detectIntent(text) {
+  var t = text.trim().toLowerCase();
+  if (t.endsWith('?') || /^(who|what|when|where|why|how|is|are|do|does|can|could|would|should|will)\b/.test(t)) return 'question';
+  if (/^(do|make|create|build|show|tell|give|find|get|stop|start|run|set|explain|describe|list|write|read|play|think|learn|remember|forget)\b/.test(t)) return 'command';
+  return 'statement';
+}
+
+// ========================================
+// INPUT EVENTS
+// ========================================
+
+var chipDebounce = null;
+inputBox.addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+  clearTimeout(chipDebounce);
+  chipDebounce = setTimeout(syncChips, 150);
+});
+
+inputBox.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    send();
+  }
+});
+
+// ========================================
+// POLL
+// ========================================
+
+async function pollAlive() {
+  try {
+    var res = await fetch(SERVER + '/api/brain-live', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    var data = await res.json();
+    if (data && data.alive_zone) zonePip.className = 'zone-' + data.alive_zone;
+    if (data && data.psi && !wordTags.length) updateField(data.psi);
+  } catch (e) {}
+}
+
+setInterval(pollAlive, 8000);
+pollAlive();
+inputBox.focus();
+
+// ========================================
+// EULER'S WHEEL — MEANS_WILL VISUALISER
+// ========================================
+
+(function() {
+  // Floating WHEEL button
+  var wheelBtn = document.createElement('div');
+  wheelBtn.textContent = 'WHEEL';
+  wheelBtn.style.cssText = 'position:fixed;top:10px;right:10px;background:#1a1a2e;color:#7dd3fc;border:1px solid #ffffff20;border-radius:8px;padding:8px 16px;cursor:pointer;font:12px monospace;z-index:9999;user-select:none;';
+  wheelBtn.onmouseover = function() { this.style.borderColor = '#7dd3fc'; };
+  wheelBtn.onmouseout = function() { this.style.borderColor = '#ffffff20'; };
+  document.body.appendChild(wheelBtn);
+
+  // Modal overlay
+  var modal = document.createElement('div');
+  modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10000;overflow-y:auto;';
+  modal.innerHTML = '<div id="wheel-panel" style="max-width:700px;margin:40px auto;background:#0a0a14;border:1px solid #ffffff15;border-radius:12px;padding:24px;font:13px monospace;color:#e2e8f0;"></div>';
+  document.body.appendChild(modal);
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.style.display = 'none'; });
+
+  wheelBtn.addEventListener('click', async function() {
+    var panel = document.getElementById('wheel-panel');
+    panel.innerHTML = '<div style="color:#666">Loading wheel...</div>';
+    modal.style.display = 'block';
+    try {
+      var res = await fetch(SERVER + '/api/means-will', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      var data = await res.json();
+      if (!data.ok) { panel.innerHTML = '<div style="color:#f87171">Wheel not loaded</div>'; return; }
+      var w = data.wheel;
+      var html = '<div style="color:#7dd3fc;font-size:16px;margin-bottom:12px">EULER\'S WHEEL — MEANS_WILL</div>';
+
+      // Balls
+      html += '<div style="margin-bottom:16px">';
+      (w.balls || []).forEach(function(b) {
+        var col = b.name === 'WILL' ? '#facc15' : b.name === 'FEAR' ? '#ef4444' : '#60a5fa';
+        html += '<span style="color:' + col + ';margin-right:16px">' + b.name + ' spd:' + b.speed + ' nrg:' + b.energy + '</span>';
+      });
+      html += '</div>';
+
+      // State
+      html += '<div style="margin-bottom:16px;color:#94a3b8">';
+      html += 'Emotion: <span style="color:#f59e0b">' + (w.emotion || '?') + '</span> | ';
+      html += 'Adrenaline: ' + (w.adrenaline || 0) + ' | Cortisol: ' + (w.cortisol || 0);
+      if (w.frozen) html += ' | <span style="color:#ef4444">FROZEN</span>';
+      html += ' | Bounces: ' + (w.bounces || 0) + ' | Will acts: ' + (w.will_actions || 0);
+      html += '</div>';
+
+      // Teeth — circular layout as a grid
+      html += '<div style="font-size:11px;margin-bottom:16px">';
+      html += '<div style="color:#7dd3fc;margin-bottom:6px">TEETH (32 slots)</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+      (w.teeth || []).forEach(function(t) {
+        var hot = t.interest > 0.3;
+        var bg = hot ? '#1e3a5f' : '#111827';
+        var border = hot ? '#3b82f6' : '#ffffff10';
+        var barW = Math.round(t.interest * 100);
+        var aff = t.affinity > 0.2 ? 'L' : (t.affinity < -0.2 ? 'R' : '-');
+        var affCol = aff === 'L' ? '#34d399' : (aff === 'R' ? '#f87171' : '#666');
+        html += '<div style="background:' + bg + ';border:1px solid ' + border + ';border-radius:4px;padding:3px 6px;min-width:80px">';
+        html += '<div style="color:#e2e8f0;font-weight:' + (hot ? 'bold' : 'normal') + '">' + t.word + '</div>';
+        html += '<div style="height:3px;background:#1e293b;margin:2px 0;border-radius:2px"><div style="height:100%;width:' + barW + '%;background:#3b82f6;border-radius:2px"></div></div>';
+        html += '<div style="font-size:9px;color:#64748b">sz:' + t.size.toFixed(1) + ' <span style="color:' + affCol + '">' + aff + '</span></div>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+
+      // Recent collisions
+      if (w.collisions && w.collisions.length) {
+        html += '<div style="color:#7dd3fc;margin-bottom:6px">RECENT HITS</div>';
+        html += '<div style="font-size:11px;color:#94a3b8">';
+        w.collisions.slice(-10).reverse().forEach(function(c) {
+          var col = c.ball === 'WILL' ? '#facc15' : c.ball === 'FEAR' ? '#ef4444' : '#60a5fa';
+          html += '<span style="color:' + col + '">' + c.ball + '</span> hit <span style="color:#e2e8f0">' + c.word + '</span> | ';
+        });
+        html += '</div>';
+      }
+
+      // Hot teeth
+      if (w.hot_teeth && w.hot_teeth.length) {
+        html += '<div style="margin-top:12px;color:#f59e0b">HOT: ';
+        w.hot_teeth.forEach(function(h) {
+          html += h.word + '(' + h.interest + ') ';
+        });
+        html += '</div>';
+      }
+
+      panel.innerHTML = html;
+    } catch (e) {
+      panel.innerHTML = '<div style="color:#f87171">Error: ' + e.message + '</div>';
+    }
+  });
+})();
+</script>
+</body>
+</html>
