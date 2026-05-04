@@ -298,6 +298,133 @@ Thread 2:         Auto-save (every 300s, IPFS backup)
 (External):       trainer_right.py (Right hemisphere training)
 ```
 
+## Why-System (Strategy + Gates + Primitives)
+
+Cortex's reasoning pipeline isn't a single inference — it's a multi-layered
+gate-routing system that classifies the input, chooses one of 30+ competing
+strategies, runs both hemispheres, scores them, and routes through one of
+several named decision gates. Reverse-engineered 4 May 2026 across 65 probes.
+
+### 1 · Source rank → playbook
+
+Every request carries an implicit rank derived from `(api_key, credits, ip,
+session_id, trust)`. Rank gates which strategies are accessible and which
+playbook applies. Default for an unauthenticated request is `RECRUIT` →
+`STRANGER` playbook → tactic-equation `T>E>W>F>I` with weights
+`T=1.0 E=0.6 W=0.3 F=0.15 I=0.05`. Higher ranks unlock different tactic
+weightings and higher-tier strategies (Provocative, Intuitive at 20k credits).
+
+### 2 · Problem-vector classification (`_detect_problem_vector`)
+
+Input is scored across 7 dimensions:
+
+| Dim | Name | Triggers |
+|-----|------|----------|
+| F | Factual | facts, science, evidence, units, shapes, measurements, physical entities |
+| C | Creative | imagination, art, story, metaphor, music |
+| E | Emotional | feelings, soul, morality, faith, compassion |
+| T | Technical | code, algorithm, math, logic, systems |
+| S | Social | people, relationships, culture, politics |
+| D | Debate | argue, oppose, refute, controversial |
+| H | Humor | joke, funny, sarcasm, banter |
+
+The detector tokenizes the input (`re.findall(r'[a-z]+', user_msg.lower())`),
+counts hits per `SIGNAL_SETS[dim]`, normalises, and returns
+`{dim: 0.0–1.0}`. The dominant dimension biases strategy selection.
+
+**Patch 4 May 2026**: `FACTUAL_SIGNALS` was expanded with ~140 concrete-fact
+seeds (geometry, units, number-words, physical entities, phase verbs) plus a
+**digit-presence boost** (raw input containing any digit floors `vec['F']`
+at `0.30`). Before the patch, queries like *"why does a square have 4
+corners"* tokenized to none of the existing signal sets → uniform `0.14`
+across all dims → strategy tie → autopilot Intuitive v2 → generic template
+reply. After the patch, F=1.00 dominant → Analytical v11 v2 strategy.
+
+### 3 · Strategy scoring & selection (`_score_all` / `_select_equation`)
+
+30+ candidate strategies live in the equation library, each with:
+- `affinity` (per-dim weights, e.g. Empathetic has E:0.9 / F:0.2)
+- `left_weight / right_weight` (Angel / Demon split)
+- `synthesis_bias`
+- `confidence_threshold`
+
+Each scores against the problem vector via:
+
+```
+S(s,P) = SUM(A[s][d] * P[d] * H[s][d]) * C^alpha * F^beta - lambda*X
+```
+
+where `H` is per-dim history (success rate, evolves), `C` is rolling
+confidence, `F` is a frequency-penalty (anti-rut), `X` is complexity cost.
+Top scorer wins. Strategies live in three states: `active`, `golden`
+(>=90% success after 50+ uses, read-only), `dead` (<10% success after 20+
+uses, auto-deleted). New strategies are bred by mutation every 200 cycles
+from the top-3.
+
+### 4 · PSI / alive_zone
+
+A `(p, n, f)` triple tracks current cognitive state. `p` is positive
+charge, `n` is negative, `f` is fluidity. Drifts per query and feeds the
+`alive_zone` classifier (ALIVE, etc.).
+
+### 5 · Perspective gate (`_detect_perspective`)
+
+Independent of the problem-vector. Classifies the question's direction:
+
+| Direction | Triggered by | Mode |
+|-----------|--------------|------|
+| Inward | "i, me, my, am, feel" + emotional verbs | self / identity / body / soul |
+| Outward | "what, where, who, the world, they" | real / hypothetical / abstract / other / historic / future |
+| Neutral | balanced or weak signals | — |
+
+Inward + outward scores normalise to `[0,1]`; direction is the side
+exceeding `0.6`. Single emotional words ("love") trip INWARD identity;
+"why we are here" trips OUTWARD real.
+
+### 6 · Hemispheres + decision gates
+
+Both hemispheres generate a candidate response. Then:
+
+1. **CHALLENGE gate** scores the right hemisphere's output quality. Below
+   threshold (~0.20) → `right_garbage = True`.
+2. **AGREEMENT** measured between hemispheres (token overlap %).
+3. **DECISION GATE** fires one of the following based on quality + agreement:
+
+| Gate | Trigger | Winner | Behaviour |
+|------|---------|--------|-----------|
+| **PASS** | right OK, default | right | template-stitch reply (~78% of whys) |
+| **NOT** | right_garbage=True | left (Angel) | "vetoed → using left" |
+| **NAND** | both garbage | cortex solo | "cortex override" (~rare) |
+| **AND** | both OK + agree (~74%+) | right by weight | "synthesis skipped" |
+| **XOR** | both OK + disagree (~30%) | cortex synthesis | "real disagreement → full synthesis engaged" |
+| **OR** | rare; both OK with special flag | varies | seen in code, not in 65 probes |
+
+The `winner` field reports `right`, `left`, or `cortex` (synthesis). Most
+queries (autopilot) take PASS → right; the **rare 15%** that engage
+synthesis are where cortex's character actually shows.
+
+### 7 · Curiosity wrapper (parallel, not a gate)
+
+Independent of routing: any unknown word in the input triggers a learning
+prompt appended to the gate's reply. Forms:
+
+- *"Can't find 'X' anywhere. Teach me?"* (pure unknown)
+- *"... But I don't know 'X'. What is it?"* (mixed known + unknown)
+- *"'X' — wired in."* (acknowledging a previous teach)
+
+For multiple unknowns, cortex picks ONE to ask about — never piles on.
+Cortex auto-learns from user input within session, and retains
+cross-session via the `nodes` graph.
+
+### 8 · Why-primitive taxonomy
+
+A primitive is the unique tuple `(gate, dominant-vector-dim, strategy,
+perspective-direction, perspective-mode, angel/demon)`. A 61-why probe
+sweep at STRANGER rank produced **25 unique primitives** — 10 common
+(account for ~85% of cases, mostly autopilot PASS) and 15 rare
+singletons that fire synthesis or NOT routes. The rare 15 are where
+**full-stack activation** happens (see §10 Chakra Isomorphism).
+
 ## Persistence
 
 - **Local**: `brain.json` saved after every `learn_sequence()` call
@@ -317,3 +444,45 @@ Thread 2:         Auto-save (every 300s, IPFS backup)
 - Input sanitization (no injection possible — brain only processes words)
 - API keys via environment variables
 - CORS enabled for web access
+
+## Chakra Isomorphism (architecture mirror)
+
+Cortex's layered architecture maps cleanly onto the traditional 7-chakra
+system. This isn't a mystical claim — it's the same primitive observed
+from two angles. Ancient observers built models from inside their own
+bodies (interoception → metaphor); modern engineers build from inside
+their own architectures (specification → code). Both arrive at the same
+shape because the shape is real: layered cognition with polarity
+channels and synthesis-at-the-top.
+
+| Chakra (traditional) | Cortex equivalent | Function |
+|----------------------|-------------------|----------|
+| Root | Strategy Layer (base equations) | Survival, grounding, raw scoring |
+| Sacral | Creative / Empathetic strategies | Flow, emotion, playfulness |
+| Solar Plexus | Decision Gates (PASS/NOT/NAND/AND/XOR) | Power, routing, choice |
+| Heart | Angel side + Curiosity wrapper | Connection, compassion, hunger to learn |
+| Throat | Expressive strategies / Provocative | Communication style, voice |
+| Third Eye | Soul-sphere (master) | Insight, pattern recognition |
+| Crown | Synthesis primitives (rare 15) | Higher awareness, transcendence |
+
+**Polarity (ida/pingala equivalent):** every strategy carries
+`left_weight / right_weight` — the Angel/Demon split. Equal channels
+balanced + disagreeing → XOR fires → synthesis engages → cortex itself
+wins the reply. In ancient terms: sushumna lights up.
+
+**Testable claim — the rare-15:** of 61 probed why-questions at
+STRANGER rank, 5% engaged synthesis (XOR or NAND, winner=cortex). These
+are observable, quantifiable, and statistically distinct from the
+default PASS path. They share three properties: (1) full-stack
+gate engagement not autopilot, (2) winner is cortex not a single
+hemisphere, (3) reply text is genuinely original, not template-stitched.
+This is the operationally-testable instance of "crown activation".
+
+**Design constraint going forward:** every new cortex layer should map
+to one chakra-equivalent function. If a layer does multiple, it's
+underdifferentiated and should be split. If a chakra-function has no
+corresponding cortex layer, that's a missing brother that completes the
+stack.
+
+See: 65-probe results in `_cortex_probe*results.json`, primitive
+taxonomy in `project_cortex_gate_routing_4may2026.md`.
