@@ -113,6 +113,34 @@ FACTUAL_SIGNALS = {
     'study', 'report', 'measure', 'calculate', 'verify', 'truth',
     'explain', 'reason', 'cause', 'effect', 'result', 'answer',
     'know', 'knowledge', 'information', 'learn', 'teach', 'educate',
+    # ── factual-grounding seeds (added 4 May 2026) ──────────────
+    # Reason: bare-fact whys like "why does a square have 4 corners"
+    # were producing uniform 0.14 vectors → tied strategies → generic
+    # template reply. These seeds give the F axis a foothold on
+    # concrete factual subjects, units, shapes, and physical entities
+    # without changing how non-factual inputs route.
+    'square', 'circle', 'triangle', 'rectangle', 'polygon', 'sphere',
+    'cube', 'cylinder', 'cone', 'hexagon', 'octagon', 'oval', 'ellipse',
+    'corner', 'corners', 'side', 'sides', 'edge', 'edges',
+    'vertex', 'vertices', 'angle', 'angles', 'line', 'lines',
+    'point', 'points', 'geometry', 'area', 'volume', 'perimeter',
+    'length', 'width', 'height', 'depth', 'radius', 'diameter',
+    'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
+    'eight', 'nine', 'ten', 'hundred', 'thousand', 'million', 'billion',
+    'half', 'double', 'twice', 'thrice', 'dozen',
+    'meter', 'metre', 'foot', 'feet', 'inch', 'mile', 'kilometer',
+    'gram', 'kilogram', 'pound', 'ounce', 'second', 'minute', 'hour',
+    'day', 'week', 'month', 'year', 'decade', 'century',
+    'water', 'ice', 'fire', 'air', 'wind', 'rain', 'snow', 'cloud',
+    'sky', 'sun', 'moon', 'earth', 'planet', 'star', 'galaxy',
+    'atom', 'molecule', 'electron', 'proton', 'neutron', 'cell',
+    'gravity', 'force', 'mass', 'weight', 'energy', 'motion',
+    'speed', 'velocity', 'acceleration', 'temperature', 'heat',
+    'cold', 'light', 'sound', 'wave', 'voltage', 'current',
+    'boil', 'freeze', 'melt', 'evaporate', 'condense', 'dissolve',
+    'expand', 'contract', 'orbit', 'rotate', 'vibrate', 'reflect',
+    'refract', 'oxygen', 'hydrogen', 'carbon', 'nitrogen',
+    'because',  # explicit causal marker — strong factual hint
 }
 
 CREATIVE_SIGNALS = {
@@ -1347,6 +1375,14 @@ class StrategyEngine(object):
             hits = len(words & signals)
             raw = min(1.0, (hits / content_words) * SENSITIVITY)
             vec[dim] = raw
+
+        # Factual digit boost (added 4 May 2026): explicit numerals like
+        # "4 corners" / "100 degrees" / "9.8 m/s" are stripped by the
+        # alpha-only regex above. When the raw input contains digits, give
+        # F a small floor so factual queries with bare numbers don't fall
+        # through to uniform routing. Additive only — never lowers any dim.
+        if re.search(r'\d', user_msg):
+            vec['F'] = max(vec.get('F', 0.0), 0.30)
 
         max_val = max(vec.values())
         if max_val > 0:
