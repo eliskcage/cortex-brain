@@ -486,3 +486,61 @@ stack.
 
 See: 65-probe results in `_cortex_probe*results.json`, primitive
 taxonomy in `project_cortex_gate_routing_4may2026.md`.
+
+---
+
+## v2 — Visual Cortex Appendage (May 2026)
+
+*Additive architecture extension. v1 pipeline (above) is unchanged.*
+
+### Where it docks
+
+A new module `src/visual_cortex.py` sits beside `cortex_brain.py` and feeds a 7th gate — **GLYPH** — into the existing router. GLYPH fires before PASS when a high-confidence visual signature is available:
+
+```
+   camera/video ─► LENS ─► KING ─► visual_cortex.py ─┐
+                                                     ▼
+                                            ┌────────────────┐
+                                            │  GATE ROUTER   │
+                                            │                │
+                                            │  GLYPH  (new)  │  ≤  50 ms   visual cache hit
+                                            │  PASS          │  ~300 ms    right hemisphere only
+                                            │  AND / OR /NOT │  ~400-700ms
+                                            │  XOR           │  ~1200 ms   full synthesis
+                                            │  NAND          │  ~600 ms    cortex solo
+                                            └────────────────┘
+```
+
+GLYPH only fires when LENS confidence ≥ 0.85 (HIGHFIVE band). Below that the v1 router runs exactly as in April 2026 — the visual rail can never make v1 slower.
+
+### Module map
+
+| New module / repo                                                                | Role                                                                  |
+|----------------------------------------------------------------------------------|-----------------------------------------------------------------------|
+| `src/visual_cortex.py` (Phase E)                                                 | Bridge: LENS+KING output → gate router signal                         |
+| [`eliskcage/meme-reasoning-engine`](https://github.com/eliskcage/meme-reasoning-engine) | KING runtime (external repo, Apache 2.0)                       |
+
+### Signals added to the router
+
+| Signal           | Type       | Source                  | Consumed by                                       |
+|------------------|------------|-------------------------|---------------------------------------------------|
+| `glyph_stream`   | `str[]`    | LENS                    | `cortex_brain.py` GLYPH gate; `pain_pleasure.py`  |
+| `meme_token`     | `str`      | KING                    | GLYPH gate cache lookup                           |
+| `confidence`     | `float`    | LENS                    | Band clamp (HIGHFIVE / SPEAK / WHISPER / silence) |
+| `grammar_op`     | `enum`     | KING                    | `playbook_engine.py` (DESPITE / IF-THEN flips)    |
+
+### Existing v1 modules touched
+
+None of these v1 modules are modified — they gain *additional* inputs only:
+
+| v1 module             | What it gains from v2                                              |
+|-----------------------|--------------------------------------------------------------------|
+| `cortex_brain.py`     | GLYPH gate; new signal source from `visual_cortex.py`              |
+| `pain_pleasure.py`    | 8-glyph genome runs alongside the 17-state hedonic engine          |
+| `playbook_engine.py`  | Grammar operators map onto reactive tactic flips                   |
+| `strategy_engine.py`  | Visual hostility / intimacy signals feed strategy meta             |
+| `frontal_cortex.py`   | Attention focuses on the spotlight region LENS is currently watching |
+
+### Full v2 specification
+
+See [VISUAL_CORTEX_V2.md](VISUAL_CORTEX_V2.md) for the LENS 8-glyph genome, compound signatures, KING grammar operators, intensity tiers, demographics/violence/intimacy/kung-fu gates, and the Phase A→E roadmap.
