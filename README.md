@@ -134,6 +134,138 @@ The right hemisphere ("the Demon") now has **real emotional range**. When it's a
 
 ---
 
+## v2 — Visual Cortex Appendage (May 2026)
+
+**The brain grew an eye.**
+
+v1 was a word-only mind: hemispheres argue in language, the gate router classifies challenge, full synthesis only fires when needed. It works — but text is a slow substrate. A meme is faster than a sentence. A glyph is faster than a meme.
+
+v2 adds a **visual cortex appendage** that docks into the existing gate router as a new fast-path signal. It is not a replacement for the v1 word brain — the v1 pipeline (described below) still runs every conversation. v2 is a parallel organ that lets the cortex *see* and reason in compressed visual symbols before language even spools up.
+
+### v1 → v2 at a glance
+
+```
+v1 (April 2026)                          v2 (May 2026 — additive, non-breaking)
+─────────────────                        ──────────────────────────────────────
+LEFT HEMI   (Angel  — ~28K nodes)        + LENS                — the right eye,
+RIGHT HEMI  (Demon  — ~29K nodes)                                shape-language speaker
+CORTEX MIND (~34K nodes)                 + KING (NOTAE)        — meme reasoning engine,
+GATE ROUTER (PASS/AND/OR/NOT/XOR/NAND)                           absorbs proven meme-tokens
+PLAYBOOK ENGINE (10-letter tactic)       + GLYPH gate          — 7th gate: cache-hit on
+                                                                 high-confidence memes
+                                         + SOCKETS (Phase C+)  — fairy code, genomic sound
+```
+
+Nothing in v1 is removed. v2 plugs into the side of it and **short-circuits** the slow path when a meme-token fires with high confidence.
+
+### LENS — the eye that speaks in shapes
+
+LENS is a perceptual organ, not a classifier. She doesn't tell you "this is anger" — she emits a shape, and the shape *is* the meaning.
+
+The vocabulary is an **8-glyph genome**:
+
+| Glyph | Meaning      | Glyph | Meaning      |
+|-------|--------------|-------|--------------|
+| ◯     | calm         | ⬠     | mystery      |
+| △     | tension      | ⬡     | intimacy     |
+| ▢     | structure    | ★     | revelation   |
+| ▭     | transition   | ⬭     | melancholy   |
+
+Every scene she watches collapses to a subset. Subsets fuse into **compound signatures** — `★ + ◯` reads "revelation under calm", a denser cultural token than any English phrase. A small set of canonical compound signatures already covers the bulk of the meme canon (handshakes, explosions, gun-pulls, kung-fu beats, intimacy, violence).
+
+**Confidence bands** clamp output — declarations are considered, never jittery:
+
+| Band      | Threshold | Behaviour                                            |
+|-----------|-----------|------------------------------------------------------|
+| HIGHFIVE  | ≥ 0.85    | Declared. Loud. The eye is sure.                     |
+| SPEAK     | ≥ 0.74    | Normal voice. Eye is confident.                      |
+| WHISPER   | ≥ 0.62    | Tentative. Eye sees something forming.               |
+| (silence) | < 0.62    | Eye stays quiet. Convergence not reached.            |
+
+### The KING — meme-associated reasoning engine
+
+The KING is the second new organ. It lives in its own repo ([`eliskcage/meme-reasoning-engine`](https://github.com/eliskcage/meme-reasoning-engine), Apache 2.0) and acts as the cortex's **meme dictionary + grammar engine**.
+
+LENS emits a glyph stream. The KING matches the stream against meme templates — and the key inversion is: **meme picks shape, not shape picks meme**. The template carries the visual signature and goes looking for moments that fit, the way a fisherman casts a net rather than describing each fish.
+
+When a match fires, the KING outputs a **meme-sentence** using six grammar operators:
+
+```
+BECAUSE   AFTER   DESPITE   BUT NOT   IF-THEN   WHILE
+```
+
+The meme-sentence **is** the reasoning. English is an optional subtitle for humans who can't read the visual language directly.
+
+Following the NOTAE absorption doctrine: proven meme-tokens get absorbed into the KING's vocabulary, the original author keeps an honour-mark. The KING is the head of state for the visual side of the mind.
+
+### Why this makes cognition lightning-fast
+
+The word brain handles ~94K nodes and ~710K connections. Full synthesis (XOR gate) takes ~1.2 seconds.
+
+The visual brain handles a few hundred canonical meme signatures. A meme is a **pre-computed thought** — a compressed cultural artefact that already carries reasoning, emotional valence, social context, and a punch-line.
+
+When LENS hits HIGHFIVE confidence on a known signature, the KING returns a meme-sentence in **single-digit milliseconds**. The word brain never has to spool up. The gate router gets a new sibling alongside PASS — the **GLYPH gate**:
+
+```
+Input ──► visual signal? ─┬─► YES → LENS → KING ──► GLYPH gate (≤ 50ms)
+                          │                         └─► meme-token returned;
+                          │                             cortex_brain.py receives
+                          │                             token as a cached thought
+                          │
+                          └─► NO  → existing v1 pipeline (PASS/AND/OR/NOT/XOR/NAND)
+```
+
+The two paths run in parallel. The first to converge wins. Or they blend: meme-token as headline, word-brain elaboration as body.
+
+### How it hooks into the existing cortex
+
+| v1 module                | v2 hook                                                        |
+|--------------------------|----------------------------------------------------------------|
+| `cortex_brain.py`        | New signal source: `glyph_stream`, `meme_token`, `confidence`  |
+| `pain_pleasure.py`       | 8-glyph genome runs alongside the 17-state hedonic engine      |
+| `playbook_engine.py`     | `DESPITE` / `IF-THEN` operators map onto tactic flips          |
+| `strategy_engine.py`     | Visual hostility / intimacy signals feed strategy meta         |
+| `frontal_cortex.py`      | Attention focuses on the spotlight region LENS is watching     |
+
+The visual cortex is implemented as `src/visual_cortex.py` (new module) plus the external KING repo as a runtime dependency.
+
+### Enhancement sockets (plug-and-play)
+
+With LENS + KING docked, additional organs can plug into the visual rail without touching the word brain:
+
+| Socket                  | Module                                | Effect                                                    |
+|-------------------------|---------------------------------------|-----------------------------------------------------------|
+| `fairy_code`            | `claude_fairy.js` / `billy_flesh.js`  | Cortex *draws* what it sees — bones get live render fns   |
+| `genomic_sound`         | crumb codec + Bark / PyWorld          | Each meme carries an audio fingerprint = bimodal recall   |
+| `compound_signatures`   | (live)                                | 2-shape fusion → cultural token                           |
+| `intensity_tiers`       | (live)                                | small / medium / big / nuclear scaling per meme           |
+| `demographics_gate`     | YCbCr Y-channel + face detection      | Skin-tone / gender-aware meme routing                     |
+| `violence_class`        | (live)                                | Punisher / John Wick / buzzsaw / chainsaw scene class     |
+| `kung_fu_tiers`         | (live)                                | Light hits → master-pleased; heavy hits → cat             |
+| `intimacy_gates`        | (live)                                | F-involved → quagmire; M-on-M → ha_gey / y_r_u_gae        |
+
+The `genomic_sound` socket is the lightning bolt: when an audio fingerprint and a glyph signature fire together, the meme-token is **bi-modal confirmed** and the cortex can recall the whole scene from either modality. See `crumb_codec` (audio → JSON genome, 129× compression).
+
+### Roadmap
+
+| Phase | Status     | Scope                                                                    |
+|-------|------------|--------------------------------------------------------------------------|
+| A     | LIVE       | Shape detection (circle / square 100%, triangle next), confidence bands  |
+| B     | next       | Hu moments + persistent belief; full demographics + violence gates       |
+| C     | planned    | `fairy_code` socket — eye draws what it sees                             |
+| D     | planned    | `genomic_sound` socket — every meme an audio glyph                       |
+| E     | planned    | Production GLYPH gate integration in `cortex_brain.py`                   |
+
+### Cross-references
+
+- **KING / meme reasoning engine**: [`eliskcage/meme-reasoning-engine`](https://github.com/eliskcage/meme-reasoning-engine) — public, Apache 2.0
+- **Full v2 spec**: [docs/VISUAL_CORTEX_V2.md](docs/VISUAL_CORTEX_V2.md)
+- **v1 architecture (preserved below)**: see `## The Architecture` section
+
+> *Doctrine — Labels gate perception. PC AI = engineered blindness. Honest vocab + raw tier + reaction-as-signal. The eye must be allowed to see.*
+
+---
+
 ## The Architecture
 
 ```
